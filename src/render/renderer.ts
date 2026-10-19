@@ -32,7 +32,11 @@ export async function createTerrainRenderer({
     renderer.shadowMap.type = PCFShadowMap;
     return renderer;
   } catch (error) {
-    renderer.dispose();
+    try {
+      renderer.dispose();
+    } catch {
+      /* Initialization may fail before Three creates its managers. */
+    }
     throw new Error(
       'Could not initialize native WebGPU. Check browser hardware acceleration and the dedicated GPU driver.',
       { cause: error },

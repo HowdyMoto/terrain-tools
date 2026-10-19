@@ -2,6 +2,9 @@ import {
   RenderTarget,
   DepthTexture,
   HalfFloatType,
+  FloatType,
+  RedFormat,
+  NearestFilter,
   UnsignedIntType,
   Vector2,
   Vector3,
@@ -44,6 +47,7 @@ import {
   velocity,
   nodeObject,
   convertToTexture,
+  rtt,
 } from 'three/tsl';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
 import { sharpen } from 'three/addons/tsl/display/SharpenNode.js';
@@ -292,7 +296,26 @@ export class WebGPUPipeline {
         depth = this.pass.getTextureNode('depth');
       let result: Node<'vec4'> = color;
       if (settings.ambientOcclusion?.enabled) {
-        const occlusion = ao(depth, this.pass.getTextureNode('normal'), camera);
+        // GTAO gathers neighboring depth samples, which WGSL does not support
+        // on multisampled depth textures. Resolve sample zero to full-precision
+        // R32F for this input while retaining MSAA on the scene color.
+        const aoDepth =
+          settings.temporalAA || !this.renderer.samples
+            ? depth
+            : rtt(vec4(depth.r), null, null, {
+                type: FloatType,
+                format: RedFormat,
+                minFilter: NearestFilter,
+                magFilter: NearestFilter,
+                depthBuffer: false,
+              });
+        if (aoDepth !== depth)
+          this.effects.push(aoDepth as ReturnType<typeof rtt>);
+        const occlusion = ao(
+          aoDepth,
+          this.pass.getTextureNode('normal'),
+          camera,
+        );
         occlusion.radius.value = settings.ambientOcclusion.radius;
         occlusion.scale.value = settings.ambientOcclusion.strength;
         this.effects.push(occlusion);

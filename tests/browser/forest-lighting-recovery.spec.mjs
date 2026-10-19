@@ -112,6 +112,9 @@ test('shadow, occlusion and temporal allocation failures preserve the document, 
     await expect(page.locator('#preparation-status')).toBeHidden({
       timeout: 60000,
     });
+    await expect(page.locator('#toast')).not.toContainText(
+      'Could not update lighting',
+    );
     await expect(page.locator('#save-state')).toHaveText('Saved locally', {
       timeout: 60000,
     });

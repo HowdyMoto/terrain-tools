@@ -707,7 +707,14 @@ export class TerrainEnvironment {
     this.gpuPipeline?.reset();
   }
   render(camera: THREE.PerspectiveCamera | THREE.OrthographicCamera) {
+    if (this.disposed) return;
     if (isWebGPU(this.renderer)) {
+      // Hosts may start their animation loop while the first load is pending.
+      // Until a look is committed, preserve the host scene's ordinary rendering.
+      if (!this.prepared) {
+        this.renderer.render(this.scene, camera);
+        return;
+      }
       this.updateCamera(camera);
       this.gpuPipeline ??= new WebGPUPipeline(this.renderer);
       const autoReset = this.renderer.info.autoReset;

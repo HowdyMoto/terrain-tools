@@ -59,6 +59,8 @@ test('native WebGPU renders terrain, foliage, atmosphere and water; bakes PBR an
     camera.position.set(40, 35, 45);
     camera.lookAt(0, 0, 0);
     const environment = new TerrainEnvironment(scene, renderer);
+    environment.render(camera);
+    await device.queue.onSubmittedWorkDone();
     await environment.load(p.environment, p);
     camera.coordinateSystem = renderer.coordinateSystem;
     camera.updateProjectionMatrix();
@@ -158,6 +160,18 @@ test('native WebGPU renders terrain, foliage, atmosphere and water; bakes PBR an
           ambientOcclusion: {
             ...p.environment.ambientOcclusion,
             enabled: false,
+          },
+        },
+        p,
+      );
+      await render();
+      await environment.load(
+        {
+          ...p.environment,
+          temporalAA: false,
+          ambientOcclusion: {
+            ...p.environment.ambientOcclusion,
+            enabled: true,
           },
         },
         p,
