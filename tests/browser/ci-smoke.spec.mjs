@@ -1,6 +1,8 @@
 import { test, expect as baseExpect } from '@playwright/test';
 import { createProject, serializeProject } from 'terrain-tools';
 import { seedEditorProject } from './seed-editor-project.mjs';
+import { readFile } from 'node:fs/promises';
+import sharp from 'sharp';
 // Software-rendered CI verifies behavior, with a smaller viewport and bounded
 // readiness waits. Its timings must never be used as dedicated-GPU evidence.
 const expect = baseExpect.configure({ timeout: 45000 });
@@ -37,5 +39,14 @@ test('clean build opens a saved fixture, imports a terrain, and restores an auth
   await expect(page.locator('#save-state')).toHaveText('Saved locally');
   await page.reload();
   await expect(page.locator('#project-name')).toHaveValue('Edited fixture');
+  const pending = page.waitForEvent('download');
+  await page.locator('#screenshot').click();
+  const png = await pending;
+  expect(png.suggestedFilename()).toBe('terrain-studio.png');
+  const captured = sharp(await readFile(await png.path()));
+  const stats = await captured.stats();
+  expect((await captured.metadata()).format).toBe('png');
+  expect(stats.isOpaque).toBe(true);
+  expect(stats.channels.slice(0, 3).some((c) => c.stdev > 5)).toBe(true);
   expect(errors).toEqual([]);
 });

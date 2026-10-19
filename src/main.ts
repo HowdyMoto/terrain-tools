@@ -3522,10 +3522,13 @@ $('#export').onclick = async () => {
     $('#export').focus();
   }
 };
-$('#screenshot').onclick = () =>
-  viewport.renderer.domElement.toBlob((blob) => {
-    if (blob) download(blob, 'terrain-studio.png', 'image/png');
-  });
+$('#screenshot').onclick = async () => {
+  try {
+    download(await viewport.capturePNG(), 'terrain-studio.png', 'image/png');
+  } catch (error) {
+    notify('Screenshot failed: ' + String(error), true);
+  }
+};
 $('#help').onclick = () => $<HTMLDialogElement>('#guide').showModal();
 $('#close-guide').onclick = () => $<HTMLDialogElement>('#guide').close();
 $('#physics').onclick = async () => {

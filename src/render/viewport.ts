@@ -805,6 +805,18 @@ export class Viewport {
       renderer: this.renderer,
     });
   }
+  /** Capture the display-converted frame before presentation retires its texture. */
+  async capturePNG(): Promise<Blob> {
+    await gpuDevice(this.renderer).queue.onSubmittedWorkDone();
+    this.lighting.render(this.camera);
+    this.framePacing.submitted();
+    return new Promise((resolve, reject) => {
+      this.renderer.domElement.toBlob((blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error('Could not capture the viewport.'));
+      }, 'image/png');
+    });
+  }
   private emitStroke(point: THREE.Vector3 | null) {
     const dabs = this.strokeSampler.sample(
       point,
