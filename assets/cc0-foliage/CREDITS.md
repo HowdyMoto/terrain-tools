@@ -1,0 +1,20 @@
+# Foliage Asset Credits
+
+Thank you to **Rico Cilliers**, **Rob Tuytel**, and **Poly Haven** for creating and sharing these assets.
+
+| Included asset  | Creator credits from the source page               | Source                                                                 |
+| --------------- | -------------------------------------------------- | ---------------------------------------------------------------------- |
+| Fern 02         | Rico Cilliers — modeling; Rob Tuytel — scanning    | [Poly Haven: Fern 02](https://polyhaven.com/a/fern_02)                 |
+| Shrub Sorrel 01 | Rico Cilliers — author                             | [Poly Haven: Shrub Sorrel 01](https://polyhaven.com/a/shrub_sorrel_01) |
+| Grass Medium 01 | Rico Cilliers — modeling; Rob Tuytel — photography | [Poly Haven: Grass Medium 01](https://polyhaven.com/a/grass_medium_01) |
+| Pine Tree 01    | Rico Cilliers — modeling; Rob Tuytel — photography | [Poly Haven: Pine Tree 01](https://polyhaven.com/a/pine_tree_01)       |
+
+Creator portfolios: [Rico Cilliers](https://www.artstation.com/rico_b3d) and [Rob Tuytel](https://www.artstation.com/tuytel).
+
+All four included assets are published under [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/), as documented by [Poly Haven's license page](https://polyhaven.com/license). Credit is provided voluntarily in appreciation of the creators' work. The files were downloaded from the official asset pages using the 2K glTF option; original ZIPs and unmodified extracted contents are retained.
+
+Suggested credit for a project using these assets:
+
+> Foliage assets: Fern 02, Shrub Sorrel 01, Grass Medium 01, and Pine Tree 01 by Rico Cilliers and Rob Tuytel, provided by Poly Haven under CC0 1.0 Universal. See the asset credit table for individual contributions.
+
+The additional ambientCG Leaf Set 030 download was blocked and is not included; its source and prospective attribution are recorded in [README.md](README.md).

@@ -1,0 +1,103 @@
+{
+  "timestamp": "2026-10-15T00:17:22.785Z",
+  "browser": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+  "grid": 512,
+  "foliage": 50000,
+  "payloadMiB": 48,
+  "rounds": 3,
+  "phases": [
+    {
+      "mode": "main-thread",
+      "measurements": [
+        {
+          "round": 0,
+          "callMs": 288,
+          "elapsedMs": 288,
+          "animationFramesDuringWork": 0,
+          "maximumFrameGapMs": 292.40000000596046,
+          "bytes": 60122140,
+          "checksum": 4263228252
+        },
+        {
+          "round": 1,
+          "callMs": 86.19999998807907,
+          "elapsedMs": 86.19999998807907,
+          "animationFramesDuringWork": 0,
+          "maximumFrameGapMs": 86.7999999821186,
+          "bytes": 60122140,
+          "checksum": 2637195305
+        },
+        {
+          "round": 2,
+          "callMs": 77,
+          "elapsedMs": 77,
+          "animationFramesDuringWork": 0,
+          "maximumFrameGapMs": 77.69999998807907,
+          "bytes": 60122140,
+          "checksum": 579827964
+        }
+      ]
+    },
+    {
+      "mode": "background",
+      "measurements": [
+        {
+          "round": 0,
+          "callMs": 15.400000005960464,
+          "elapsedMs": 310.7000000178814,
+          "animationFramesDuringWork": 17,
+          "maximumFrameGapMs": 18.400000005960464,
+          "bytes": 60122140,
+          "checksum": 4263228252,
+          "worker": {
+            "active": false,
+            "pending": 0,
+            "cachedAssets": 2,
+            "cachedCharacters": 67108924,
+            "lastCaptureMs": 4.700000017881393,
+            "lastPostMs": 10.199999988079071,
+            "lastEncodeMs": 282.59999999403954
+          }
+        },
+        {
+          "round": 1,
+          "callMs": 26,
+          "elapsedMs": 111.59999999403954,
+          "animationFramesDuringWork": 6,
+          "maximumFrameGapMs": 26.400000005960464,
+          "bytes": 60122140,
+          "checksum": 2637195305,
+          "worker": {
+            "active": false,
+            "pending": 0,
+            "cachedAssets": 2,
+            "cachedCharacters": 67108924,
+            "lastCaptureMs": 8.699999988079071,
+            "lastPostMs": 17.30000001192093,
+            "lastEncodeMs": 85.5
+          }
+        },
+        {
+          "round": 2,
+          "callMs": 2.2000000178813934,
+          "elapsedMs": 80.7000000178814,
+          "animationFramesDuringWork": 5,
+          "maximumFrameGapMs": 18,
+          "bytes": 60122140,
+          "checksum": 579827964,
+          "worker": {
+            "active": false,
+            "pending": 0,
+            "cachedAssets": 2,
+            "cachedCharacters": 67108924,
+            "lastCaptureMs": 2.2000000178813934,
+            "lastPostMs": 0,
+            "lastEncodeMs": 78.30000001192093
+          }
+        }
+      ]
+    }
+  ],
+  "matchingPackages": true,
+  "scope": "Package encoding only: a 512-cell grid, 50,000 foliage records, and two synthetic base64 model payloads. Assets are not renderable. Snapshot capture, first asset transfer, worker startup and encoding are included; rendering, asset decode, IndexedDB writes, downloads and editor history are excluded. Call time is synchronous main-thread work; frame gaps also depend on browser scheduling and system load. First and cached rounds are reported separately."
+}

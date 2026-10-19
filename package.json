@@ -1,0 +1,79 @@
+{
+  "name": "terrain-tools",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Three.js terrain authoring toolkit and editor",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HowdyMoto/terrain-tools.git"
+  },
+  "homepage": "https://github.com/HowdyMoto/terrain-tools#readme",
+  "bugs": {
+    "url": "https://github.com/HowdyMoto/terrain-tools/issues"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --configLoader native",
+    "build": "tsc --noEmit && npm run build:runtime && vite build --configLoader native",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run --configLoader native",
+    "test:watch": "vitest --configLoader native",
+    "format": "prettier --write src tests examples scripts docs README.md",
+    "format:check": "prettier --check src tests examples scripts docs README.md",
+    "test:browser": "playwright test",
+    "build:runtime": "vite build --config vite.runtime.config.mjs --configLoader native && tsc -p tsconfig.runtime.json && node scripts/finalize-types.mjs",
+    "benchmark": "node scripts/benchmark.mjs",
+    "benchmark:erosion": "node scripts/benchmark-erosion.mjs",
+    "benchmark:foliage": "node scripts/benchmark-foliage.mjs",
+    "benchmark:history": "node scripts/benchmark-history.mjs",
+    "benchmark:persistence": "node scripts/benchmark-persistence.mjs",
+    "build:example:upland": "node scripts/build-upland-example.mjs",
+    "build:assets:foliage": "node scripts/build-photoreal-foliage.mjs",
+    "benchmark:surfaces": "node scripts/benchmark-surfaces.mjs",
+    "benchmark:edit-preview": "node --expose-gc scripts/benchmark-edit-preview.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "^1.56.0",
+    "@types/node": "24.19.2",
+    "@types/three": "^0.180.0",
+    "eslint": "10.13.0",
+    "globals": "17.13.0",
+    "lucide": "^0.468.0",
+    "meshoptimizer": "1.1.0",
+    "prettier": "^3.6.0",
+    "sharp": "0.34.5",
+    "three": "^0.180.0",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "8.71.2",
+    "vite": "^7.1.0",
+    "vitest": "^5.0.5"
+  },
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "import": "./lib/core.js"
+    },
+    "./three": {
+      "types": "./lib/types/runtime/index.d.ts",
+      "import": "./lib/runtime.js"
+    },
+    "./rapier": {
+      "types": "./lib/types/physics/rapier.d.ts",
+      "import": "./lib/rapier.js"
+    }
+  },
+  "files": [
+    "lib",
+    "README.md",
+    "docs"
+  ],
+  "peerDependencies": {
+    "three": "^0.180.0"
+  },
+  "optionalDependencies": {
+    "@dimforge/rapier3d-compat": "^0.19.0"
+  }
+}

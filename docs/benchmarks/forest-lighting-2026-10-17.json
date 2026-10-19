@@ -1,0 +1,557 @@
+{
+  "recordedAt": "2026-10-17T07:44:15.715Z",
+  "status": "Implemented and locally verified; CryEngine parity and production readiness are not established.",
+  "target": {
+    "device": "NVIDIA GeForce RTX 5060 Laptop GPU",
+    "resolution": [1920, 1080],
+    "fps": 30,
+    "priority": "richer desktop visuals",
+    "driver": "617.42",
+    "memoryMiB": 8151
+  },
+  "selection": {
+    "editor": "powerPreference high-performance; selected adapter shown in FPS/GPU tooltip",
+    "benchmark": "Chrome temporary profile, --force-high-performance-gpu; renderer identity asserted to contain NVIDIA and 5060",
+    "integratedGPU": "Earlier Radeon 860M evidence is diagnostic and is not the target device."
+  },
+  "features": [
+    "Three camera-following, blended, texel-stable shadow cascades with sun energy conservation and inactive-cascade filtering skipped.",
+    "Cutout/wind/fade-aware depth, half-resolution 24-sample indirect-only ambient occlusion, bilateral filtering and depth-aware upscale.",
+    "Linear HDR camera-reprojected temporal resolve with MSAA, neighborhood clamp and disocclusion rejection before display tone mapping.",
+    "Composed material effects preserve wind, leaf transmission and LOD fade hooks without global shader mutations.",
+    "Up to 8x anisotropic texture filtering; zero-coverage terrain layers skip sampling with gradients evaluated outside divergent control flow.",
+    "Atomic resource preparation, rollback, retry, undo/redo and autosave for cascade/AO/temporal authoring."
+  ],
+  "tests": {
+    "fullUnitRun": {
+      "tests": 269,
+      "files": 35,
+      "command": "npm test -- --testTimeout=15000",
+      "note": "Full suite passed after final cascade filter optimization."
+    },
+    "build": "npm run build passed; existing large bundle-size warning remains.",
+    "lint": "npm run lint passed.",
+    "formatting": "Prettier checks passed for changed source/tests/docs.",
+    "browser": {
+      "uniqueScenarios": 18,
+      "notes": [
+        "Environment/HDR/EXR, animated daylight, terrain PBR and baked exports passed.",
+        "Final cascade, temporal, foliage transmission/fade, allocation recovery, texture variation and baked export scenarios passed.",
+        "Added terrain-only AO assertion initially used a generated hilly fixture, burying the box; corrected to a flat terrain fixture, then passed. This was a test setup failure. The final-results directory retains that failed run; terrain-ao-results contains the successful corrected test.",
+        "A distant-mipmap regression was found and fixed by computing terrain gradients outside divergent shader flow; minified numeric texture output is 127 across the sampled image.",
+        "The full browser suite was not run. These are the relevant 18 scenarios, not a production-readiness audit."
+      ],
+      "finalResults": ".qa/forest-final-results",
+      "terrainAO": ".qa/forest-terrain-ao-results",
+      "broaderIntegration": ".qa/forest-rtx-integration-results"
+    }
+  },
+  "controlledFixtures": {
+    "cascades": {
+      "energyError": 0,
+      "shadowPixels": 7430,
+      "restored": true,
+      "disabledPixels": 2073600
+    },
+    "occlusion": {
+      "darkened": 10924,
+      "maxReduction": 23,
+      "brightened": 0,
+      "directDifference": 0,
+      "stateRestored": true,
+      "hooksRestored": true,
+      "terrainDarkened": 6863
+    },
+    "temporal": {
+      "msaa": {
+        "change": 30159304,
+        "center": [45, 118, 15, 255]
+      },
+      "temporal": {
+        "change": 18659552,
+        "center": [45, 118, 15, 255]
+      },
+      "ratio": 0.6186996888257102,
+      "ghost": 0,
+      "projectionRestored": true,
+      "restored": true
+    },
+    "textureVariation": {
+      "magnifiedColorAlignment": {
+        "maximum": 0,
+        "mean": 0
+      },
+      "regularColorAlignment": {
+        "maximum": 1,
+        "mean": 0.01263427734375
+      },
+      "regularPeriod": {
+        "maximum": 1,
+        "mean": 0.000244140625
+      },
+      "variedPeriod": {
+        "maximum": 253,
+        "mean": 58.07292175292969
+      },
+      "alignedColor": {
+        "maximum": 1,
+        "mean": 0.010406494140625
+      },
+      "alignedHeight": {
+        "maximum": 0,
+        "mean": 0
+      },
+      "normalMaximumError": 0.9971653104974365,
+      "boundaries": [
+        {
+          "maximum": 0,
+          "mean": 0
+        },
+        {
+          "maximum": 0,
+          "mean": 0
+        },
+        {
+          "maximum": 0,
+          "mean": 0
+        },
+        {
+          "maximum": 0,
+          "mean": 0
+        },
+        {
+          "maximum": 0,
+          "mean": 0
+        },
+        {
+          "maximum": 0,
+          "mean": 0
+        },
+        {
+          "maximum": 0,
+          "mean": 0
+        },
+        {
+          "maximum": 0,
+          "mean": 0
+        },
+        {
+          "maximum": 0,
+          "mean": 0
+        },
+        {
+          "maximum": 0,
+          "mean": 0
+        },
+        {
+          "maximum": 0,
+          "mean": 0
+        },
+        {
+          "maximum": 0,
+          "mean": 0
+        },
+        {
+          "maximum": 0,
+          "mean": 0
+        },
+        {
+          "maximum": 0,
+          "mean": 0
+        },
+        {
+          "maximum": 0,
+          "mean": 0
+        },
+        {
+          "maximum": 0,
+          "mean": 0
+        },
+        {
+          "maximum": 0,
+          "mean": 0
+        },
+        {
+          "maximum": 0,
+          "mean": 0
+        },
+        {
+          "maximum": 0,
+          "mean": 0
+        },
+        {
+          "maximum": 0,
+          "mean": 0
+        },
+        {
+          "maximum": 0,
+          "mean": 0
+        },
+        {
+          "maximum": 0,
+          "mean": 0
+        },
+        {
+          "maximum": 0,
+          "mean": 0
+        },
+        {
+          "maximum": 0,
+          "mean": 0
+        },
+        {
+          "maximum": 0,
+          "mean": 0
+        },
+        {
+          "maximum": 0,
+          "mean": 0
+        },
+        {
+          "maximum": 0,
+          "mean": 0
+        }
+      ],
+      "boundaryColors": [
+        254, 254, 254, 176, 0, 79, 5, 250, 5, 254, 255, 0, 0, 0, 255, 255, 255,
+        0, 254, 1, 1, 255, 0, 176, 0, 255, 255
+      ],
+      "mipRange": [127, 127],
+      "mipExpected": 127.5,
+      "disabled": {
+        "maximum": 0,
+        "mean": 0
+      },
+      "omitted": {
+        "maximum": 0,
+        "mean": 0
+      },
+      "reusedArrays": true
+    }
+  },
+  "performanceMethod": {
+    "chrome": "Headless installed Chrome on Windows, hardware D3D11, devicePixelRatio 1, antialias true, preserveDrawingBuffer true.",
+    "motion": "720 requestAnimationFrame-driven frames, first 120 excluded; moving camera follows terrain height, wind enabled, all authored screen effects and cascades enabled. Mean FPS derives from the 600 actual frame intervals. No gl.finish/readback in the moving loop.",
+    "static": "75 measured frames after 25 warm-up frames per view, gl.finish diagnostic samples and animation-frame intervals. Blocking times are not treated as FPS.",
+    "limits": "Short scene-specific walkthroughs, not a locked minimum frame rate, long thermal run, editing latency or cross-device certification. Editor import/autosave is checked separately; editor panel/HiDPI/fullscreen performance is not represented by the runtime frame timings."
+  },
+  "pineForest": {
+    "path": "Documents/Terrain Studio Projects/Pine Forest/exports/Pine-Forest.terrain",
+    "sizeMetres": 112,
+    "instances": 21444,
+    "credits": "Pine Forest/CREDITS.md; Rico Cilliers, Rob Tuytel and Poly Haven / CC0",
+    "projectSha256": "00914eecbacb499f7fbb747356a7672f5575cf0e10214f40f1ca37972fdab426",
+    "browser": "155.0.8059.79",
+    "viewport": [1920, 1080],
+    "views": [
+      {
+        "name": "trail",
+        "variant": "single",
+        "blockingMedianMs": 3.5,
+        "blockingP95Ms": 4.300000011920929,
+        "frameIntervalMedianMs": 16.69999999999891,
+        "frameIntervalP95Ms": 16.80000000000109,
+        "frames": 75,
+        "draw": {
+          "frame": 200,
+          "calls": 385,
+          "triangles": 11954755,
+          "points": 0,
+          "lines": 0
+        },
+        "memory": {
+          "geometries": 231,
+          "textures": 72
+        },
+        "foliage": {
+          "instances": 9799,
+          "culled": 11645,
+          "batches": 204,
+          "triangles": 6482197,
+          "levels": [770, 9003, 26, 0],
+          "transitioning": 0,
+          "drawnInstances": 9799
+        },
+        "error": null
+      },
+      {
+        "name": "trail",
+        "variant": "cascades",
+        "blockingMedianMs": 4.4000000059604645,
+        "blockingP95Ms": 5.5999999940395355,
+        "frameIntervalMedianMs": 16.700000000000728,
+        "frameIntervalP95Ms": 16.799999999999272,
+        "frames": 75,
+        "draw": {
+          "frame": 350,
+          "calls": 733,
+          "triangles": 23791734,
+          "points": 0,
+          "lines": 0
+        },
+        "memory": {
+          "geometries": 231,
+          "textures": 75
+        },
+        "foliage": {
+          "instances": 9799,
+          "culled": 11645,
+          "batches": 204,
+          "triangles": 6482197,
+          "levels": [770, 9003, 26, 0],
+          "transitioning": 0,
+          "drawnInstances": 9799
+        },
+        "error": null
+      },
+      {
+        "name": "trail",
+        "variant": "contact",
+        "blockingMedianMs": 5,
+        "blockingP95Ms": 6.5,
+        "frameIntervalMedianMs": 16.700000000000728,
+        "frameIntervalP95Ms": 33.30000000000291,
+        "frames": 75,
+        "draw": {
+          "frame": 900,
+          "calls": 900,
+          "triangles": 29231518,
+          "points": 0,
+          "lines": 0
+        },
+        "memory": {
+          "geometries": 232,
+          "textures": 79
+        },
+        "foliage": {
+          "instances": 9799,
+          "culled": 11645,
+          "batches": 204,
+          "triangles": 6482197,
+          "levels": [770, 9003, 26, 0],
+          "transitioning": 0,
+          "drawnInstances": 9799
+        },
+        "error": null
+      },
+      {
+        "name": "trail",
+        "variant": "complete",
+        "blockingMedianMs": 5.199999988079071,
+        "blockingP95Ms": 6.9000000059604645,
+        "frameIntervalMedianMs": 16.700000000000728,
+        "frameIntervalP95Ms": 33.39999999999782,
+        "frames": 75,
+        "draw": {
+          "frame": 1650,
+          "calls": 902,
+          "triangles": 29231520,
+          "points": 0,
+          "lines": 0
+        },
+        "memory": {
+          "geometries": 233,
+          "textures": 83
+        },
+        "foliage": {
+          "instances": 9799,
+          "culled": 11645,
+          "batches": 204,
+          "triangles": 6482197,
+          "levels": [770, 9003, 26, 0],
+          "transitioning": 0,
+          "drawnInstances": 9799
+        },
+        "error": null
+      },
+      {
+        "name": "understory",
+        "variant": "complete",
+        "blockingMedianMs": 5.699999988079071,
+        "blockingP95Ms": 7.300000011920929,
+        "frameIntervalMedianMs": 16.69999999999709,
+        "frameIntervalP95Ms": 33.39999999999418,
+        "frames": 75,
+        "draw": {
+          "frame": 2400,
+          "calls": 920,
+          "triangles": 28312594,
+          "points": 0,
+          "lines": 0
+        },
+        "memory": {
+          "geometries": 244,
+          "textures": 84
+        },
+        "foliage": {
+          "instances": 9896,
+          "culled": 11548,
+          "batches": 215,
+          "triangles": 6498683,
+          "levels": [797, 9074, 25, 0],
+          "transitioning": 0,
+          "drawnInstances": 9896
+        },
+        "error": null
+      },
+      {
+        "name": "canopy",
+        "variant": "complete",
+        "blockingMedianMs": 5.5,
+        "blockingP95Ms": 6.5,
+        "frameIntervalMedianMs": 16.69999999999709,
+        "frameIntervalP95Ms": 33.299999999995634,
+        "frames": 75,
+        "draw": {
+          "frame": 3150,
+          "calls": 924,
+          "triangles": 29049136,
+          "points": 0,
+          "lines": 0
+        },
+        "memory": {
+          "geometries": 244,
+          "textures": 85
+        },
+        "foliage": {
+          "instances": 9864,
+          "culled": 11580,
+          "batches": 211,
+          "triangles": 6479134,
+          "levels": [749, 9090, 25, 0],
+          "transitioning": 0,
+          "drawnInstances": 9864
+        },
+        "error": null
+      }
+    ],
+    "errors": [],
+    "load": {
+      "milliseconds": 2154.7999999821186,
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Laptop GPU (0x00002D19) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+    },
+    "motion": {
+      "error": null,
+      "frames": 600,
+      "medianFrameIntervalMs": 16.69999999999709,
+      "p95FrameIntervalMs": 33.400000000001455,
+      "meanFPS": 50.633765970733705,
+      "medianCpuSubmitMs": 6.100000023841858
+    },
+    "editor": "opened and autosaved",
+    "status": "passed",
+    "at": "2026-10-17T07:41:12.306Z"
+  },
+  "namaqualand": {
+    "path": "Documents/Terrain Studio Projects/Namaqualand/exports/Namaqualand-detailed-daylight.terrain",
+    "sizeMetres": 60,
+    "instances": 16152,
+    "props": 23,
+    "lodTuning": "Original 12/18/22 m thresholds become 5/8/10 m, without replacing primary meshes or removing placements.",
+    "originalSHA256": "ba29daa96dc65933f91028a6c6c68040110cbd876aa44fe123511223b9cfd6d9",
+    "earlierSunlightSHA256": "a09fa9cca25084185e234a4dacd4952057ae0330fdc115b602c8fe77a269c46c",
+    "projectSha256": "92d0fe6ee23e9851a98e5309e0ecc7fe2f157a108ec34032d160359c89bbf199",
+    "browser": "155.0.8059.79",
+    "viewport": [1920, 1080],
+    "views": [
+      {
+        "name": "original",
+        "variant": "complete",
+        "blockingMedianMs": 7.9000000059604645,
+        "blockingP95Ms": 11.200000017881393,
+        "frameIntervalMedianMs": 33.29999999999927,
+        "frameIntervalP95Ms": 33.5,
+        "frames": 75,
+        "draw": {
+          "frame": 800,
+          "calls": 1380,
+          "triangles": 40745070,
+          "points": 0,
+          "lines": 0
+        },
+        "memory": {
+          "geometries": 299,
+          "textures": 283
+        },
+        "foliage": {
+          "instances": 14201,
+          "culled": 1951,
+          "batches": 216,
+          "triangles": 8270070,
+          "levels": [1801, 12400, 0, 0],
+          "transitioning": 0,
+          "drawnInstances": 14201
+        },
+        "error": null
+      },
+      {
+        "name": "flowers",
+        "variant": "complete",
+        "blockingMedianMs": 8.800000011920929,
+        "blockingP95Ms": 13.099999994039536,
+        "frameIntervalMedianMs": 33.299999999995634,
+        "frameIntervalP95Ms": 33.400000000001455,
+        "frames": 75,
+        "draw": {
+          "frame": 1550,
+          "calls": 1393,
+          "triangles": 44469796,
+          "points": 0,
+          "lines": 0
+        },
+        "memory": {
+          "geometries": 313,
+          "textures": 293
+        },
+        "foliage": {
+          "instances": 14226,
+          "culled": 1926,
+          "batches": 224,
+          "triangles": 8801243,
+          "levels": [2191, 12035, 0, 0],
+          "transitioning": 0,
+          "drawnInstances": 14226
+        },
+        "error": null
+      }
+    ],
+    "errors": [],
+    "load": {
+      "milliseconds": 5004.4000000059605,
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Laptop GPU (0x00002D19) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+    },
+    "motion": {
+      "error": null,
+      "frames": 600,
+      "medianFrameIntervalMs": 33.30000000000291,
+      "p95FrameIntervalMs": 33.60000000000582,
+      "meanFPS": 32.432783057114136,
+      "medianCpuSubmitMs": 8.300000011920929
+    },
+    "editor": "opened and autosaved",
+    "status": "passed",
+    "at": "2026-10-17T07:42:33.939Z"
+  },
+  "limits": [
+    "No spatial GI or off-screen canopy occlusion.",
+    "No volumetric fog, clouds or cloud shadows.",
+    "No plant motion vectors; wind may soften or trail temporally.",
+    "Approximate pine card canopy; reduced Namaqualand leaf meshes and working textures limit fidelity.",
+    "No coverage-preserving foliage mipmaps, production impostors or world streaming.",
+    "Temporal path supports opaque full-viewport perspective/orthographic rendering, not XR or transparent-canvas/subviewport compositing.",
+    "One environment controller per scene; clone materials before sharing among independently lit scenes."
+  ],
+  "sourceSHA256": {
+    "src/core/environment.ts": "1b5d9159ab6216e44961bc1446069d7c01d337d82297bf137bcef22b71d220ed",
+    "src/runtime/material-effects.ts": "604f85734e25d923f0b7cd9885c7240caaa8b698af7aa60d34900be3005c8316",
+    "src/runtime/cascaded-sun.ts": "0d4a540fbc3f8534ecfd56d46f249f6af88176ead0a4f0adf1364bfb5ee28f05",
+    "src/runtime/ambient-occlusion.ts": "29472674bc6686e2e8f54ede3c267cacf4b133742b3b114a750815429861bce3",
+    "src/runtime/temporal-aa.ts": "9aecea55b9eb1ca59699042c6d1551999d5a4a428713cbe59ca8c91bfe285123",
+    "src/runtime/environment.ts": "feb3add86d9242fdc0400f19bfb168cc2558fe78d0bd05f186d78b6f8f741cfc",
+    "src/render/surface-shader.ts": "90271ed8128bad0286fc3e45e692e79909eecf92a756ef9219a0bdfd8dbe03a0",
+    "src/render/material.ts": "d4c771c9d5359fd6c46ba1d3cbd77c718549209f98ca01c73164e9f81dfe9c97",
+    "src/render/model-loader.ts": "7edca508d0a7c115d106251feb7899b8b0a01d04d56f20548038d70808dd05a5",
+    "src/render/viewport.ts": "6fe390f48e0f68e090810e6afd15ffa25ee538906abe263c67c93abaaf05e22f",
+    "src/editor/environment-controls.ts": "752c2f96786e1cecfa245664f4d4e4adb209e50ff1ae650d6211539c0a58e62c"
+  }
+}

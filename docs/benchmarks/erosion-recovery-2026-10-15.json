@@ -1,0 +1,123 @@
+{
+  "verifiedAt": "2026-10-15T03:15:41.717Z",
+  "scope": "Retained-scene recovery for editor erosion preview/comparison, settings invalidation, cancellation and application; recoverable CPU construction/collision/history failures. Does not claim GPU/process recovery or recovery for unrelated edit paths.",
+  "checks": {
+    "units": {
+      "tests": 169,
+      "files": 23,
+      "status": 0,
+      "signal": null,
+      "completed": "2026-10-15T03:09:24.104Z"
+    },
+    "targetedChrome": {
+      "scenarios": 5,
+      "status": 0,
+      "signal": null,
+      "completed": "2026-10-15T03:10:07.741Z"
+    },
+    "build": {
+      "status": 0,
+      "signal": null,
+      "completed": "2026-10-15T03:08:19.161Z"
+    },
+    "publicTypes": {
+      "checked": "2026-10-15T03:10:40.464Z",
+      "strictNodeNextCoreThree": 0,
+      "strictBundlerWithRapier": 0,
+      "skipLibCheck": false
+    },
+    "chromeFullSuite": {
+      "scenarios": 36,
+      "status": 0,
+      "signal": null,
+      "completed": "2026-10-15T03:14:52.099Z"
+    }
+  },
+  "editor": {
+    "evidence": [
+      {
+        "stage": "initial-worker-result",
+        "restoredPixelsAndHistory": true
+      },
+      {
+        "stage": "terrain",
+        "restoredPixelsAndHistory": true,
+        "retrySucceeded": true
+      },
+      {
+        "stage": "picking",
+        "restoredPixelsAndHistory": true,
+        "retrySucceeded": true
+      },
+      {
+        "stage": "foliage",
+        "restoredPixelsAndHistory": true,
+        "retrySucceeded": true
+      },
+      {
+        "stage": "collision",
+        "restoredPixelsAndHistory": true,
+        "retrySucceeded": true
+      },
+      {
+        "stage": "history",
+        "restoredPixelsAndHistory": true,
+        "retrySucceeded": true
+      }
+    ],
+    "cancellationWhileAllocationFails": true,
+    "settingsInvalidationWhileAllocationFails": true,
+    "appliedFromOriginalComparison": true,
+    "nativeUndoRedoAutosave": true,
+    "errors": []
+  },
+  "nativeFiles": {
+    "applied.terrain": {
+      "bytes": 91832,
+      "sha256": "940aa3b5918244805d8b9834bbea5c495569a5d990670e053feb16057460980a"
+    },
+    "baseline.terrain": {
+      "bytes": 91612,
+      "sha256": "e35519ff74a7bf79dbf2a3b32336f4bc76ba4051554ea064938bb03d054dda4a"
+    },
+    "cancelled-after-failures.terrain": {
+      "bytes": 91612,
+      "sha256": "e35519ff74a7bf79dbf2a3b32336f4bc76ba4051554ea064938bb03d054dda4a"
+    },
+    "redone.terrain": {
+      "bytes": 91832,
+      "sha256": "940aa3b5918244805d8b9834bbea5c495569a5d990670e053feb16057460980a"
+    },
+    "reopened.terrain": {
+      "bytes": 91832,
+      "sha256": "940aa3b5918244805d8b9834bbea5c495569a5d990670e053feb16057460980a"
+    },
+    "undone.terrain": {
+      "bytes": 91612,
+      "sha256": "e35519ff74a7bf79dbf2a3b32336f4bc76ba4051554ea064938bb03d054dda4a"
+    }
+  },
+  "visualReview": {
+    "artifact": "erosion-preview.png",
+    "sha256": "969c4ffeb55a474a6536d11414255d08ebfa0c3f33dc096af0a837769e2f787a",
+    "observed": "Preview panel shows thermal settings and completed calculation, landscape and anchored props remain visible, comparison/cancel/apply controls fit in the viewport."
+  },
+  "sourceHashes": {
+    "src/main.ts": {
+      "bytes": 105009,
+      "sha256": "b39dcdb4e506fea35a4551fbd199f615ed64e9457c7214a2944dd868120cf46d"
+    },
+    "src/editor/erosion-panel.ts": {
+      "bytes": 9414,
+      "sha256": "71402d79007ceca1bfbe5e5813a9efc362377cac7b0af01035034bae48d061be"
+    },
+    "src/render/viewport.ts": {
+      "bytes": 20819,
+      "sha256": "d03be0c2eecffceeef4be779b10968c27973812ae13a29a48343c753034f09a4"
+    },
+    "tests/browser/erosion-recovery.spec.mjs": {
+      "bytes": 9985,
+      "sha256": "af2442b3d7583c8a8ce04b7b23fbe228d8107adb2c0d72640642195ddc2f8c27"
+    }
+  }
+}

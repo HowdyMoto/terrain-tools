@@ -1,0 +1,99 @@
+{
+  "verifiedAt": "2026-10-16T16:43:42.396Z",
+  "scope": "OpenEXR environment imports and four default photoreal CC0 foliage brushes",
+  "checks": {
+    "typecheck": "passed",
+    "productionBuild": "passed",
+    "lint": "ESLint 10.13.0 / typescript-eslint 8.71.2 recommended rules pass for src/",
+    "unitRuntimePhysicsAndAssetTests": 189,
+    "unitTestFiles": 26,
+    "unitCommand": "npm test -- --testTimeout=15000",
+    "unitQualification": "The default five-second limit timed out on the existing full-size sculpt-preset alpha fixture, including in isolation. The 15-second verification run passes all tests; no timeout configuration was changed.",
+    "chromeIntegrationScenarios": 51,
+    "finalBuildBrowserRechecks": 5,
+    "publicNodeNextTypes": "passed; skipLibCheck false",
+    "format": "passed"
+  },
+  "browserRuns": {
+    "full": {
+      "scenarios": 51,
+      "passed": 47,
+      "legacyFixtureFailures": 4
+    },
+    "affectedFilesRerun": {
+      "scenarios": 9,
+      "passed": 9
+    },
+    "explanation": "The four original failures assumed an empty initial asset registry or legacy procedural defaults. Tests now explicitly select procedural fixtures where promotion/LOD behavior requires them, preserve valid model references when replacing a fixture registry, and assert the newly imported prop asset directly. All affected scenarios passed on rerun; the new brush tests also verify close-up rendered plant selection."
+  },
+  "coverage": [
+    "EXR HALF/FLOAT NONE/ZIPS/ZIP decoding, orientation and radiance",
+    "Offset-table normalization and bounded header/chunk validation",
+    "Non-finite FLOAT rejection before half-float conversion; finite render-range clamp",
+    "Failed environment replacement, undo/redo, native/autosave/GLB and runtime restoration",
+    "Four defaults, real painting, embedded credits and portable brush save",
+    "Cancelled/failed default additions preserve document and redo; retry and reload",
+    "Existing documents use embedded models even when bundled downloads are blocked",
+    "GLB checksums, embedded dependencies, author metadata, pivots and decreasing LOD counts"
+  ],
+  "photographicEXR": {
+    "source": "https://polyhaven.com/a/autumn_field_puresky",
+    "authors": {
+      "Sergej Majboroda": "Original",
+      "Jarod Guest": "Sky Edits"
+    },
+    "license": "CC0-1.0",
+    "file": "autumn_field_puresky_1k.exr",
+    "bytes": 5047965,
+    "sha256": "956f2a1e6b97139f10c09de40581932a2b5185c70b8f0dc5a5066255e3108c9e",
+    "width": 1024,
+    "height": 512,
+    "samples": "FLOAT RGB",
+    "compression": "PIZ",
+    "browser": "155.0.8059.79",
+    "renderer": "ANGLE (AMD, AMD Radeon(TM) 860M Graphics (0x00001114) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "errors": []
+  },
+  "foliage": {
+    "modelCount": 15,
+    "modelBytes": 21613612,
+    "manifest": "public/foliage/photoreal/manifest.json",
+    "manifestSha256": "188ce754269ee96d4ec2d8bdbf518b83a6fba5b2162eeb5d7116ff608fffee01",
+    "sourceAlphaManifest": "assets/cc0-foliage/alpha-maps/manifest.json",
+    "credits": "public/foliage/photoreal/CREDITS.txt",
+    "pineTriangles": [25630, 10942, 4774]
+  },
+  "sourceTree": {
+    "sha256": "a043314c1ca455581a2b5ac912321939461a0524c62bb28844f4a058c3f6356c",
+    "fileCount": 130,
+    "scope": "src/, tests/, foliage builder, manifests and TypeScript/Vite/Playwright configurations",
+    "algorithm": "SHA-256 over sorted relative path + NUL + file SHA-256 + newline"
+  },
+  "logs": {
+    "units": ".qa/exr-foliage-units-qualified.log",
+    "unitDefaultTimeout": ".qa/exr-foliage-units.log",
+    "build": ".qa/exr-foliage-build.log",
+    "browser": ".qa/exr-foliage-browser.log",
+    "correctedFixtures": ".qa/exr-foliage-browser-rerun.log",
+    "finalBuildBrowser": ".qa/exr-foliage-final-browser.log",
+    "photographicEXR": ".qa/photographic-exr-verification.json"
+  },
+  "concurrentWorkspaceWork": "Navigation changes and six unit/four browser tests appeared during this work and were preserved. The 189-unit run includes those additions. This record claims the 51 pre-navigation browser scenarios plus final EXR/foliage/PNG rechecks; navigation verification is separately documented in ROADMAP.md.",
+  "visualArtifacts": [
+    ".qa/photographic-exr-and-foliage.png",
+    ".qa/ph-pine-b.png",
+    ".qa/ph-pine-b-mid.png",
+    ".qa/ph-pine-b-low.png",
+    ".qa/ph-fern-b.png",
+    ".qa/ph-grass-tall-a.png",
+    ".qa/ph-sorrel-d.png",
+    "test-results/photoreal-ferns-painted.png"
+  ],
+  "limitations": [
+    "Chrome 155 / AMD Radeon 860M Direct3D11 only; no mobile or cross-browser certification",
+    "Real photographic EXR evidence covers FLOAT RGB/PIZ; other non-fixture compression variants remain unverified with representative assets",
+    "Half-float render textures clamp finite EXR radiance to +/-65504; original file bytes remain unchanged",
+    "Pine canopy is an approximate twig-photo card derivative, not original needle geometry",
+    "No dense photographic-scene frame-time target or AA production-quality certification"
+  ]
+}

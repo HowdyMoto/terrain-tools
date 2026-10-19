@@ -1,0 +1,92 @@
+{
+  "ph-fern-b": {
+    "name": "Fern B",
+    "file": "ph-fern-b.glb",
+    "bytes": 1536872,
+    "sha256": "c209330cb06bb05c0de91285c06ccf3f8312ca6bfb208c9d8a5b40f489c9628f"
+  },
+  "ph-fern-b-low": {
+    "name": "Fern B · Low Detail",
+    "file": "ph-fern-b-low.glb",
+    "bytes": 472944,
+    "sha256": "1a0ed3665307fafbe7c33d78030d83a9e4cd3f416c5ff28f52cffe22df63d17e"
+  },
+  "ph-fern-a": {
+    "name": "Fern A",
+    "file": "ph-fern-a.glb",
+    "bytes": 1481956,
+    "sha256": "e206202ead63f1a712927cf1036ac190072324021c72243819bfa8be64365049"
+  },
+  "ph-fern-a-low": {
+    "name": "Fern A · Low Detail",
+    "file": "ph-fern-a-low.glb",
+    "bytes": 446208,
+    "sha256": "9ec7da96d2fef00ab9773930a9826538709d7743389dcf182b6769b3d7216ec7"
+  },
+  "ph-sorrel-b": {
+    "name": "Sorrel B",
+    "file": "ph-sorrel-b.glb",
+    "bytes": 1829528,
+    "sha256": "43930ab78f2a114096feb7a3d5ed6b12c9835ea76da2da04899be17a28a7261d"
+  },
+  "ph-sorrel-b-low": {
+    "name": "Sorrel B · Low Detail",
+    "file": "ph-sorrel-b-low.glb",
+    "bytes": 565012,
+    "sha256": "487eb1f8ee3074d08bb8cea34f022ce6f1c54923d11369e3b37b32fca8b0630f"
+  },
+  "ph-sorrel-d": {
+    "name": "Sorrel D",
+    "file": "ph-sorrel-d.glb",
+    "bytes": 1852480,
+    "sha256": "18557dcf2784968bb7bd6d76dd35de078d65393a8a87af61d1fe815a540f9977"
+  },
+  "ph-sorrel-d-low": {
+    "name": "Sorrel D · Low Detail",
+    "file": "ph-sorrel-d-low.glb",
+    "bytes": 577608,
+    "sha256": "b983f06b956ac0dcf38ffa23f13062e6c5acec850c8439e1a8de2aee249bf297"
+  },
+  "ph-grass-tall-a": {
+    "name": "Grass Tall A",
+    "file": "ph-grass-tall-a.glb",
+    "bytes": 1821152,
+    "sha256": "4a67caa32e114aff9e6644547c27b633a6524e7ef841578f0d9856d5f86450a3"
+  },
+  "ph-grass-tall-a-low": {
+    "name": "Grass Tall A · Low Detail",
+    "file": "ph-grass-tall-a-low.glb",
+    "bytes": 548600,
+    "sha256": "ed776c47865b634be2111eb8693bd2941c246f1aea0483e12e592420a5e6cf39"
+  },
+  "ph-grass-tall-b": {
+    "name": "Grass Tall B",
+    "file": "ph-grass-tall-b.glb",
+    "bytes": 1822160,
+    "sha256": "07ea438a60bd3d4d0b4947db2e685b122697bf4e4e7b439ae1eda4bd1cb19992"
+  },
+  "ph-grass-tall-b-low": {
+    "name": "Grass Tall B · Low Detail",
+    "file": "ph-grass-tall-b-low.glb",
+    "bytes": 549080,
+    "sha256": "e5e99884818c51b7067025dcbc0895fab4cd7e6e8bb910b1aa5ec75a1251da7a"
+  },
+  "ph-pine-b": {
+    "name": "Pine B",
+    "file": "ph-pine-b.glb",
+    "bytes": 5080776,
+    "sha256": "ba01a1365e6e25b6d52a743562592f4064f7a169a5d160275949a194d21f0704"
+  },
+  "ph-pine-b-mid": {
+    "name": "Pine B · Medium Detail",
+    "file": "ph-pine-b-mid.glb",
+    "bytes": 1704836,
+    "sha256": "0dbe2431783587a87a23c12c9b98801cda1797136a18650b1d78cf66ec825fbb"
+  },
+  "ph-pine-b-low": {
+    "name": "Pine B · Low Detail",
+    "file": "ph-pine-b-low.glb",
+    "bytes": 1324400,
+    "sha256": "007c9bf06a9022d8d13c365c4402cb42cea9ebcccc5294c5014ce9795eb6033b"
+  }
+}

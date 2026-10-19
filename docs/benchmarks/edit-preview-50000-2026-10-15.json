@@ -1,0 +1,80 @@
+{
+  "measuredAt": "2026-10-15T02:46:07.398Z",
+  "node": "v24.18.1",
+  "cpu": "AMD Ryzen AI 7 350 w/ Radeon 860M",
+  "garbageCollectionAvailable": true,
+  "fixture": {
+    "count": 50000,
+    "model": "procedural grass",
+    "resolution": 128,
+    "sizeMetres": 192,
+    "samples": 7,
+    "warmups": 1
+  },
+  "scope": "CPU candidate-buffer copy, retained scene preparation and rollback only. No renderer, GPU uploads, sculpt dabs, history, collision, autosave, imported assets or whole-process memory budget.",
+  "median": {
+    "copyMs": 0.18710000000004356,
+    "prepareMs": 48.496799999999894,
+    "rollbackMs": 0.12260000000003402,
+    "extraArrayBufferBytes": 7649756,
+    "postRollbackArrayBufferDelta": 0
+  },
+  "samples": [
+    {
+      "copyMs": 0.1717000000000155,
+      "prepareMs": 50.55160000000001,
+      "rollbackMs": 0.12560000000001992,
+      "extraArrayBufferBytes": 7649756,
+      "baselineArrayBufferBytes": 8911479,
+      "postRollbackArrayBufferDelta": 0
+    },
+    {
+      "copyMs": 0.18710000000004356,
+      "prepareMs": 48.41559999999998,
+      "rollbackMs": 0.13880000000000337,
+      "extraArrayBufferBytes": 7649756,
+      "baselineArrayBufferBytes": 8911479,
+      "postRollbackArrayBufferDelta": 0
+    },
+    {
+      "copyMs": 0.1974999999999909,
+      "prepareMs": 54.686000000000035,
+      "rollbackMs": 0.08530000000001792,
+      "extraArrayBufferBytes": 7649756,
+      "baselineArrayBufferBytes": 8911479,
+      "postRollbackArrayBufferDelta": 0
+    },
+    {
+      "copyMs": 0.22800000000000864,
+      "prepareMs": 44.793499999999995,
+      "rollbackMs": 0.15359999999998308,
+      "extraArrayBufferBytes": 7649756,
+      "baselineArrayBufferBytes": 8911479,
+      "postRollbackArrayBufferDelta": 0
+    },
+    {
+      "copyMs": 0.17029999999999745,
+      "prepareMs": 46.10980000000001,
+      "rollbackMs": 0.12260000000003402,
+      "extraArrayBufferBytes": 7649756,
+      "baselineArrayBufferBytes": 8911479,
+      "postRollbackArrayBufferDelta": 0
+    },
+    {
+      "copyMs": 0.22870000000000346,
+      "prepareMs": 50.027900000000045,
+      "rollbackMs": 0.08139999999991687,
+      "extraArrayBufferBytes": 7649756,
+      "baselineArrayBufferBytes": 8911479,
+      "postRollbackArrayBufferDelta": 0
+    },
+    {
+      "copyMs": 0.18100000000004002,
+      "prepareMs": 48.496799999999894,
+      "rollbackMs": 0.09030000000007021,
+      "extraArrayBufferBytes": 7649756,
+      "baselineArrayBufferBytes": 8911479,
+      "postRollbackArrayBufferDelta": 0
+    }
+  ]
+}

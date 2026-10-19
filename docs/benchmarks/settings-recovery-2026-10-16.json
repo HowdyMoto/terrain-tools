@@ -1,0 +1,43 @@
+{
+  "verifiedAt": "2026-10-16T04:38:29.818Z",
+  "scope": "Interrupted World settings path, sculpt metadata, rename and lighting history-failure recovery",
+  "checks": {
+    "typecheck": "passed",
+    "build": "passed",
+    "unitRuntimePhysicsTests": 171,
+    "unitTestFiles": 23,
+    "chromeIntegrationTests": 48,
+    "publicNodeNextTypes": "passed, skipLibCheck false, @webgpu/types included",
+    "format": "passed"
+  },
+  "addedCoverage": {
+    "runtimeViewRefresh": 1,
+    "browserScenarios": 4,
+    "injectedFailures": 29,
+    "worldControls": "wind, contact, water, flat shading, wireframe, toolbar toggles",
+    "otherControls": "sculpt preset name, thermal slope, alpha, stamp, pressure, project rename, lighting preset and parameters",
+    "assertions": [
+      "Pixel-identical failures",
+      "Unchanged document, history and committed IndexedDB data on failure",
+      "Successful retry, undo/redo and autosave reload",
+      "Live sleeping physics body retained during successful World edits",
+      "No terrain, foliage, picking or collider allocations for World edits",
+      "Runtime refresh retains geometry and contact matrices; shader invalidation only when flat shading changes"
+    ]
+  },
+  "sourceTree": {
+    "sha256": "ed5873e18ba5c29fa2b7de6625978040f7a636314941705c7f85f1b607d56578",
+    "fileCount": 117,
+    "scope": "src/, tests/, package manifests and TypeScript/Vite/Playwright configurations",
+    "algorithm": "SHA-256 over sorted relative path + NUL + file SHA-256 + newline"
+  },
+  "logs": {
+    "units": ".qa/resume-all-units.log",
+    "browser": ".qa/resume-all-browsers.log"
+  },
+  "limitations": [
+    "Chrome only; physical pen/touch validation remains open",
+    "Generated reference assets do not establish AA production quality or realistic-asset performance budgets",
+    "Dedicated ESLint installation blocked by npm registry EACCES; manifests remain unchanged"
+  ]
+}

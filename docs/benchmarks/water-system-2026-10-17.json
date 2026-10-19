@@ -1,0 +1,203 @@
+{
+  "date": "2026-10-17",
+  "status": "First working water authoring/rendering implementation. Photorealistic production quality and 1080p/30 FPS in the dense tropical scene remain unfinished.",
+  "implemented": [
+    "Explicit undoable conversion from the legacy plane, independent sea level and ocean visibility.",
+    "Camera-following ocean; up to 16 independently elevated ellipse, polygon or connected-basin water bodies.",
+    "Clear tropical, lake, pond, muddy and open-ocean presets; editable visibility, color, roughness, waves, ripples and terrain foam.",
+    "Shared HDR color/depth capture, approximate refraction and absorption, dielectric sky/screen-space reflections, basic underwater attenuation.",
+    "Native persistence, undo/redo, staged resource preparation and selection preservation on failed duplicate followed by retry.",
+    "Submerged runtime boundary walls close open heightfield edges; no added collision geometry.",
+    "Fix development startup by fetching the default-foliage public catalog as data, with failed/cancelled preparation retry."
+  ],
+  "validation": {
+    "build": "npm run build passed, including strict type checks and production/runtime outputs.",
+    "lint": "npm run lint passed; changed runtime/editor files checked again after final fixes.",
+    "unit": "Latest full npm test: 281 passed, one large sculpt-preset fixture exceeded the default 5000 ms timeout. npm test -- tests/sculpt-preset.test.ts --testTimeout=15000 passed all five cases in that file. Final focused water/default-foliage run passed nine cases. 282 distinct unit cases passed across the full run and documented retry.",
+    "browser": [
+      "npm run test:browser -- tests/browser/water.spec.mjs tests/browser/settings-recovery.spec.mjs: 6 passed.",
+      "npm run test:browser -- tests/browser/water.spec.mjs tests/browser/navigation.spec.mjs: 8 passed after boundary geometry and single-pass rendering changes.",
+      "npm run test:browser -- tests/browser/water.spec.mjs: 2 passed after adding failed-duplicate selection preservation and retry."
+    ],
+    "browserScope": "12 distinct relevant Chrome scenarios across these runs. Full browser suite not rerun. Native pointer-lock/latest-input checks retain the one-pending-GPU-frame scheduler.",
+    "visual": "Inspected final browser coastline fixture: ocean, submerged terrain, bank walls and contact foam render. The finite authored seabed edge remains visible underwater; off-map seabed is unknown. Final dense coastline inspection was blocked by unexpected integrated-adapter selection."
+  },
+  "performanceMethod": {
+    "command": "npm run dev -- --port 5190 --strictPort; node scripts/benchmark-water.mjs <external scene.terrain> .qa/water-performance.json [dev URL] [coast|canopy]",
+    "source": "External Tropical Grove — banana trail, 88 m terrain, 7,323 foliage instances. Source content project unchanged; water added only in benchmark memory.",
+    "device": "Confirmed NVIDIA RTX 5060 Laptop GPU, Chrome 155, Windows ANGLE D3D11, 1920 x 1080 for the two preliminary reports below.",
+    "sampling": "Fixed fullscreen first-person camera, 2.5-second warmup and 180 rendered frames per mode. GPU timer covers environment rendering. CPU numbers are JavaScript submission duration. FPS is wall-time render cadence, not display scanout.",
+    "qualification": "These two runs precede the final submerged boundary-wall and single-pass correction. Treat their timings as preliminary scene-cost observations, not final water overhead. No precise causal speed comparison can be drawn from small differences amid local background variability.",
+    "finalAttempt": "A repeat after the corrections selected AMD Radeon 860M despite Chrome's --force-high-performance-gpu flag. The benchmark rejected the adapter before timing. No integrated-GPU results are accepted and no Windows graphics settings were changed.",
+    "targetMet": false,
+    "limits": "Short fixed views, development server, uncontrolled background activity/thermal state, no physical input-to-display measurement. The canopy view has little visible water. Other scenes/devices and longer sessions remain unmeasured."
+  },
+  "pending": [
+    "Final dedicated-GPU measurement and continued dense-scene optimization toward 30 FPS.",
+    "Planar/off-screen reflections, spectral ocean waves and breaking surf/crest whitecaps.",
+    "Caustics, wet-bank shading, water-specific temporal history and motion handling.",
+    "Worker-based basin preparation, richer outline handles, swimming and buoyancy.",
+    "Static GLB water is approximate and bounded; runtime boundary walls are not included in its presentation geometry."
+  ],
+  "preliminaryCoast": {
+    "date": "2026-10-17T22:42:17.794Z",
+    "scene": {
+      "name": "Tropical Grove — banana trail",
+      "size": 88,
+      "foliage": 7323,
+      "seaLevel": 1.0785553097724914,
+      "adapter": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Laptop GPU (0x00002D19) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "buffer": [1920, 1080],
+      "browser": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+      "camera": [0, 4.578555309772492, 59.84],
+      "view": "coast"
+    },
+    "results": [
+      {
+        "mode": "off",
+        "frames": 180,
+        "fps": 21.56704459200418,
+        "frameMs": {
+          "median": 49.900000005960464,
+          "p95": 54.69999998807907
+        },
+        "cpuSubmitMs": {
+          "median": 26.5,
+          "p95": 37.79999998211861
+        },
+        "gpuMs": {
+          "median": 27.300544,
+          "p95": 36.428704
+        },
+        "gpuSamples": 179,
+        "triangles": 5827874,
+        "textures": 104,
+        "waterError": null
+      },
+      {
+        "mode": "sky",
+        "frames": 180,
+        "fps": 19.9260842461087,
+        "frameMs": {
+          "median": 50,
+          "p95": 61.400000005960464
+        },
+        "cpuSubmitMs": {
+          "median": 29.200000017881393,
+          "p95": 38.599999994039536
+        },
+        "gpuMs": {
+          "median": 28.029952,
+          "p95": 37.935616
+        },
+        "gpuSamples": 179,
+        "triangles": 5893411,
+        "textures": 104,
+        "waterError": null
+      },
+      {
+        "mode": "scenery",
+        "frames": 180,
+        "fps": 20.49649612973988,
+        "frameMs": {
+          "median": 50,
+          "p95": 55.400000005960464
+        },
+        "cpuSubmitMs": {
+          "median": 29.30000001192093,
+          "p95": 41.099999994039536
+        },
+        "gpuMs": {
+          "median": 27.518336,
+          "p95": 38.321056
+        },
+        "gpuSamples": 179,
+        "triangles": 5893411,
+        "textures": 104,
+        "waterError": null
+      }
+    ],
+    "errors": [],
+    "limits": "Static forest shoreline camera; 180 rendered frames per mode after warmup. GPU timer covers environment rendering passes. Does not measure input-to-display latency or promise performance for other views."
+  },
+  "preliminaryCanopy": {
+    "date": "2026-10-17T22:40:07.64Z",
+    "scene": {
+      "name": "Tropical Grove — banana trail",
+      "size": 88,
+      "foliage": 7323,
+      "seaLevel": 1.0785553097724914,
+      "adapter": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Laptop GPU (0x00002D19) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "buffer": [1920, 1080],
+      "browser": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+      "camera": [0, 3.5785553097724914, 19.36]
+    },
+    "results": [
+      {
+        "mode": "off",
+        "frames": 180,
+        "fps": 15.113265056304117,
+        "frameMs": {
+          "median": 66.5,
+          "p95": 83.59999999403954
+        },
+        "cpuSubmitMs": {
+          "median": 42.69999998807907,
+          "p95": 54.60000002384186
+        },
+        "gpuMs": {
+          "median": 42.101344,
+          "p95": 60.733952
+        },
+        "gpuSamples": 179,
+        "triangles": 21791877,
+        "textures": 164,
+        "waterError": null
+      },
+      {
+        "mode": "sky",
+        "frames": 180,
+        "fps": 14.692363254331797,
+        "frameMs": {
+          "median": 66.59999999403954,
+          "p95": 133.39999997615814
+        },
+        "cpuSubmitMs": {
+          "median": 44.29999998211861,
+          "p95": 54.39999997615814
+        },
+        "gpuMs": {
+          "median": 42.692896,
+          "p95": 107.836288
+        },
+        "gpuSamples": 179,
+        "triangles": 21857414,
+        "textures": 164,
+        "waterError": null
+      },
+      {
+        "mode": "scenery",
+        "frames": 180,
+        "fps": 16.472493696244204,
+        "frameMs": {
+          "median": 66.40000000596046,
+          "p95": 68.2999999821186
+        },
+        "cpuSubmitMs": {
+          "median": 42.5,
+          "p95": 54.19999998807907
+        },
+        "gpuMs": {
+          "median": 41.159136,
+          "p95": 51.097216
+        },
+        "gpuSamples": 179,
+        "triangles": 21857414,
+        "textures": 164,
+        "waterError": null
+      }
+    ],
+    "errors": [],
+    "limits": "Static forest shoreline camera; 180 rendered frames per mode after warmup. GPU timer covers environment rendering passes. Does not measure input-to-display latency or promise performance for other views."
+  }
+}

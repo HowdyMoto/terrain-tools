@@ -1,0 +1,346 @@
+{
+  "verifiedAt": "2026-10-15T04:36:30.450Z",
+  "scope": "Landscape regeneration and PNG/RAW16 heightmap replacement, retained brush definitions/assets/settings, preview-body placement from World, selected prop row feedback, and terrain contact correction. Recoverable CPU/resource errors only; broader art, device, large-scene and simulation validation remain open.",
+  "checks": {
+    "build": {
+      "status": 0,
+      "signal": null,
+      "timedOut": false,
+      "completed": "2026-10-15T04:24:12.331Z"
+    },
+    "unitTests": {
+      "tests": 170,
+      "files": 23,
+      "status": 0,
+      "signal": null,
+      "timedOut": false,
+      "completed": "2026-10-15T04:25:06.317Z"
+    },
+    "targetedChrome": {
+      "scenarios": 4,
+      "status": 0,
+      "signal": null,
+      "timedOut": false,
+      "completed": "2026-10-15T04:26:41.652Z"
+    },
+    "chromeFullSuite": {
+      "scenarios": 44,
+      "status": 0,
+      "signal": null,
+      "timedOut": false,
+      "completed": "2026-10-15T04:35:24.889Z"
+    },
+    "publicTypes": {
+      "strictNodeNextCoreThree": 0,
+      "strictBundlerWithRapier": 0,
+      "skipLibCheck": false
+    }
+  },
+  "generation": {
+    "evidence": [
+      {
+        "stage": "candidate",
+        "failAt": 1,
+        "calls": 1,
+        "candidateLength": 16641,
+        "exactPixelsIncludingPhysicsBodyDataHistoryAndSelection": true
+      },
+      {
+        "stage": "terrain",
+        "failAt": 3,
+        "calls": 3,
+        "candidateLength": 16641,
+        "exactPixelsIncludingPhysicsBodyDataHistoryAndSelection": true
+      },
+      {
+        "stage": "picking",
+        "failAt": 2,
+        "calls": 2,
+        "candidateLength": 16641,
+        "exactPixelsIncludingPhysicsBodyDataHistoryAndSelection": true
+      },
+      {
+        "stage": "colliders",
+        "failAt": 2,
+        "calls": 2,
+        "candidateLength": 16641,
+        "exactPixelsIncludingPhysicsBodyDataHistoryAndSelection": true
+      },
+      {
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "candidateLength": 16641,
+        "exactPixelsIncludingPhysicsBodyDataHistoryAndSelection": true
+      }
+    ],
+    "allocations": {
+      "terrain": 32,
+      "picking": 16,
+      "colliders": 16,
+      "history": 1
+    },
+    "invalidSeeds": 3,
+    "zeroSeedAndGridChange": true,
+    "unchangedCommittedAutosave": true,
+    "retainedAndReusedBrushAssetsAndSettings": true,
+    "earlyCancellation": true,
+    "retryUndoRedoAndReload": true,
+    "errors": []
+  },
+  "heightmap": {
+    "evidence": [
+      {
+        "stage": "candidate",
+        "failAt": 1,
+        "calls": 1,
+        "candidateLength": 4225,
+        "exactPixelsIncludingPhysicsBodyDataHistoryAndSelection": true
+      },
+      {
+        "stage": "terrain",
+        "failAt": 3,
+        "calls": 3,
+        "candidateLength": 4225,
+        "exactPixelsIncludingPhysicsBodyDataHistoryAndSelection": true
+      },
+      {
+        "stage": "foliage",
+        "failAt": 1,
+        "calls": 1,
+        "candidateLength": 4225,
+        "exactPixelsIncludingPhysicsBodyDataHistoryAndSelection": true
+      },
+      {
+        "stage": "picking",
+        "failAt": 2,
+        "calls": 2,
+        "candidateLength": 4225,
+        "exactPixelsIncludingPhysicsBodyDataHistoryAndSelection": true
+      },
+      {
+        "stage": "colliders",
+        "failAt": 2,
+        "calls": 2,
+        "candidateLength": 4225,
+        "exactPixelsIncludingPhysicsBodyDataHistoryAndSelection": true
+      },
+      {
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "candidateLength": 4225,
+        "exactPixelsIncludingPhysicsBodyDataHistoryAndSelection": true
+      }
+    ],
+    "allocations": {
+      "candidate": 1,
+      "terrain": 8,
+      "foliage": 4,
+      "picking": 4,
+      "colliders": 4,
+      "history": 1
+    },
+    "unchangedCommittedAutosave": true,
+    "cancelledRead": true,
+    "supersededReadAndOneStepUndo": true,
+    "retryUndoRedoAndReload": true,
+    "errors": []
+  },
+  "settledBodies": {
+    "generation": {
+      "initial": [3.1585888870292536, 15, 16.37586337655479],
+      "velocity": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "position": [3.1585888862609863, 1.3987230062484741, 16.375864028930664],
+      "visible": true
+    },
+    "heightmap": {
+      "initial": [3.1585888870292536, 15, 16.37586337655479],
+      "velocity": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "position": [3.1585888862609863, 1.3987230062484741, 16.375864028930664],
+      "visible": true
+    }
+  },
+  "contactCorrection": {
+    "rapierVersion": "0.19.3",
+    "comparison": "terrain-contact-correction-2026-10-15.json",
+    "bytes": 3814,
+    "sha256": "6b6e2e71c5eeb151adad315215b22e7852a9794544591b23ac581f63a34ecd29",
+    "terrainFlags": "FIX_INTERNAL_EDGES",
+    "propFlagsUnchanged": true,
+    "unitProbePositions": 7,
+    "stepsPerProbe": 900
+  },
+  "nativeFiles": {
+    "test-results/terrain-replacement-regene-a39fd-and-live-physics-on-failure/baseline.terrain": {
+      "bytes": 92728,
+      "sha256": "e374f062b8b44f7a675993315ff42fe693e159716ef21eede6ef8da5340ea4bc"
+    },
+    "test-results/terrain-replacement-regene-a39fd-and-live-physics-on-failure/cancelled.terrain": {
+      "bytes": 92728,
+      "sha256": "e374f062b8b44f7a675993315ff42fe693e159716ef21eede6ef8da5340ea4bc"
+    },
+    "test-results/terrain-replacement-regene-a39fd-and-live-physics-on-failure/candidate-failed.terrain": {
+      "bytes": 92728,
+      "sha256": "e374f062b8b44f7a675993315ff42fe693e159716ef21eede6ef8da5340ea4bc"
+    },
+    "test-results/terrain-replacement-regene-a39fd-and-live-physics-on-failure/colliders-failed.terrain": {
+      "bytes": 92728,
+      "sha256": "e374f062b8b44f7a675993315ff42fe693e159716ef21eede6ef8da5340ea4bc"
+    },
+    "test-results/terrain-replacement-regene-a39fd-and-live-physics-on-failure/generated.terrain": {
+      "bytes": 353108,
+      "sha256": "bc50add869abd382094d1bbc284a91e6f292b20e00b4d31c947c48994d24ee19"
+    },
+    "test-results/terrain-replacement-regene-a39fd-and-live-physics-on-failure/history-failed.terrain": {
+      "bytes": 92728,
+      "sha256": "e374f062b8b44f7a675993315ff42fe693e159716ef21eede6ef8da5340ea4bc"
+    },
+    "test-results/terrain-replacement-regene-a39fd-and-live-physics-on-failure/invalid-seed-1.5.terrain": {
+      "bytes": 92728,
+      "sha256": "e374f062b8b44f7a675993315ff42fe693e159716ef21eede6ef8da5340ea4bc"
+    },
+    "test-results/terrain-replacement-regene-a39fd-and-live-physics-on-failure/invalid-seed-2147483648.terrain": {
+      "bytes": 92728,
+      "sha256": "e374f062b8b44f7a675993315ff42fe693e159716ef21eede6ef8da5340ea4bc"
+    },
+    "test-results/terrain-replacement-regene-a39fd-and-live-physics-on-failure/invalid-seed-empty.terrain": {
+      "bytes": 92728,
+      "sha256": "e374f062b8b44f7a675993315ff42fe693e159716ef21eede6ef8da5340ea4bc"
+    },
+    "test-results/terrain-replacement-regene-a39fd-and-live-physics-on-failure/picking-failed.terrain": {
+      "bytes": 92728,
+      "sha256": "e374f062b8b44f7a675993315ff42fe693e159716ef21eede6ef8da5340ea4bc"
+    },
+    "test-results/terrain-replacement-regene-a39fd-and-live-physics-on-failure/redone.terrain": {
+      "bytes": 353108,
+      "sha256": "bc50add869abd382094d1bbc284a91e6f292b20e00b4d31c947c48994d24ee19"
+    },
+    "test-results/terrain-replacement-regene-a39fd-and-live-physics-on-failure/reopened.terrain": {
+      "bytes": 353108,
+      "sha256": "bc50add869abd382094d1bbc284a91e6f292b20e00b4d31c947c48994d24ee19"
+    },
+    "test-results/terrain-replacement-regene-a39fd-and-live-physics-on-failure/reused-brush-undone.terrain": {
+      "bytes": 353108,
+      "sha256": "bc50add869abd382094d1bbc284a91e6f292b20e00b4d31c947c48994d24ee19"
+    },
+    "test-results/terrain-replacement-regene-a39fd-and-live-physics-on-failure/reused-brush.terrain": {
+      "bytes": 368716,
+      "sha256": "216105541dbf3174ed37d93744f2c81b05409a54ebf3bb614e70a0681f31448a"
+    },
+    "test-results/terrain-replacement-regene-a39fd-and-live-physics-on-failure/terrain-failed.terrain": {
+      "bytes": 92728,
+      "sha256": "e374f062b8b44f7a675993315ff42fe693e159716ef21eede6ef8da5340ea4bc"
+    },
+    "test-results/terrain-replacement-regene-a39fd-and-live-physics-on-failure/undone.terrain": {
+      "bytes": 92728,
+      "sha256": "e374f062b8b44f7a675993315ff42fe693e159716ef21eede6ef8da5340ea4bc"
+    },
+    "test-results/terrain-replacement-height-7643b-ncelled-or-superseded-reads/baseline.terrain": {
+      "bytes": 92728,
+      "sha256": "e374f062b8b44f7a675993315ff42fe693e159716ef21eede6ef8da5340ea4bc"
+    },
+    "test-results/terrain-replacement-height-7643b-ncelled-or-superseded-reads/cancelled-read.terrain": {
+      "bytes": 92728,
+      "sha256": "e374f062b8b44f7a675993315ff42fe693e159716ef21eede6ef8da5340ea4bc"
+    },
+    "test-results/terrain-replacement-height-7643b-ncelled-or-superseded-reads/candidate-failed.terrain": {
+      "bytes": 92728,
+      "sha256": "e374f062b8b44f7a675993315ff42fe693e159716ef21eede6ef8da5340ea4bc"
+    },
+    "test-results/terrain-replacement-height-7643b-ncelled-or-superseded-reads/colliders-failed.terrain": {
+      "bytes": 92728,
+      "sha256": "e374f062b8b44f7a675993315ff42fe693e159716ef21eede6ef8da5340ea4bc"
+    },
+    "test-results/terrain-replacement-height-7643b-ncelled-or-superseded-reads/foliage-failed.terrain": {
+      "bytes": 92728,
+      "sha256": "e374f062b8b44f7a675993315ff42fe693e159716ef21eede6ef8da5340ea4bc"
+    },
+    "test-results/terrain-replacement-height-7643b-ncelled-or-superseded-reads/heightmap-retried.terrain": {
+      "bytes": 92728,
+      "sha256": "300dd8f8bd5a95783f7853a04b74c7b1d8ac51c6587f85829d391fd974f3cd11"
+    },
+    "test-results/terrain-replacement-height-7643b-ncelled-or-superseded-reads/history-failed.terrain": {
+      "bytes": 92728,
+      "sha256": "e374f062b8b44f7a675993315ff42fe693e159716ef21eede6ef8da5340ea4bc"
+    },
+    "test-results/terrain-replacement-height-7643b-ncelled-or-superseded-reads/invalid-file.terrain": {
+      "bytes": 92728,
+      "sha256": "e374f062b8b44f7a675993315ff42fe693e159716ef21eede6ef8da5340ea4bc"
+    },
+    "test-results/terrain-replacement-height-7643b-ncelled-or-superseded-reads/picking-failed.terrain": {
+      "bytes": 92728,
+      "sha256": "e374f062b8b44f7a675993315ff42fe693e159716ef21eede6ef8da5340ea4bc"
+    },
+    "test-results/terrain-replacement-height-7643b-ncelled-or-superseded-reads/redone.terrain": {
+      "bytes": 92728,
+      "sha256": "300dd8f8bd5a95783f7853a04b74c7b1d8ac51c6587f85829d391fd974f3cd11"
+    },
+    "test-results/terrain-replacement-height-7643b-ncelled-or-superseded-reads/reopened.terrain": {
+      "bytes": 92728,
+      "sha256": "300dd8f8bd5a95783f7853a04b74c7b1d8ac51c6587f85829d391fd974f3cd11"
+    },
+    "test-results/terrain-replacement-height-7643b-ncelled-or-superseded-reads/superseded-read.terrain": {
+      "bytes": 26704,
+      "sha256": "cdceeb7d4b7627cca56f850161b67a4d2476df99cb7102767ebc577d1729f91b"
+    },
+    "test-results/terrain-replacement-height-7643b-ncelled-or-superseded-reads/supersession-undone.terrain": {
+      "bytes": 92728,
+      "sha256": "300dd8f8bd5a95783f7853a04b74c7b1d8ac51c6587f85829d391fd974f3cd11"
+    },
+    "test-results/terrain-replacement-height-7643b-ncelled-or-superseded-reads/terrain-failed.terrain": {
+      "bytes": 92728,
+      "sha256": "e374f062b8b44f7a675993315ff42fe693e159716ef21eede6ef8da5340ea4bc"
+    },
+    "test-results/terrain-replacement-height-7643b-ncelled-or-superseded-reads/undone.terrain": {
+      "bytes": 92728,
+      "sha256": "e374f062b8b44f7a675993315ff42fe693e159716ef21eede6ef8da5340ea4bc"
+    }
+  },
+  "sourceHashes": {
+    "src/main.ts": {
+      "bytes": 111282,
+      "sha256": "bbfc43a3dbad049bc0ed35a25c721f4ae5591144688b2341757cd240a403778f"
+    },
+    "src/physics/rapier.ts": {
+      "bytes": 6942,
+      "sha256": "5573d71822a9616701a09e314a0ac893842504567eab0ece24744ef10bbe7f70"
+    },
+    "tests/physics.test.ts": {
+      "bytes": 9191,
+      "sha256": "ffedb53fe269b8bea57c04217ce97d6d7c75b3596cd8d64a5d9e5b8b403dad57"
+    },
+    "tests/browser/terrain-replacement.spec.mjs": {
+      "bytes": 19610,
+      "sha256": "8326291f7161f0012b8a7598121a16fccf2266b773850bdb5bad4e0b4775941f"
+    }
+  },
+  "visualReview": [
+    {
+      "path": "test-results/terrain-replacement-regene-a39fd-and-live-physics-on-failure/before-replacement.png",
+      "bytes": 544570,
+      "sha256": "221bc3168ae239f8c7dc0a0301bc1acdc776bb5bf17e109e52e56b4d4baea0f4",
+      "finding": "Selected prop and a stationary sphere are visible on the committed flat terrain."
+    },
+    {
+      "path": "test-results/terrain-replacement-regene-a39fd-and-live-physics-on-failure/regenerated-landscape.png",
+      "bytes": 585838,
+      "sha256": "77342f8bcceaf656278b46500f5d7a317c6e6edf7877043b1d30c8c2e9e82c00",
+      "finding": "Generation controls and retained-settings explanation fit the inspector; the regenerated 128-cell terrain is visible."
+    },
+    {
+      "path": "test-results/terrain-replacement-height-7643b-ncelled-or-superseded-reads/imported-landscape.png",
+      "bytes": 408491,
+      "sha256": "d467f5b82bae34bc4002a7005536c435eaa4d216eff409494e523921fd8fd53f",
+      "finding": "Heightmap range/import controls fit; the new elevation surface retains painted coverage, foliage and the anchored prop."
+    }
+  ]
+}

@@ -1,0 +1,250 @@
+{
+  "verifiedAt": "2026-10-15T03:04:54.757Z",
+  "scope": "Recoverable CPU construction/allocation failures and cancellation during live sculpt, hole/fill, surface-paint and foliage paint/erase strokes. Does not establish whole-edit recovery for other editor paths, GPU/process recovery, or production performance.",
+  "checks": {
+    "units": {
+      "tests": 169,
+      "files": 23,
+      "status": 0,
+      "signal": null,
+      "completed": "2026-10-15T02:52:35.906Z"
+    },
+    "chromeFullSuite": {
+      "scenarios": 35,
+      "status": 0,
+      "signal": null,
+      "completed": "2026-10-15T02:58:56.196Z",
+      "scope": "Core recovery implementation, animation continuity and cancellation hint; before the final physics-button label correction and additional pending-autosave assertion."
+    },
+    "chromeFinalTargeted": {
+      "scenarios": 2,
+      "status": 0,
+      "signal": null,
+      "completed": "2026-10-15T03:01:44.631Z",
+      "scope": "Final source including pending-autosave IndexedDB assertion and corrected physics-button label."
+    },
+    "build": {
+      "status": 0,
+      "signal": null,
+      "completed": "2026-10-15T03:00:02.895Z"
+    },
+    "publicTypes": {
+      "checked": "2026-10-15T02:54:53.532Z",
+      "strictNodeNextCoreThree": 0,
+      "strictBundlerWithRapier": 0,
+      "skipLibCheck": false
+    }
+  },
+  "editor": {
+    "injectedFailures": [
+      {
+        "stage": "terrain",
+        "restoredPixels": true,
+        "restoredDocument": true,
+        "historyUnchanged": true,
+        "faultCalls": 1
+      },
+      {
+        "stage": "picking",
+        "restoredPixels": true,
+        "restoredDocument": true,
+        "historyUnchanged": true,
+        "faultCalls": 1
+      },
+      {
+        "stage": "collision",
+        "restoredPixels": true,
+        "restoredDocument": true,
+        "historyUnchanged": true,
+        "faultCalls": 1
+      },
+      {
+        "stage": "history",
+        "restoredPixels": true,
+        "restoredDocument": true,
+        "historyUnchanged": true,
+        "faultCalls": 1
+      }
+    ],
+    "nativeFiles": {
+      "baseline.terrain": {
+        "bytes": 91496,
+        "sha256": "a88d3193d7c81817832fd0a73fef1169d4545cc52213e61bdfefd1613c790c58"
+      },
+      "cancelled-after-autosave.terrain": {
+        "bytes": 91508,
+        "sha256": "bea2ff3713409b9b8ee0ded6626e7e5ddc479c8eca16e110fb941e97d3fad7a3"
+      },
+      "collision-failed.terrain": {
+        "bytes": 91496,
+        "sha256": "a88d3193d7c81817832fd0a73fef1169d4545cc52213e61bdfefd1613c790c58"
+      },
+      "history-failed.terrain": {
+        "bytes": 91496,
+        "sha256": "a88d3193d7c81817832fd0a73fef1169d4545cc52213e61bdfefd1613c790c58"
+      },
+      "picking-failed.terrain": {
+        "bytes": 91496,
+        "sha256": "a88d3193d7c81817832fd0a73fef1169d4545cc52213e61bdfefd1613c790c58"
+      },
+      "redone.terrain": {
+        "bytes": 91496,
+        "sha256": "8b210cf3198417c8dcf032fae011c248b5f48cf98b1f62510b018cd652858491"
+      },
+      "reopened.terrain": {
+        "bytes": 91496,
+        "sha256": "8b210cf3198417c8dcf032fae011c248b5f48cf98b1f62510b018cd652858491"
+      },
+      "successful.terrain": {
+        "bytes": 91496,
+        "sha256": "8b210cf3198417c8dcf032fae011c248b5f48cf98b1f62510b018cd652858491"
+      },
+      "terrain-failed.terrain": {
+        "bytes": 91496,
+        "sha256": "a88d3193d7c81817832fd0a73fef1169d4545cc52213e61bdfefd1613c790c58"
+      },
+      "undone.terrain": {
+        "bytes": 91496,
+        "sha256": "a88d3193d7c81817832fd0a73fef1169d4545cc52213e61bdfefd1613c790c58"
+      }
+    },
+    "cancellation": {
+      "modes": ["hole", "material", "foliage", "erase"],
+      "pointerCancelMode": "material",
+      "escapeModes": ["hole", "foliage", "erase"],
+      "unchangedPixelsDocumentAndHistory": true,
+      "nativeFiles": {
+        "baseline.terrain": {
+          "bytes": 91496,
+          "sha256": "a88d3193d7c81817832fd0a73fef1169d4545cc52213e61bdfefd1613c790c58"
+        },
+        "erase-before.terrain": {
+          "bytes": 91496,
+          "sha256": "5b1bace3e4c7b960245e019b8ed8cc3b000cdf6cf8d56242a1c581066f3bdda7"
+        },
+        "erase-cancelled.terrain": {
+          "bytes": 91496,
+          "sha256": "5b1bace3e4c7b960245e019b8ed8cc3b000cdf6cf8d56242a1c581066f3bdda7"
+        },
+        "foliage-before.terrain": {
+          "bytes": 91496,
+          "sha256": "5b1bace3e4c7b960245e019b8ed8cc3b000cdf6cf8d56242a1c581066f3bdda7"
+        },
+        "foliage-cancelled.terrain": {
+          "bytes": 91496,
+          "sha256": "5b1bace3e4c7b960245e019b8ed8cc3b000cdf6cf8d56242a1c581066f3bdda7"
+        },
+        "foliage-fault-after.terrain": {
+          "bytes": 91496,
+          "sha256": "5b1bace3e4c7b960245e019b8ed8cc3b000cdf6cf8d56242a1c581066f3bdda7"
+        },
+        "foliage-fault-before.terrain": {
+          "bytes": 91496,
+          "sha256": "5b1bace3e4c7b960245e019b8ed8cc3b000cdf6cf8d56242a1c581066f3bdda7"
+        },
+        "foliage-retry.terrain": {
+          "bytes": 1087820,
+          "sha256": "3b032d99d8c260b48802a1cf8d9162dd5a713f45bd53a2c715ad57c8b78ceece"
+        },
+        "hole-before.terrain": {
+          "bytes": 91496,
+          "sha256": "5b1bace3e4c7b960245e019b8ed8cc3b000cdf6cf8d56242a1c581066f3bdda7"
+        },
+        "hole-cancelled.terrain": {
+          "bytes": 91496,
+          "sha256": "5b1bace3e4c7b960245e019b8ed8cc3b000cdf6cf8d56242a1c581066f3bdda7"
+        },
+        "material-before.terrain": {
+          "bytes": 91496,
+          "sha256": "5b1bace3e4c7b960245e019b8ed8cc3b000cdf6cf8d56242a1c581066f3bdda7"
+        },
+        "material-cancelled.terrain": {
+          "bytes": 91496,
+          "sha256": "5b1bace3e4c7b960245e019b8ed8cc3b000cdf6cf8d56242a1c581066f3bdda7"
+        }
+      }
+    },
+    "queuedAutosave": {
+      "directIndexedDBBlobDecodeMatchesCommittedDocument": true,
+      "heldPreviewNotPublished": true,
+      "cancelledDocument": "cancelled-after-autosave.terrain"
+    },
+    "retryUndoRedoAndReload": true,
+    "pageErrors": [],
+    "visualReview": {
+      "artifact": "active-stroke.png",
+      "sha256": "d4cb24a11037ea94ecc2ba05b94006c4fbd76f207d3d64dab1c0a1ce23995c4a",
+      "observed": "Held stroke displays Esc cancels; active physics button correctly reads Drop test body; terrain and anchored platform remain visible."
+    }
+  },
+  "retainedAnimation": {
+    "unitTest": "keeps retained foliage wind and contact recovery in step with the live simulation",
+    "windAndContactRecoveryMatchIndependentReferenceAfterRollback": true
+  },
+  "sourceHashes": {
+    "src/main.ts": {
+      "bytes": 103786,
+      "sha256": "9916c5859e225deee8b1b407616b065f33b45754c47a04b1d68dea4760f6ca54"
+    },
+    "src/runtime/terrain-scene.ts": {
+      "bytes": 18027,
+      "sha256": "4581462e6d596d58fc81366105061e47984e30bc82c44600ee7297e4690e7db9"
+    },
+    "src/runtime/foliage.ts": {
+      "bytes": 29170,
+      "sha256": "4bdd53f7f051ec91a8fd0cddda3a52e2fc56f45f5b4ff66b1f2f157396551316"
+    },
+    "src/render/viewport.ts": {
+      "bytes": 20771,
+      "sha256": "ce2a59f7012fa3938e9af8b43cf025701ea7f68013bdda43ea4f3b7a1b28380c"
+    },
+    "src/render/edit-transaction.ts": {
+      "bytes": 602,
+      "sha256": "37557cda61bf45511e801ca9014b2dad97d6cbfa87f2292a79e963eb8dab08de"
+    },
+    "tests/stroke-transaction.test.ts": {
+      "bytes": 7610,
+      "sha256": "0054d5252d55a2eb1346bbbffe906f0aab5472785a289446eab1cff9d6a487e8"
+    },
+    "tests/browser/stroke-recovery.spec.mjs": {
+      "bytes": 11613,
+      "sha256": "dcfca3fa4f0ff8fdeb3328184ad9785a741b8072c5157b05f7663824486c10a7"
+    }
+  },
+  "performance": {
+    "benchmarks": [
+      "edit-preview-5263-2026-10-15.json",
+      "edit-preview-50000-2026-10-15.json"
+    ],
+    "scope": "CPU startup and temporary typed buffers for a flat 128-cell terrain with procedural grass; does not measure ongoing retained animation, renderer/GPU, full edit/history/collision, or imported foliage.",
+    "remainingGap": "50,000-plant preview startup median is approximately 48.5 ms on the measured machine."
+  },
+  "followupVerification": {
+    "checked": "2026-10-15T03:15:41.845Z",
+    "scope": "The complete 36-scenario suite passes after erosion starts using the same retained-scene API and viewport rollback restores shadow bounds.",
+    "chromeFullSuite": {
+      "scenarios": 36,
+      "status": 0,
+      "signal": null,
+      "completed": "2026-10-15T03:14:52.099Z"
+    },
+    "sourceHashes": {
+      "src/main.ts": {
+        "bytes": 105009,
+        "sha256": "b39dcdb4e506fea35a4551fbd199f615ed64e9457c7214a2944dd868120cf46d"
+      },
+      "src/editor/erosion-panel.ts": {
+        "bytes": 9414,
+        "sha256": "71402d79007ceca1bfbe5e5813a9efc362377cac7b0af01035034bae48d061be"
+      },
+      "src/render/viewport.ts": {
+        "bytes": 20819,
+        "sha256": "d03be0c2eecffceeef4be779b10968c27973812ae13a29a48343c753034f09a4"
+      },
+      "tests/browser/erosion-recovery.spec.mjs": {
+        "bytes": 9985,
+        "sha256": "af2442b3d7583c8a8ce04b7b23fbe228d8107adb2c0d72640642195ddc2f8c27"
+      }
+    }
+  }
+}

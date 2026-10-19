@@ -1,0 +1,498 @@
+{
+  "verifiedAt": "2026-10-15T04:10:13.156Z",
+  "scope": "Editor PBR controls, altitude/slope rules, map reset/resolution/import, ORM Apply, portable surface presets and clearing painted overrides. Recoverable preparation and history-capture errors; excludes fatal browser/GPU failure and unrelated editing controls.",
+  "checks": {
+    "build": {
+      "status": 0,
+      "signal": null,
+      "timedOut": false,
+      "completed": "2026-10-15T04:00:09.360Z"
+    },
+    "unitTests": {
+      "tests": 169,
+      "files": 23,
+      "status": 0,
+      "signal": null,
+      "timedOut": false,
+      "completed": "2026-10-15T04:03:12.323Z"
+    },
+    "targetedChrome": {
+      "scenarios": 8,
+      "status": 0,
+      "signal": null,
+      "timedOut": false,
+      "completed": "2026-10-15T04:03:43.493Z",
+      "scope": "Before adding explicit reset retry/undo and waiting for preparation completion in the failure helper."
+    },
+    "chromeFullSuite": {
+      "scenarios": 42,
+      "status": 0,
+      "signal": null,
+      "timedOut": false,
+      "completed": "2026-10-15T04:09:32.542Z"
+    },
+    "publicTypes": {
+      "strictNodeNextCoreThree": 0,
+      "strictBundlerWithRapier": 0,
+      "skipLibCheck": false
+    }
+  },
+  "controls": {
+    "evidence": [
+      {
+        "action": "roughness",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "metalness",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "normal-strength",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "tile",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "blend",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "min-height",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "max-height",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "min-slope",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "max-slope",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "feather",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "normal-convention",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "reduce-tiling",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "name",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "tint",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "draft",
+        "stage": "draft",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "uniforms",
+        "stage": "uniforms",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "reset-maps",
+        "stage": "maps",
+        "failAt": 3,
+        "calls": 3,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "resolution-maps",
+        "stage": "maps",
+        "failAt": 2,
+        "calls": 2,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "reset-history",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "resolution-history",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      }
+    ],
+    "allocations": {
+      "draft": 1,
+      "uniforms": 1,
+      "history": 1
+    },
+    "unchangedCommittedAutosave": true,
+    "cancellationAndSupersession": true,
+    "retryUndoRedoAndReload": true,
+    "errors": []
+  },
+  "rules": {
+    "evidence": [
+      {
+        "action": "rule-terrain",
+        "stage": "terrain",
+        "failAt": 3,
+        "calls": 3,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "clear-terrain",
+        "stage": "terrain",
+        "failAt": 3,
+        "calls": 3,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "preset-terrain",
+        "stage": "terrain",
+        "failAt": 3,
+        "calls": 3,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "rule-picking",
+        "stage": "picking",
+        "failAt": 2,
+        "calls": 2,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "clear-picking",
+        "stage": "picking",
+        "failAt": 2,
+        "calls": 2,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "preset-picking",
+        "stage": "picking",
+        "failAt": 2,
+        "calls": 2,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "rule-history",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "clear-history",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "preset-history",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "texture-history",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      }
+    ],
+    "allocations": {
+      "draft": 1,
+      "uniforms": 1,
+      "terrain": 8,
+      "picking": 4,
+      "history": 1
+    },
+    "unchangedCommittedAutosave": true,
+    "retryUndoRedoAndReload": true,
+    "errors": []
+  },
+  "ormHistoryRecovery": {
+    "test": "tests/browser/material-authoring.spec.mjs",
+    "injectedHistoryFailure": true,
+    "unchangedUndoHistory": true,
+    "retryInSamePanel": true,
+    "successfulUndoRedoAutosaveNativeAndGlb": true
+  },
+  "nativeFiles": {
+    "test-results/surface-recovery-surface-c-5dbf7-ry-without-spatial-rebuilds/baseline.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-surface-c-5dbf7-ry-without-spatial-rebuilds/blend-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-surface-c-5dbf7-ry-without-spatial-rebuilds/cancelled-resolution.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-surface-c-5dbf7-ry-without-spatial-rebuilds/draft-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-surface-c-5dbf7-ry-without-spatial-rebuilds/feather-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-surface-c-5dbf7-ry-without-spatial-rebuilds/max-height-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-surface-c-5dbf7-ry-without-spatial-rebuilds/max-slope-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-surface-c-5dbf7-ry-without-spatial-rebuilds/metalness-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-surface-c-5dbf7-ry-without-spatial-rebuilds/min-height-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-surface-c-5dbf7-ry-without-spatial-rebuilds/min-slope-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-surface-c-5dbf7-ry-without-spatial-rebuilds/name-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-surface-c-5dbf7-ry-without-spatial-rebuilds/normal-convention-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-surface-c-5dbf7-ry-without-spatial-rebuilds/normal-strength-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-surface-c-5dbf7-ry-without-spatial-rebuilds/redone.terrain": {
+      "bytes": 91248,
+      "sha256": "432cd0b51690b3ae431546185cb78608f82f4198c49f08d29620287c2b60a2c1"
+    },
+    "test-results/surface-recovery-surface-c-5dbf7-ry-without-spatial-rebuilds/reduce-tiling-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-surface-c-5dbf7-ry-without-spatial-rebuilds/reopened.terrain": {
+      "bytes": 91248,
+      "sha256": "432cd0b51690b3ae431546185cb78608f82f4198c49f08d29620287c2b60a2c1"
+    },
+    "test-results/surface-recovery-surface-c-5dbf7-ry-without-spatial-rebuilds/reset-history-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-surface-c-5dbf7-ry-without-spatial-rebuilds/reset-maps-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-surface-c-5dbf7-ry-without-spatial-rebuilds/reset-retried.terrain": {
+      "bytes": 91248,
+      "sha256": "432cd0b51690b3ae431546185cb78608f82f4198c49f08d29620287c2b60a2c1"
+    },
+    "test-results/surface-recovery-surface-c-5dbf7-ry-without-spatial-rebuilds/resolution-history-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-surface-c-5dbf7-ry-without-spatial-rebuilds/resolution-maps-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-surface-c-5dbf7-ry-without-spatial-rebuilds/roughness-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-surface-c-5dbf7-ry-without-spatial-rebuilds/scalar-retried.terrain": {
+      "bytes": 91456,
+      "sha256": "92889250d1daeaf5ac96f485572282ea6eee28fa171eea29212f29e2edf0d4d6"
+    },
+    "test-results/surface-recovery-surface-c-5dbf7-ry-without-spatial-rebuilds/superseding-scalar.terrain": {
+      "bytes": 91432,
+      "sha256": "5f8c37813ba700d7d2064f49c4a37afb75b4e779958fff386ce588b2c71db44f"
+    },
+    "test-results/surface-recovery-surface-c-5dbf7-ry-without-spatial-rebuilds/tile-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-surface-c-5dbf7-ry-without-spatial-rebuilds/tint-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-surface-c-5dbf7-ry-without-spatial-rebuilds/undone.terrain": {
+      "bytes": 91456,
+      "sha256": "92889250d1daeaf5ac96f485572282ea6eee28fa171eea29212f29e2edf0d4d6"
+    },
+    "test-results/surface-recovery-surface-c-5dbf7-ry-without-spatial-rebuilds/uniforms-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-placement-d92c6-g-before-committing-history/baseline.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-placement-d92c6-g-before-committing-history/clear-history-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-placement-d92c6-g-before-committing-history/clear-picking-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-placement-d92c6-g-before-committing-history/clear-terrain-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-placement-d92c6-g-before-committing-history/paint-cleared.terrain": {
+      "bytes": 91432,
+      "sha256": "ce529d1744a98de7e4fb29538d6766a963def4603e576c828c7ae08d18f050ea"
+    },
+    "test-results/surface-recovery-placement-d92c6-g-before-committing-history/preset-history-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-placement-d92c6-g-before-committing-history/preset-picking-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-placement-d92c6-g-before-committing-history/preset-retried.terrain": {
+      "bytes": 91260,
+      "sha256": "57b7012b05f5ba6f9b1573a11f4ae1a7c9369ed38ba468b1d493d9a7eacd643a"
+    },
+    "test-results/surface-recovery-placement-d92c6-g-before-committing-history/preset-terrain-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-placement-d92c6-g-before-committing-history/redone.terrain": {
+      "bytes": 91260,
+      "sha256": "01d2321ed5512c8e0fa0aac810641771268e921fb8f79830a9491b6be3cdc48f"
+    },
+    "test-results/surface-recovery-placement-d92c6-g-before-committing-history/reopened.terrain": {
+      "bytes": 91260,
+      "sha256": "01d2321ed5512c8e0fa0aac810641771268e921fb8f79830a9491b6be3cdc48f"
+    },
+    "test-results/surface-recovery-placement-d92c6-g-before-committing-history/rule-history-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-placement-d92c6-g-before-committing-history/rule-picking-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-placement-d92c6-g-before-committing-history/rule-retried.terrain": {
+      "bytes": 91432,
+      "sha256": "1cd20f117f2cf65286c60e2305efbd64e1d36b2302f482fa49f6e447ae2288ec"
+    },
+    "test-results/surface-recovery-placement-d92c6-g-before-committing-history/rule-terrain-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-placement-d92c6-g-before-committing-history/texture-history-failed.terrain": {
+      "bytes": 91436,
+      "sha256": "53c8ccedead2d098c0aea184bf46dce9429684264e9db883f71543ff5e1980f7"
+    },
+    "test-results/surface-recovery-placement-d92c6-g-before-committing-history/undone.terrain": {
+      "bytes": 91432,
+      "sha256": "ce529d1744a98de7e4fb29538d6766a963def4603e576c828c7ae08d18f050ea"
+    }
+  },
+  "sourceHashes": {
+    "src/main.ts": {
+      "bytes": 110139,
+      "sha256": "7cd91cfd3b011c3eb87887cce081d79b7aa2bc9f42bcecdeaf250b83455643be"
+    },
+    "src/render/viewport.ts": {
+      "bytes": 23109,
+      "sha256": "b5dc6662bf8efd7c1053ac6c1cea471e31447518e9b79057d75a6e0f45c95c3e"
+    },
+    "src/render/material.ts": {
+      "bytes": 12030,
+      "sha256": "337c5e197ec851d4ed5dc180b29bca18e2a0a5e9d1dcda821a4dd1ae3d8328d4"
+    },
+    "src/runtime/terrain-scene.ts": {
+      "bytes": 18027,
+      "sha256": "4581462e6d596d58fc81366105061e47984e30bc82c44600ee7297e4690e7db9"
+    },
+    "tests/browser/surface-recovery.spec.mjs": {
+      "bytes": 17054,
+      "sha256": "a615674471aeac07ba81ade48dc1e90b29145977d84806c688d9a171a4572479"
+    },
+    "tests/browser/material-authoring.spec.mjs": {
+      "bytes": 16303,
+      "sha256": "e54dcdf2225087e1cbc82c14df1c91a0c35f257e661c814852b1c1fc8cca4637"
+    }
+  },
+  "visualReview": {
+    "path": "test-results/surface-recovery-placement-d92c6-g-before-committing-history/surface-retried.png",
+    "bytes": 457395,
+    "sha256": "269ba86b4da5bf66bb49a3b2bb6bc1cfee8044f3fc4184ea18dace359e05bd47",
+    "finding": "Surface preset, placement-rule and clear-paint controls fit the inspector. Terrain, existing plant and cutout prop remain visible after retry."
+  }
+}

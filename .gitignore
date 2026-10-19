@@ -1,0 +1,27 @@
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+*.local
+.qa/
+lib/
+*.tgz
+
+# Local credentials, logs and workstation files
+.env
+.env.*
+!.env.example
+!.env.template
+*.log
+.DS_Store
+Thumbs.db
+
+# Original foliage downloads are optional rebuild inputs (~2 GB).
+# Prepared runtime assets, alpha masks, manifests and credits are tracked.
+assets/cc0-foliage/poly-haven/*/*.zip
+assets/cc0-foliage/poly-haven/*/gltf-2k/
+
+# Keep personal content projects outside the toolkit checkout.
+/*.terrain
+/*.terrain.json

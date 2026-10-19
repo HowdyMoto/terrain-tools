@@ -1,0 +1,152 @@
+{
+  "magnifiedColorAlignment": {
+    "maximum": 0,
+    "mean": 0
+  },
+  "regularColorAlignment": {
+    "maximum": 1,
+    "mean": 0.010498046875
+  },
+  "regularPeriod": {
+    "maximum": 0,
+    "mean": 0
+  },
+  "variedPeriod": {
+    "maximum": 252,
+    "mean": 58.06767272949219
+  },
+  "alignedColor": {
+    "maximum": 2,
+    "mean": 0.0171051025390625
+  },
+  "alignedHeight": {
+    "maximum": 0,
+    "mean": 0
+  },
+  "normalMaximumError": 0.9915198920187152,
+  "boundaries": [
+    {
+      "maximum": 0,
+      "mean": 0
+    },
+    {
+      "maximum": 0,
+      "mean": 0
+    },
+    {
+      "maximum": 0,
+      "mean": 0
+    },
+    {
+      "maximum": 0,
+      "mean": 0
+    },
+    {
+      "maximum": 0,
+      "mean": 0
+    },
+    {
+      "maximum": 0,
+      "mean": 0
+    },
+    {
+      "maximum": 0,
+      "mean": 0
+    },
+    {
+      "maximum": 0,
+      "mean": 0
+    },
+    {
+      "maximum": 0,
+      "mean": 0
+    },
+    {
+      "maximum": 0,
+      "mean": 0
+    },
+    {
+      "maximum": 0,
+      "mean": 0
+    },
+    {
+      "maximum": 0,
+      "mean": 0
+    },
+    {
+      "maximum": 0,
+      "mean": 0
+    },
+    {
+      "maximum": 0,
+      "mean": 0
+    },
+    {
+      "maximum": 0,
+      "mean": 0
+    },
+    {
+      "maximum": 0,
+      "mean": 0
+    },
+    {
+      "maximum": 0,
+      "mean": 0
+    },
+    {
+      "maximum": 0,
+      "mean": 0
+    },
+    {
+      "maximum": 0,
+      "mean": 0
+    },
+    {
+      "maximum": 0,
+      "mean": 0
+    },
+    {
+      "maximum": 0,
+      "mean": 0
+    },
+    {
+      "maximum": 0,
+      "mean": 0
+    },
+    {
+      "maximum": 0,
+      "mean": 0
+    },
+    {
+      "maximum": 0,
+      "mean": 0
+    },
+    {
+      "maximum": 0,
+      "mean": 0
+    },
+    {
+      "maximum": 0,
+      "mean": 0
+    },
+    {
+      "maximum": 0,
+      "mean": 0
+    }
+  ],
+  "boundaryColors": [
+    254, 254, 254, 176, 0, 79, 5, 250, 5, 254, 255, 0, 0, 0, 255, 255, 255, 0,
+    254, 1, 1, 255, 0, 176, 0, 255, 255
+  ],
+  "mipRange": [127, 127],
+  "mipExpected": 127.5,
+  "disabled": {
+    "maximum": 0,
+    "mean": 0
+  },
+  "omitted": {
+    "maximum": 0,
+    "mean": 0
+  },
+  "reusedArrays": true
+}

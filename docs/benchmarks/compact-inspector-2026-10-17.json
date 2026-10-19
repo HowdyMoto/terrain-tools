@@ -1,0 +1,244 @@
+{
+  "date": "2026-10-17",
+  "scope": "Compact editor settings; presentation, navigation, browser test navigation and documentation only.",
+  "environment": {
+    "os": "Windows",
+    "browser": "Google Chrome 155.0.8059.79",
+    "node": "v24.18.1"
+  },
+  "comparison": {
+    "before": {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "tools": [
+        {
+          "tool": "sculpt",
+          "height": 772,
+          "scrollHeight": 2880
+        },
+        {
+          "tool": "materials",
+          "height": 772,
+          "scrollHeight": 2055
+        },
+        {
+          "tool": "foliage",
+          "height": 772,
+          "scrollHeight": 4976
+        },
+        {
+          "tool": "props",
+          "height": 772,
+          "scrollHeight": 915
+        },
+        {
+          "tool": "light",
+          "height": 772,
+          "scrollHeight": 1619
+        },
+        {
+          "tool": "wind",
+          "height": 772,
+          "scrollHeight": 772
+        },
+        {
+          "tool": "water",
+          "height": 772,
+          "scrollHeight": 772
+        },
+        {
+          "tool": "project",
+          "height": 772,
+          "scrollHeight": 772
+        }
+      ]
+    },
+    "after": [
+      {
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "tools": [
+          {
+            "tool": "sculpt",
+            "height": 652,
+            "scrollHeight": 652,
+            "scrollWidth": 299,
+            "width": 299
+          },
+          {
+            "tool": "materials",
+            "height": 584,
+            "scrollHeight": 584,
+            "scrollWidth": 299,
+            "width": 299
+          },
+          {
+            "tool": "foliage",
+            "height": 612,
+            "scrollHeight": 612,
+            "scrollWidth": 299,
+            "width": 299
+          },
+          {
+            "tool": "props",
+            "height": 652,
+            "scrollHeight": 652,
+            "scrollWidth": 299,
+            "width": 299
+          },
+          {
+            "tool": "light",
+            "height": 652,
+            "scrollHeight": 652,
+            "scrollWidth": 299,
+            "width": 299
+          },
+          {
+            "tool": "wind",
+            "height": 698,
+            "scrollHeight": 698,
+            "scrollWidth": 299,
+            "width": 299
+          },
+          {
+            "tool": "water",
+            "height": 698,
+            "scrollHeight": 698,
+            "scrollWidth": 299,
+            "width": 299
+          },
+          {
+            "tool": "project",
+            "height": 698,
+            "scrollHeight": 698,
+            "scrollWidth": 299,
+            "width": 299
+          }
+        ]
+      },
+      {
+        "viewport": {
+          "width": 1366,
+          "height": 768
+        },
+        "tools": [
+          {
+            "tool": "sculpt",
+            "height": 520,
+            "scrollHeight": 520,
+            "scrollWidth": 299,
+            "width": 299
+          },
+          {
+            "tool": "materials",
+            "height": 452,
+            "scrollHeight": 452,
+            "scrollWidth": 299,
+            "width": 299
+          },
+          {
+            "tool": "foliage",
+            "height": 480,
+            "scrollHeight": 569,
+            "scrollWidth": 299,
+            "width": 299
+          },
+          {
+            "tool": "props",
+            "height": 520,
+            "scrollHeight": 520,
+            "scrollWidth": 299,
+            "width": 299
+          },
+          {
+            "tool": "light",
+            "height": 520,
+            "scrollHeight": 520,
+            "scrollWidth": 299,
+            "width": 299
+          },
+          {
+            "tool": "wind",
+            "height": 566,
+            "scrollHeight": 566,
+            "scrollWidth": 299,
+            "width": 299
+          },
+          {
+            "tool": "water",
+            "height": 566,
+            "scrollHeight": 566,
+            "scrollWidth": 299,
+            "width": 299
+          },
+          {
+            "tool": "project",
+            "height": 566,
+            "scrollHeight": 566,
+            "scrollWidth": 299,
+            "width": 299
+          }
+        ]
+      }
+    ],
+    "result": "All eight default tool pages fit without vertical scrolling at 1440x900. At 1366x768, the default foliage page needs 89 px of scrolling; the other seven fit. Advanced/expanded settings can scroll. Task tabs and context selectors remain outside the scrolling body."
+  },
+  "behavior": [
+    "Task tabs with ArrowLeft/ArrowRight/Home/End keyboard navigation and ARIA tab relationships.",
+    "Compact inline sliders and value fields; context-specific sculpt controls.",
+    "Model settings, effects, LODs and asset operations separated from everyday foliage painting.",
+    "Expandable advanced settings and individual LOD entries; static tips expand on demand.",
+    "Tool tabs, expanded sections, independent page scroll and focused controls survive inspector refreshes.",
+    "Tab navigation leaves document and undo history unchanged; selected props reveal their editing page."
+  ],
+  "validation": {
+    "typecheck": "npm run typecheck — passed",
+    "lint": "npm run lint — passed",
+    "editorBuild": "node node_modules/vite/bin/vite.js build --configLoader native --outDir .qa/compact-inspector-dist — passed with existing chunk-size advisory",
+    "formatting": "Prettier check on changed source, test and documentation files — passed",
+    "browser": {
+      "targetedScenariosPassed": 26,
+      "suites": {
+        "compact-inspector.spec.mjs": 6,
+        "asset-import.spec.mjs": 5,
+        "environment.spec.mjs": 2,
+        "erosion.spec.mjs": 2,
+        "foliage-recovery.spec.mjs": 3,
+        "material-preset.spec.mjs": 2,
+        "prop-recovery.spec.mjs": 2,
+        "sculpt-preset.spec.mjs": 1,
+        "sculpt.spec.mjs": 1,
+        "surface-recovery.spec.mjs": 2
+      },
+      "previewCommand": "node node_modules/vite/bin/vite.js preview --configLoader native --outDir .qa/compact-inspector-dist --host 127.0.0.1 --port 5196 --strictPort",
+      "config": "Use playwright.config.ts with baseURL http://127.0.0.1:5196, webServer undefined and a separate outputDir. Local override: .qa/compact-inspector.playwright.config.mjs.",
+      "testCommand": "npx playwright test --config .qa/compact-inspector.playwright.config.mjs tests/browser/compact-inspector.spec.mjs tests/browser/asset-import.spec.mjs tests/browser/environment.spec.mjs tests/browser/erosion.spec.mjs tests/browser/foliage-recovery.spec.mjs tests/browser/material-preset.spec.mjs tests/browser/prop-recovery.spec.mjs tests/browser/sculpt-preset.spec.mjs tests/browser/sculpt.spec.mjs tests/browser/surface-recovery.spec.mjs",
+      "results": [
+        ".qa/compact-inspector-final-results",
+        ".qa/compact-inspector-authoring-results",
+        ".qa/compact-inspector-recovery-results",
+        ".qa/compact-inspector-prop-final-results"
+      ],
+      "retries": "Tests were adapted to navigate task tabs and disclosures. Recovery image assertions now poll for the exact original PNG hash. One prop-drag comparison remained intermittent: diagnosis found four pixels differing by one 8-bit color level at a handle edge; the unchanged final assertion passed on a targeted rerun. No renderer changes or image tolerance were introduced.",
+      "extraLayouts": [
+        "1366x650 independent scroll restoration",
+        "900x700 horizontal containment and keyboard access"
+      ]
+    }
+  },
+  "limits": [
+    "Targeted Chrome verification only; the full browser suite, full Vitest suite and cross-browser/device matrix were not rerun for this presentation change.",
+    "The isolated editor build reused the existing runtime package outputs for browser fixtures. Shared dist/lib and the other agent’s server were not overwritten.",
+    "The GPU-dependent exact-image recovery checks have the intermittent single-level color variation described above; a passing rerun is not evidence of deterministic pixels on all hardware.",
+    "This does not establish production readiness or measure rendering performance."
+  ],
+  "screenshots": [
+    ".qa/compact-inspector/compact-sculpt.png",
+    ".qa/compact-inspector/compact-foliage.png",
+    ".qa/compact-inspector/compact-light.png"
+  ]
+}

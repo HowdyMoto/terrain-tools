@@ -1,0 +1,38 @@
+{
+  "license": "CC0-1.0",
+  "source": "https://api.polyhaven.com",
+  "files": [
+    {
+      "asset": "fern_02",
+      "file": "fern_02_alpha_2k.png",
+      "size": 230089,
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fern_02/fern_02_alpha_2k.png",
+      "md5": "ff18f7e8e869c58eac8f9c7d7c519f4a",
+      "sha256": "f51eb9b8f9f4b25a882f8fe12d1ef53ba69448bac7e71396ec1f05b684e9ea75"
+    },
+    {
+      "asset": "shrub_sorrel_01",
+      "file": "shrub_sorrel_01_alpha_2k.png",
+      "size": 152339,
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/shrub_sorrel_01/shrub_sorrel_01_alpha_2k.png",
+      "md5": "103c750f2bcac491ea47b4efea48477c",
+      "sha256": "41780f20a9721ad58ed30381a80845408c331c31c293d5987c7c782de618ac0f"
+    },
+    {
+      "asset": "grass_medium_01",
+      "file": "grass_medium_01_alpha_2k.png",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/grass_medium_01/grass_medium_01_alpha_2k.png",
+      "md5": "0810166131307c1094d37e73a8490542",
+      "size": 1580653,
+      "sha256": "4af2c3d5ebf167764ad3746f8c925dc4fbe28f0df023656599123cb593b793dd"
+    },
+    {
+      "asset": "pine_tree_01",
+      "file": "pine_tree_01_twig_alpha_2k.png",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/pine_tree_01/pine_tree_01_twig_alpha_2k.png",
+      "md5": "85f9f62d98dc35cce642895d75f79fa6",
+      "size": 814656,
+      "sha256": "1e5a1fe741f4cb731a3f537589db62a1cbcd380775e44d13f1b88b9e717df56b"
+    }
+  ]
+}

@@ -1,0 +1,114 @@
+{
+  "verifiedAt": "2026-10-16T19:02:39.587473+00:00",
+  "scope": "Separate Light/Wind/Water panels, per-model foliage contact, and material image-worker recovery",
+  "checks": {
+    "productionBuildAndTypecheck": "passed",
+    "srcLint": "passed",
+    "prettier": "passed",
+    "units": {
+      "passed": 199,
+      "files": 29,
+      "command": "npm test -- --testTimeout=15000",
+      "note": "Existing documented large-fixture allowance; configured test timeouts unchanged."
+    },
+    "browserScenarios": 23
+  },
+  "browserRuns": {
+    "mainRegression": {
+      "passed": 13,
+      "failedInitially": 2,
+      "log": ".qa/environment-tabs-browser.log"
+    },
+    "testCorrections": [
+      "The older HDRI test searched for wind controls in Light. It now selects Wind before disabling wind, then returns to Light.",
+      "The failure-injection checkbox test used uncheck(), which waits for unchecked state even though rollback deliberately restores checked state. It now clicks once and verifies rollback."
+    ],
+    "correctedRecheck": {
+      "passed": 2,
+      "failed": 0,
+      "log": ".qa/environment-tabs-recheck.log"
+    },
+    "importAndFoliageRegression": {
+      "passed": 8,
+      "failed": 0,
+      "log": ".qa/environment-tabs-import-regression.log"
+    },
+    "finalBuildRecheck": {
+      "passed": 1,
+      "failed": 0,
+      "log": ".qa/environment-tabs-final.log",
+      "note": "Includes grass added from a rigid model starting with contact enabled."
+    }
+  },
+  "coverage": [
+    "Separate tabs expose only their relevant controls and retain rendering/history/physics after failed edits.",
+    "Per-model enabled/radius/recovery plus compression; wind is independent.",
+    "Mixed runtime models respond outside the legacy emitter radius; disabled trees stay rigid even with nonzero compression; enabled overrides work when the legacy global setting is off.",
+    "Independent recovery, disabled-response clearing, legacy fallback, candidate disposal/apply and serialized validation.",
+    "Eight injected foliage allocation/history failures preserve exact document, viewport pixels, undo/redo and committed autosave; successful retries persist through undo/redo/reload and portable brush export.",
+    "New photographic ground cover and ground-profile imports enable contact; trees/rigid imports disable it. New grass entries do not inherit a copied rigid toggle.",
+    "Material and older ORM previews use an inline worker with separate hashed worker requests unavailable.",
+    "Image worker startup failure has actionable feedback; retry/cancel preserve document and redo.",
+    "Existing PBR, EXR/HDR, import, procedural and photoreal foliage scenarios remain passing."
+  ],
+  "realMaterial": {
+    "verifiedAt": "2026-10-16T18:44:43.883Z",
+    "browser": "155.0.8059.79",
+    "sourceDirectory": "C:/Users/wrigh/Downloads/dirtwithrocks-ogl",
+    "sourceFiles": [
+      {
+        "name": "dirtwithrocks_Ambient_Occlusion.png",
+        "bytes": 1274400,
+        "sha256": "7cddec873f3591873003b8b29d3bfd2bf0d8e4dbc78425368fedd6dbeec3d8e6"
+      },
+      {
+        "name": "dirtwithrocks_Base_Color.png",
+        "bytes": 9617073,
+        "sha256": "16abfc098ed3e16c05792186b0549f6d54c617c514d0c4fd830ecff5937cb6d3"
+      },
+      {
+        "name": "dirtwithrocks_Height.png",
+        "bytes": 1188193,
+        "sha256": "a2e39ae660ee0c489a4fe193b5a854df55096638ac80b31e7d4297a634aaf85c"
+      },
+      {
+        "name": "dirtwithrocks_Metallic.psd",
+        "bytes": 4252914,
+        "sha256": "73a5486d45e1d8cde375bf46ac1857878d456abb730d4ab98296722740e0f145"
+      },
+      {
+        "name": "dirtwithrocks_Normal-ogl.png",
+        "bytes": 11139257,
+        "sha256": "4fcb2782761e54d870f69dd0d7f0bbff99e96d111e7bbd4e87f3479d126c1436"
+      }
+    ],
+    "separateWorkerUnavailable": true,
+    "preview": "passed",
+    "apply": "passed",
+    "autosave": "passed",
+    "ignoredInput": "dirtwithrocks_Metallic.psd (unsupported Photoshop format; export to PNG)",
+    "screenshot": ".qa/dirt-import-applied.png"
+  },
+  "workerDiagnosis": "Blocking the formerly separate hashed ORM worker reproduces the exact reported Channel packing failed error. The original user tab was not instrumented, so its precise startup failure remains inferred. Inline worker bundling removes this rebuild-related dependency.",
+  "visualReview": [
+    ".qa/environment-tabs-final/foliage-recovery-separates-57a91-gh-recovery-undo-and-reload/light.png",
+    ".qa/environment-tabs-final/foliage-recovery-separates-57a91-gh-recovery-undo-and-reload/wind.png",
+    ".qa/environment-tabs-final/foliage-recovery-separates-57a91-gh-recovery-undo-and-reload/water.png",
+    ".qa/environment-tabs-final/foliage-recovery-separates-57a91-gh-recovery-undo-and-reload/foliage-contact.png",
+    ".qa/dirt-import-reproduction.png",
+    ".qa/dirt-import-applied.png"
+  ],
+  "logs": {
+    "build": ".qa/environment-tabs-final-build.log",
+    "lint": ".qa/environment-tabs-lint.log",
+    "units": ".qa/environment-tabs-unit.log",
+    "format": ".qa/environment-tabs-format.log"
+  },
+  "limits": [
+    "Chrome 155.0.8059.79 on Windows; desktop panel review at 1440x960 and import layout regression at 980x680. No cross-browser, touch, or physical-device certification.",
+    "Contact response remains procedural deformation, not physical branch mechanics or walk-mode foliage collision.",
+    "PSD input is not decoded. The metallic PSD was skipped with a persistent export-to-PNG notice; original downloaded files were not changed.",
+    "No new maximum-density or GPU performance benchmark. The complete browser suite was not rerun; 23 relevant scenarios were exercised.",
+    "Existing saved models without overrides retain their global legacy settings until contact controls are edited. SDK changes to model settings require rebuilding or loading prepared foliage."
+  ]
+}

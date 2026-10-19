@@ -1,0 +1,7 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Foliage performance benchmark</title>
+<style>body{margin:24px;background:#18211d;color:#dce5d7;font:14px system-ui}h1{font-size:24px}label{margin-right:16px}input,button{font:inherit;padding:6px;border:1px solid #586451;background:#28382b;color:inherit}canvas{max-width:100%;height:auto!important}pre{white-space:pre-wrap}a{color:#c1d99c}#stage{margin-top:20px}p{max-width:85ch}</style></head>
+<body><h1>Foliage performance benchmark</h1><p>Compare every plant at full detail with authored distance LODs, stable density reduction, and far culling. This uses procedural sample meshes. Measure your own target hardware and assets before selecting game budgets.</p>
+<label>Plants <input id="count" type="number" min="1" max="50000" step="1" value="10000"/></label><label><input id="shadows" type="checkbox"/>1024 px sun shadows</label><label>Cross-fade seconds <input id="fade-duration" type="number" min="0" max="5" step="0.05" value="0.25"/></label><button id="run">Run comparison</button> <a href="/">Editor</a>
+<p id="progress" role="status">30 measured frames per mode at 960 × 540, after shader warm-up.</p><div id="stage"></div><pre id="results"></pre><script type="module" src="/examples/foliage-benchmark.mjs"></script></body></html>

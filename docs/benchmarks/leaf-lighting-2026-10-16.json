@@ -1,0 +1,94 @@
+{
+  "date": "2026-10-16",
+  "status": "passed",
+  "scope": "Thin-leaf direct transmission, material selection, AgX/natural sunlight and independent visible sky brightness",
+  "checks": {
+    "build": "passed",
+    "lint": "passed",
+    "format": "passed",
+    "focusedUnitTests": 26,
+    "chromeScenarios": 8
+  },
+  "commands": [
+    "npm run build",
+    "npm run lint",
+    "npm test -- tests/foliage-shading.test.ts tests/environment.test.ts tests/daylight.test.ts tests/runtime.test.ts tests/default-foliage.test.ts --testTimeout=15000",
+    "npm run test:browser -- tests/browser/foliage-shading.spec.mjs tests/browser/daylight.spec.mjs tests/browser/environment.spec.mjs",
+    "npm run test:browser -- tests/browser/foliage-crossfade.spec.mjs --output=.qa/leaf-crossfade-results"
+  ],
+  "renderedChecks": {
+    "off": 0,
+    "on": 82,
+    "shadow": 0,
+    "absorbed": 2,
+    "opaqueBark": 0,
+    "frontDifference": 0,
+    "hole": 0,
+    "renderer": "WebKit WebGL",
+    "description": "Mean green-channel values in an 8-bit linear render-target sample. Backlit card brightens; blocker fully occludes transmission; thickness absorbs light; opaque bark, front lighting and holes are unchanged."
+  },
+  "authoring": [
+    "Injected allocation failure retains native data, undo/redo and autosave across reload; successful retry",
+    "Material selection, settings, undo/redo, native saves, reusable brush and authored GLB/runtime restoration",
+    "Natural sunlight and independent background intensity; HDR/EXR and dynamic-sky recovery",
+    "Leaf shader compiles with wind/contact deformation and active LOD fades in camera, directional and point shadow passes"
+  ],
+  "content": {
+    "name": "Namaqualand natural sunlight study",
+    "projectSha256": "a09fa9cca25084185e234a4dacd4952057ae0330fdc115b602c8fe77a269c46c",
+    "browser": "155.0.8059.79",
+    "gpu": "ANGLE (AMD, AMD Radeon(TM) 860M Graphics (0x00001114) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "viewport": [1280, 720],
+    "views": [
+      {
+        "name": "original",
+        "blockingMedianMs": 5.9000000059604645,
+        "draw": {
+          "frame": 82,
+          "calls": 290,
+          "triangles": 14302543,
+          "points": 0,
+          "lines": 0
+        },
+        "foliage": {
+          "instances": 14543,
+          "culled": 1609,
+          "batches": 231,
+          "triangles": 14297261,
+          "levels": [5666, 8877, 0, 0],
+          "transitioning": 0,
+          "drawnInstances": 14543
+        }
+      },
+      {
+        "name": "flowers",
+        "blockingMedianMs": 9.099999994039536,
+        "draw": {
+          "frame": 114,
+          "calls": 260,
+          "triangles": 14821310,
+          "points": 0,
+          "lines": 0
+        },
+        "foliage": {
+          "instances": 14641,
+          "culled": 1511,
+          "batches": 237,
+          "triangles": 15077284,
+          "levels": [6240, 8401, 0, 0],
+          "transitioning": 0,
+          "drawnInstances": 14641
+        }
+      }
+    ],
+    "editor": "opened and autosaved",
+    "errors": [],
+    "artLocation": "External content project; no scene art added to the toolkit"
+  },
+  "limits": [
+    "One Windows/AMD Radeon 860M/Chrome configuration; other GPUs and mobile devices unmeasured.",
+    "Blocking frame samples are diagnostics, not sustained interactive FPS or a dense-forest benchmark.",
+    "Uniform thin-sheet approximation; no painted thickness maps, canopy occlusion/GI, cascaded shadows, temporal antialiasing or streaming.",
+    "The adapted study retains reduced geometry and 512px model textures. Passing checks does not establish photorealistic production readiness."
+  ]
+}

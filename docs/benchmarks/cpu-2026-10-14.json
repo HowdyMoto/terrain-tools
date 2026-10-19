@@ -1,0 +1,32 @@
+{
+  "node": "v24.18.1",
+  "cpu": "AMD Ryzen AI 7 350 w/ Radeon 860M",
+  "platform": "win32",
+  "terrain": [
+    {
+      "resolution": 256,
+      "totalChunks": 64,
+      "updatedChunks": 1,
+      "fullGeometryMs": 274.7886,
+      "medianLocalGeometryMs": 2.8378999999999905,
+      "fullCollisionMs": 210.98899999999992,
+      "medianLocalCollisionMs": 2.761099999999942
+    },
+    {
+      "resolution": 512,
+      "totalChunks": 256,
+      "updatedChunks": 1,
+      "fullGeometryMs": 682.6676,
+      "medianLocalGeometryMs": 3.702099999999973,
+      "fullCollisionMs": 1016.9595999999999,
+      "medianLocalCollisionMs": 2.912000000000262
+    }
+  ],
+  "foliage": {
+    "instances": 50000,
+    "batches": 256,
+    "initializationMs": 660.2705999999998,
+    "medianContactCpuMs": 0.08579999999983556
+  },
+  "scope": "CPU geometry/collider/contact timings only; no GPU rendering, asset decoding, history snapshots, autosave, or browser frame-time claim."
+}

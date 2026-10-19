@@ -1,0 +1,87 @@
+{
+  "name": "Upland meadow",
+  "seed": 714,
+  "sizeMetres": 96,
+  "resolution": 128,
+  "foliage": 5263,
+  "props": 34,
+  "models": {
+    "upland-tuft": {
+      "triangles": 192,
+      "bytes": 2084148
+    },
+    "upland-lean": {
+      "triangles": 128,
+      "bytes": 2082320
+    },
+    "upland-distant": {
+      "triangles": 32,
+      "bytes": 2079824
+    },
+    "upland-limestone": {
+      "triangles": 320,
+      "bytes": 4326168
+    }
+  },
+  "packageBytes": 20755448,
+  "packageSha256": "1e9a5223f800da7ddbb7e4fe98abf47a19ffd080ec72798b15ae83fb03169f89",
+  "textures": {
+    "meadow-albedo.png": {
+      "bytes": 4741123,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "3cfa35038592eacfc3d6f2b2845ea8057b0cabc72860cde5c92565425ffbe9d0"
+    },
+    "grass-cutout.png": {
+      "bytes": 2077262,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "b2d83dc7107b1e4c4e1a12d476cd9eb4f50b5b0e0cb6de4405a093bb82dd95b0"
+    },
+    "limestone-albedo.png": {
+      "bytes": 4294193,
+      "width": 1254,
+      "height": 1254,
+      "sha256": "2d2754c3f91aad2cc07db9bc4e906fe9419ab1b7b4949107083382acc8ada7e8"
+    }
+  },
+  "viewpoints": {
+    "trail": {
+      "position": [
+        8,
+        4.148742747306824,
+        29
+      ],
+      "target": [
+        -2,
+        8,
+        -15
+      ]
+    },
+    "overview": {
+      "position": [
+        63,
+        58,
+        76
+      ],
+      "target": [
+        0,
+        8,
+        -5
+      ]
+    },
+    "grass": {
+      "position": [
+        -7,
+        4.289911158879598,
+        21
+      ],
+      "target": [
+        -11,
+        4.812515513102213,
+        14
+      ]
+    }
+  },
+  "provenance": "AI-generated color PNGs; deterministic meshes and terrain; artist-selected, uncalibrated surface values."
+}

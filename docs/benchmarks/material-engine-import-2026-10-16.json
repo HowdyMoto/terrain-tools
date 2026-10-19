@@ -1,0 +1,68 @@
+{
+  "verifiedAt": "2026-10-16",
+  "scope": "Engine-aware PBR texture-image import",
+  "checks": {
+    "typecheck": "npm run typecheck: passed",
+    "lint": "npm run lint: passed",
+    "format": "Prettier passed for all changed source, test and documentation files",
+    "units": {
+      "command": "npm test -- --testTimeout=15000",
+      "passed": 214,
+      "files": 31,
+      "note": "Uses the existing large-fixture timeout allowance. Five new unit tests exercise engine defaults, detection, conflicts, numeric packing and required alpha. Total includes concurrent work."
+    },
+    "build": {
+      "result": "Isolated runtime, declarations and editor production builds passed",
+      "initialFailure": "The normal npm run build reached declaration finalization, then failed with ENOENT lib/types while a concurrent build cleared the shared output directory.",
+      "commands": [
+        "npx vite build --config vite.runtime.config.mjs --configLoader native --outDir .qa/material-engine-build/lib",
+        "npx tsc -p tsconfig.runtime.json --outDir .qa/material-engine-build/lib/types",
+        "node ../../scripts/finalize-types.mjs (cwd: .qa/material-engine-build)",
+        "npx vite build --configLoader native --outDir .qa/material-engine-dist"
+      ],
+      "warning": "Existing editor bundle size warning remains."
+    }
+  },
+  "browserRuns": {
+    "regression": {
+      "command": "npx playwright test --config .qa/material-engine.playwright.config.mjs tests/browser/material-engine-import.spec.mjs tests/browser/asset-import.spec.mjs tests/browser/material-worker.spec.mjs tests/browser/material-authoring.spec.mjs",
+      "passed": 14,
+      "failed": 1,
+      "failure": "The new missing-alpha test incorrectly used solidPng, an RGBA fixture with opaque alpha. Replaced that fixture with a grayscale PNG without alpha; no production change was needed."
+    },
+    "correctedRecovery": {
+      "command": "npx playwright test --config .qa/material-engine.playwright.config.mjs tests/browser/material-engine-import.spec.mjs -g 'reviews presets' --output .qa/material-engine-recovery-results",
+      "passed": 1,
+      "failed": 0
+    },
+    "distinctScenariosPassed": 15,
+    "server": "Vite preview of .qa/material-engine-dist on port 5191, isolated from concurrent build output. Temporary config inherits playwright.config.ts and uses absolute test/output paths.",
+    "standardReproduction": "After npm run build, run npm run test:browser -- tests/browser/material-engine-import.spec.mjs tests/browser/asset-import.spec.mjs tests/browser/material-worker.spec.mjs tests/browser/material-authoring.spec.mjs"
+  },
+  "coverage": [
+    "Blender, Unreal, Unity Built-in/URP and Unity HDRP select normal conventions and produce exact canonical ORM [102,51,17] from distinct source channel layouts.",
+    "Unit fixtures verify ORM/RMA/MRA/Unity layouts and RGB preserved under zero alpha. Browser recovery verifies zero-alpha HDRP output [102,255,17].",
+    "Engine changes before and after adding files, preview invalidation, automatic role updates and preserved manual roles/normal overrides.",
+    "Missing-alpha preview rejection, cancellation during held channel packing, unchanged native document and redo branch, injected history-capture failure and successful same-panel retry.",
+    "Undo for every engine, HDRP redo/autosave/reload, and retention of an existing DirectX normal when importing only numeric maps from a Blender preset.",
+    "Existing material/foliage import, numeric ORM composer, worker startup/rebuild recovery and GPU normal-convention rendering regressions.",
+    "Visual inspection of Blender and HDRP conversion reviews at 1440x960 and compact material dialog at 980x680."
+  ],
+  "visualArtifacts": [
+    ".qa/material-engine-results/material-engine-import-ble-a6f82-n-and-numeric-ORM-with-undo/engine-review.png",
+    ".qa/material-engine-results/material-engine-import-uni-21e81-n-and-numeric-ORM-with-undo/engine-review.png",
+    ".qa/material-engine-results/asset-import-cancels-pendi-72120-ts-drop-and-compact-layouts/compact-material-import.png"
+  ],
+  "runtime": {
+    "node": "v24.18.1",
+    "platform": "Windows",
+    "browser": "Installed Google Chrome with --enable-unsafe-swiftshader"
+  },
+  "limits": [
+    "Engine conversions use deterministic numeric fixtures; arbitrary third-party engine material packages and shader graphs were not validated or imported.",
+    "Extracted PNG/JPEG/WebP images only. Unity packed alpha smoothness requires PNG; specular workflows, HDRP detail masks and runtime-compressed normal textures are outside scope.",
+    "Presets assume common metallic workflows. Custom layouts require manual roles/channels, and albedo-alpha smoothness must be exported separately.",
+    "Chrome/Windows only; no cross-browser/device certification or maximum-size batch memory/performance measurements.",
+    "Preview uses conventional UV shading under studio lighting rather than terrain triplanar/height blends or scene lighting."
+  ]
+}

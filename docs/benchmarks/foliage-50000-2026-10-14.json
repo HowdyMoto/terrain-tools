@@ -1,0 +1,92 @@
+{
+  "timestamp": "2026-10-14T06:02:21.913Z",
+  "browser": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+  "gpu": "ANGLE (AMD, AMD Radeon(TM) 860M Graphics (0x00001114) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "count": 50000,
+  "samples": 30,
+  "resolution": [960, 540],
+  "pixelRatio": 1,
+  "antialias": false,
+  "shadows": false,
+  "shadowResolution": null,
+  "wind": true,
+  "prepareMs": 678.8999999910593,
+  "timerQueryAvailable": true,
+  "phases": [
+    {
+      "mode": "full",
+      "selected": {
+        "instances": 50000,
+        "culled": 0,
+        "batches": 512,
+        "triangles": 4100000,
+        "levels": [50000, 0, 0, 0]
+      },
+      "selectionCpuMs": {
+        "median": 0,
+        "p95": 0.10000000894069672
+      },
+      "submissionCpuMs": {
+        "median": 6.0999999940395355,
+        "p95": 8.200000002980232
+      },
+      "blockingFrameMs": {
+        "median": 11.200000002980232,
+        "p95": 14
+      },
+      "renderedTriangles": {
+        "median": 3671858,
+        "p95": 3676058
+      },
+      "drawCalls": {
+        "median": 452,
+        "p95": 453
+      },
+      "gpuMs": {
+        "median": 5.36612,
+        "p95": 6.08472,
+        "validSamples": 30,
+        "disjoint": false,
+        "unavailableQueries": 0
+      }
+    },
+    {
+      "mode": "distance-detail",
+      "selected": {
+        "instances": 12153,
+        "culled": 37847,
+        "batches": 232,
+        "triangles": 401790,
+        "levels": [1139, 11014, 0, 0]
+      },
+      "selectionCpuMs": {
+        "median": 0.9000000059604645,
+        "p95": 1.5
+      },
+      "submissionCpuMs": {
+        "median": 3.5999999940395355,
+        "p95": 4.199999988079071
+      },
+      "blockingFrameMs": {
+        "median": 7.300000011920929,
+        "p95": 12.5
+      },
+      "renderedTriangles": {
+        "median": 328752,
+        "p95": 329782
+      },
+      "drawCalls": {
+        "median": 180,
+        "p95": 181
+      },
+      "gpuMs": {
+        "median": 1.19828,
+        "p95": 1.72148,
+        "validSamples": 30,
+        "disjoint": false,
+        "unavailableQueries": 0
+      }
+    }
+  ],
+  "scope": "Built-in procedural pines, fixed camera path, 512 m flat terrain. CPU measurements include selection/submission; blocking-frame timings include GPU completion and a synchronous 1-pixel readback, and are not interactive FPS. GPU timers are reported only when valid. Asset decode, history, autosave and realistic asset complexity are not benchmarked."
+}

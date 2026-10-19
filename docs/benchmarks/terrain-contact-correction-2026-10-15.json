@@ -1,0 +1,149 @@
+{
+  "verifiedAt": "2026-10-15T04:25:32.976Z",
+  "scope": "Deterministic flat-terrain contact reproduction in Rapier 0.19.3. One 1.4 m sphere dropped 15 m above a 64 m, 64-cell terrain split into 32-cell chunks; fixed 1/60-second steps for 15 seconds. No terrain holes or props in this comparison.",
+  "position": [3.158588887, 15, 16.375863377],
+  "body": {
+    "radius": 1.4,
+    "density": 2,
+    "restitution": 0.18,
+    "friction": 0.7,
+    "ccd": true
+  },
+  "terrainFriction": 0.85,
+  "results": [
+    {
+      "flags": "default",
+      "checkpoints": [
+        {
+          "step": 180,
+          "position": {
+            "x": 5.0523576736450195,
+            "y": 1.399425983428955,
+            "z": 19.877702713012695
+          },
+          "velocity": {
+            "x": 1.428315281867981,
+            "y": 0,
+            "z": 2.644170045852661
+          }
+        },
+        {
+          "step": 360,
+          "position": {
+            "x": 9.209510803222656,
+            "y": 1.3989603519439697,
+            "z": 27.619260787963867
+          },
+          "velocity": {
+            "x": 1.3489718437194824,
+            "y": 0,
+            "z": 2.524132251739502
+          }
+        },
+        {
+          "step": 900,
+          "position": {
+            "x": 20.507089614868164,
+            "y": -245.7900848388672,
+            "z": 50.407100677490234
+          },
+          "velocity": {
+            "x": 1.2356876134872437,
+            "y": -69.6070327758789,
+            "z": 2.544613838195801
+          }
+        }
+      ]
+    },
+    {
+      "flags": 0,
+      "checkpoints": [
+        {
+          "step": 180,
+          "position": {
+            "x": 5.0523576736450195,
+            "y": 1.399425983428955,
+            "z": 19.877702713012695
+          },
+          "velocity": {
+            "x": 1.428315281867981,
+            "y": 0,
+            "z": 2.644170045852661
+          }
+        },
+        {
+          "step": 360,
+          "position": {
+            "x": 9.209510803222656,
+            "y": 1.3989603519439697,
+            "z": 27.619260787963867
+          },
+          "velocity": {
+            "x": 1.3489718437194824,
+            "y": 0,
+            "z": 2.524132251739502
+          }
+        },
+        {
+          "step": 900,
+          "position": {
+            "x": 20.507089614868164,
+            "y": -245.7900848388672,
+            "z": 50.407100677490234
+          },
+          "velocity": {
+            "x": 1.2356876134872437,
+            "y": -69.6070327758789,
+            "z": 2.544613838195801
+          }
+        }
+      ]
+    },
+    {
+      "flags": 144,
+      "checkpoints": [
+        {
+          "step": 180,
+          "position": {
+            "x": 3.1585888862609863,
+            "y": 1.3987230062484741,
+            "z": 16.375864028930664
+          },
+          "velocity": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "step": 360,
+          "position": {
+            "x": 3.1585888862609863,
+            "y": 1.3987230062484741,
+            "z": 16.375864028930664
+          },
+          "velocity": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "step": 900,
+          "position": {
+            "x": 3.1585888862609863,
+            "y": 1.3987230062484741,
+            "z": 16.375864028930664
+          },
+          "velocity": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        }
+      ]
+    }
+  ],
+  "source": "https://rapier.rs/javascript3d/enums/TriMeshFlags.html",
+  "limits": "A regression fixture, not a vehicle, character-controller, broad asset or universal simulation validation. Independent collider chunks are not welded together; the unit suite checks seven resting positions/radii including seams."
+}

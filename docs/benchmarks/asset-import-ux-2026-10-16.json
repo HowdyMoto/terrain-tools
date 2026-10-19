@@ -1,0 +1,77 @@
+{
+  "verifiedAt": "2026-10-16T17:13:48.128Z",
+  "scope": "Foliage and terrain PBR material import workflows",
+  "checks": {
+    "buildAndTypecheck": "passed",
+    "srcLint": "passed",
+    "prettier": "passed",
+    "units": {
+      "files": 28,
+      "passed": 199,
+      "command": "npm test -- --testTimeout=15000",
+      "note": "Uses the previously documented large-fixture verification allowance; no configured timeouts changed."
+    },
+    "browserScenarios": 15
+  },
+  "browserRuns": {
+    "regression": {
+      "passed": 14,
+      "failed": 1,
+      "failure": "The new generic image decoder changed the older PNG-only ORM dialog error for an invalid PNG. Restored its strict PNG decode path when no MIME is supplied."
+    },
+    "finalBuildRecheck": {
+      "passed": 7,
+      "failed": 0,
+      "scope": "All five new import workflows plus both existing ORM/PBR-shader scenarios"
+    }
+  },
+  "coverage": [
+    "Multi-file filename detection, editable roles, duplicate-map conflicts, normal Y and gloss hints",
+    "Mixed PNG/JPEG numeric channels, exact expected ORM output [64,63,20], real 1254px ground albedo",
+    "Invalid image recovery, preview invalidation, map thumbnail removal and undo",
+    "Real fern GLB variant previews, creator credit, batch brush creation and replacement guard",
+    "Local glTF dependency recovery, embedded buffers, authored copyright and centimetre/pivot transforms",
+    "Injected history allocation failures preserve state and retry in the same material/foliage panel",
+    "Cancelled model preparation leaves native document and redo intact",
+    "One-step undo/redo and embedded native/autosave restoration",
+    "Actual drag/drop event, Escape and returned focus, 980x680 header/footer/action bounds",
+    "Existing material presets, surface/foliage recovery, default plants and ORM authoring regression coverage"
+  ],
+  "visualIterations": [
+    "Initial review found long dialogs scrolling their headings away and undersized plant framing.",
+    "Fixed header/footer, independent scroll regions, persistent preview/apply controls and model-only camera bounds.",
+    "Compacted source rows, retained readable map roles/channels, added existing-map thumbnails/removal, and checked the compact desktop layout."
+  ],
+  "visualArtifacts": [
+    ".qa/asset-import-final-review/asset-import-imports-a-com-cb78c--retry-undo-and-persistence/material-import-review.png",
+    ".qa/asset-import-final-review/asset-import-imports-photo-67933-scale-and-undoes-atomically/foliage-import-review.png",
+    ".qa/asset-import-final-review/asset-import-cancels-pendi-72120-ts-drop-and-compact-layouts/compact-material-import.png"
+  ],
+  "logs": {
+    "build": ".qa/asset-import-build.log",
+    "units": ".qa/asset-import-unit.log",
+    "format": ".qa/asset-import-format.log",
+    "regression": ".qa/asset-import-final-browser.log",
+    "finalRecheck": ".qa/asset-import-recheck.log"
+  },
+  "runtime": {
+    "node": "v24.18.1",
+    "platform": "win32",
+    "browser": "Installed Google Chrome, configured --enable-unsafe-swiftshader",
+    "viewports": ["1440x960", "980x680"]
+  },
+  "sourceTree": {
+    "sha256": "f0837244dae7a96e0b7088e0b161961699f7cf73d40aa54cea087855a3d62b5d",
+    "files": 131,
+    "scope": "src/ and tests/",
+    "algorithm": "Sorted relative path + NUL + file SHA-256 + newline"
+  },
+  "limits": [
+    "Chrome/Windows only; no cross-browser, mobile or assistive-technology certification.",
+    "Real-asset checks use prepared CC0 ferns and the checked-in ground texture, not maximum-size folders or dense scenes.",
+    "Material preview uses UV shading under studio lights; it does not reproduce terrain blending/procedural fallbacks or authored environment lighting.",
+    "Static glTF meshes only. ZIP/FBX/OBJ conversion, automatic mesh splitting/LOD generation and unconfigured compression decoders remain outside this workflow.",
+    "UI lists permit 24 images or 32 models; large batch memory/performance remains unprofiled.",
+    "Concurrent walk-placement work is preserved. Its tests contribute to the current unit total but its browser verification is separate."
+  ]
+}

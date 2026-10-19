@@ -1,0 +1,70 @@
+{
+  "measured": "2026-10-14",
+  "node": "v24.18.1",
+  "platform": "win32",
+  "cpu": "AMD Ryzen AI 7 350 w/ Radeon 860M",
+  "grid": 512,
+  "foliage": 50000,
+  "checkpoints": 24,
+  "measurements": [
+    {
+      "mode": "full-copy",
+      "embeddedCharacters": 6990638,
+      "checkpointMilliseconds": [
+        73.6865, 58.390000000000015, 73.96190000000001, 55.28539999999998,
+        55.91640000000001, 103.25160000000005, 46.45799999999997,
+        61.92809999999997, 61.91380000000004, 56.32709999999997,
+        54.16809999999998, 58.42290000000003, 81.60340000000008,
+        55.71129999999994, 81.98039999999992, 113.5281, 53.78359999999998,
+        52.88300000000004, 54.98559999999998, 53.03150000000005,
+        56.84760000000006, 60.753299999999854, 71.41290000000004,
+        60.43290000000002
+      ],
+      "firstCheckpointMs": 73.6865,
+      "medianCheckpointMs": 58.42290000000003,
+      "retainedHeapBytes": 327158168,
+      "retainedArrayBufferBytes": 131563964,
+      "undoMs": 57.81169999999997,
+      "redoMs": 64.38750000000005
+    },
+    {
+      "mode": "shared",
+      "embeddedCharacters": 6990638,
+      "checkpointMilliseconds": [
+        122.34230000000001, 27.684800000000024, 25.511799999999994,
+        22.094400000000007, 21.115200000000016, 12.85209999999995,
+        16.33820000000003, 14.843099999999993, 16.45459999999997,
+        13.282700000000034, 16.800700000000006, 14.859399999999994,
+        12.328599999999994, 16.910000000000025, 12.40809999999999,
+        20.431299999999965, 14.99730000000011, 15.817700000000059,
+        13.778300000000058, 14.457599999999957, 13.507600000000025,
+        11.680600000000027, 20.331600000000094, 11.78710000000001
+      ],
+      "firstCheckpointMs": 122.34230000000001,
+      "medianCheckpointMs": 15.817700000000059,
+      "retainedHeapBytes": 29493448,
+      "retainedArrayBufferBytes": 5984240,
+      "undoMs": 102.57619999999997,
+      "redoMs": 93.27440000000001,
+      "stats": {
+        "undoCount": 24,
+        "redoCount": 0,
+        "retainedBytes": 38360984,
+        "byteLimit": 268435456,
+        "limit": 24,
+        "evictedCount": 0,
+        "overBudget": false
+      },
+      "clearedStats": {
+        "undoCount": 0,
+        "redoCount": 0,
+        "retainedBytes": 0,
+        "byteLimit": 268435456,
+        "limit": 24,
+        "evictedCount": 0,
+        "overBudget": false
+      }
+    }
+  ],
+  "scope": "CPU history only, in separate processes with forced GC. Synthetic embedded strings represent payload retention; they are not renderable assets. Excludes live project allocation, GPU work, asset decoding, autosave and editor refresh. The full-copy reference uses the original structuredClone implementation."
+}

@@ -1,0 +1,60 @@
+{
+  "scope": "1024² PBR atlas versus live layered shader with repetition reduction enabled on both active layers.",
+  "reduceTiling": [true, true, false, false],
+  "smooth": {
+    "mean": 0.07051595052083333,
+    "max": 3,
+    "large": 0
+  },
+  "flat": {
+    "mean": 0.069183349609375,
+    "max": 3,
+    "large": 0
+  },
+  "sourceUnaffected": {
+    "mean": 0,
+    "max": 0,
+    "large": 0
+  },
+  "before": {
+    "pack": true,
+    "target": true,
+    "clear": 1193046,
+    "alpha": 0.37,
+    "auto": false,
+    "shadows": true,
+    "viewport": [0, 0, 256, 256]
+  },
+  "after": {
+    "pack": true,
+    "target": true,
+    "clear": 1193046,
+    "alpha": 0.37,
+    "auto": false,
+    "shadows": true,
+    "viewport": [0, 0, 256, 256]
+  },
+  "cancelled": true,
+  "noTextureLeaks": true,
+  "allocationRejected": true,
+  "sourceIndex": 6048,
+  "exportedIndex": 6048,
+  "progress": [
+    "Preparing surface maps…",
+    "Baking base color…",
+    "Baking occlusion, roughness and metalness…",
+    "Baking detail normals…",
+    "Preparing scene geometry…",
+    "Encoding GLB…"
+  ],
+  "channels": {
+    "base": true,
+    "orm": true,
+    "normal": true,
+    "ao": true
+  },
+  "tangent": true,
+  "uv": true,
+  "flatNormals": true,
+  "errors": []
+}

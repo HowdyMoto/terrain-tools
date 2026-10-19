@@ -1,0 +1,355 @@
+{
+  "verifiedAt": "2026-10-15T03:34:39.638Z",
+  "scope": "Recoverable CPU construction and history-capture failures during editor prop placement, handle/numeric transforms, cutout authoring and removal. Does not establish whole-edit recovery for unrelated controls, fatal process/GPU errors or host callbacks.",
+  "checks": {
+    "units": {
+      "tests": 169,
+      "files": 23,
+      "status": 0,
+      "signal": null,
+      "completed": "2026-10-15T03:22:08.058Z"
+    },
+    "targetedChrome": {
+      "scenarios": 3,
+      "status": 0,
+      "signal": null,
+      "timedOut": false,
+      "completed": "2026-10-15T03:27:32.097Z"
+    },
+    "build": {
+      "status": 0,
+      "signal": null,
+      "completed": "2026-10-15T03:21:45.576Z"
+    },
+    "publicTypes": {
+      "checked": "2026-10-15T03:28:56.321Z",
+      "strictNodeNextCoreThree": 0,
+      "strictBundlerWithRapier": 0,
+      "skipLibCheck": false
+    },
+    "chromeFullSuite": {
+      "scenarios": 38,
+      "status": 0,
+      "signal": null,
+      "timedOut": false,
+      "completed": "2026-10-15T03:33:26.955Z"
+    }
+  },
+  "controls": {
+    "evidence": [
+      {
+        "action": "numeric-x",
+        "stage": "foliage",
+        "exactRestore": true
+      },
+      {
+        "action": "numeric-x",
+        "stage": "terrain",
+        "exactRestore": true
+      },
+      {
+        "action": "numeric-x",
+        "stage": "picking",
+        "exactRestore": true
+      },
+      {
+        "action": "numeric-x",
+        "stage": "prop-collision",
+        "exactRestore": true
+      },
+      {
+        "action": "numeric-x",
+        "stage": "collision",
+        "exactRestore": true
+      },
+      {
+        "action": "numeric-x",
+        "stage": "history",
+        "exactRestore": true
+      },
+      {
+        "action": "position-z",
+        "stage": "history",
+        "exactRestore": true
+      },
+      {
+        "action": "height",
+        "stage": "collision",
+        "exactRestore": true
+      },
+      {
+        "action": "scale",
+        "stage": "terrain",
+        "exactRestore": true
+      },
+      {
+        "action": "rotation",
+        "stage": "picking",
+        "exactRestore": true
+      },
+      {
+        "action": "cut-enabled",
+        "stage": "history",
+        "exactRestore": true
+      },
+      {
+        "action": "shape",
+        "stage": "terrain",
+        "exactRestore": true
+      },
+      {
+        "action": "model-bounds",
+        "stage": "collision",
+        "exactRestore": true
+      },
+      {
+        "action": "cutout-width",
+        "stage": "history",
+        "exactRestore": true
+      },
+      {
+        "action": "cutout-depth",
+        "stage": "history",
+        "exactRestore": true
+      },
+      {
+        "action": "cutout-offset-x",
+        "stage": "history",
+        "exactRestore": true
+      },
+      {
+        "action": "cutout-offset-z",
+        "stage": "history",
+        "exactRestore": true
+      },
+      {
+        "action": "delete",
+        "stage": "collision",
+        "exactRestore": true
+      },
+      {
+        "action": "circle-radius",
+        "stage": "history",
+        "exactRestore": true
+      },
+      {
+        "action": "placement",
+        "stage": "history",
+        "exactRestore": true
+      }
+    ],
+    "committedIndexedDBBlobUnchangedAfterFailures": true,
+    "placementAndRemovalRetry": true,
+    "exactUndoRedoAndAutosave": true,
+    "errors": []
+  },
+  "handles": {
+    "evidence": [
+      {
+        "mode": "translate",
+        "stage": "foliage",
+        "exactRestore": true
+      },
+      {
+        "mode": "rotate",
+        "stage": "terrain",
+        "exactRestore": true
+      },
+      {
+        "mode": "scale",
+        "stage": "picking",
+        "exactRestore": true
+      },
+      {
+        "mode": "translate",
+        "stage": "prop-collision",
+        "exactRestore": true
+      },
+      {
+        "mode": "rotate",
+        "stage": "collision",
+        "exactRestore": true
+      },
+      {
+        "mode": "scale",
+        "stage": "history",
+        "exactRestore": true
+      }
+    ],
+    "retryUndoRedo": true,
+    "errors": []
+  },
+  "nativeFiles": {
+    "controls": {
+      "baseline.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      },
+      "circle-radius-failed.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      },
+      "cut-enabled-failed.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      },
+      "cutout-depth-failed.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      },
+      "cutout-offset-x-failed.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      },
+      "cutout-offset-z-failed.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      },
+      "cutout-width-failed.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      },
+      "delete-failed.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      },
+      "height-failed.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      },
+      "model-bounds-failed.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      },
+      "numeric-collision.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      },
+      "numeric-foliage.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      },
+      "numeric-history.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      },
+      "numeric-picking.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      },
+      "numeric-prop-collision.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      },
+      "numeric-terrain.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      },
+      "placed.terrain": {
+        "bytes": 91700,
+        "sha256": "5719833f40f907e23ac5d070ef6fed258be9f2875fd40b104294c2f9e43fbbcf"
+      },
+      "placement-failed.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      },
+      "placement-redone.terrain": {
+        "bytes": 91700,
+        "sha256": "5719833f40f907e23ac5d070ef6fed258be9f2875fd40b104294c2f9e43fbbcf"
+      },
+      "placement-undone.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      },
+      "position-z-failed.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      },
+      "removal-undone.terrain": {
+        "bytes": 91700,
+        "sha256": "5719833f40f907e23ac5d070ef6fed258be9f2875fd40b104294c2f9e43fbbcf"
+      },
+      "removed.terrain": {
+        "bytes": 91484,
+        "sha256": "778e74e11bac921621458744f509e73cbb92508de052446547241b32ee986d6c"
+      },
+      "reopened.terrain": {
+        "bytes": 91700,
+        "sha256": "5719833f40f907e23ac5d070ef6fed258be9f2875fd40b104294c2f9e43fbbcf"
+      },
+      "rotation-failed.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      },
+      "scale-failed.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      },
+      "shape-failed.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      }
+    },
+    "handles": {
+      "baseline.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      },
+      "moved.terrain": {
+        "bytes": 91484,
+        "sha256": "eb21196eac6c90d85fe18848d83b78d4712186d6e4679b4d042b0b48b3b34801"
+      },
+      "redone.terrain": {
+        "bytes": 91484,
+        "sha256": "eb21196eac6c90d85fe18848d83b78d4712186d6e4679b4d042b0b48b3b34801"
+      },
+      "rotate-collision.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      },
+      "rotate-terrain.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      },
+      "scale-history.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      },
+      "scale-picking.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      },
+      "translate-foliage.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      },
+      "translate-prop-collision.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      },
+      "undone.terrain": {
+        "bytes": 91484,
+        "sha256": "cc342ceae09f7da686b9f931b488e66ce9dee4eab1a534dd11439c66759465d2"
+      }
+    }
+  },
+  "sourceHashes": {
+    "src/main.ts": {
+      "bytes": 106885,
+      "sha256": "f2a6f032d7c76792df3cc6bdce23fe252f6bf2d5610ec65c0cb591a6c3c6995f"
+    },
+    "src/render/prop-tools.ts": {
+      "bytes": 7887,
+      "sha256": "cb7368a67bc4235a5c524f152bd49efb9d7f61366b731d13dae83efb66d81d49"
+    },
+    "tests/browser/prop-recovery.spec.mjs": {
+      "bytes": 15130,
+      "sha256": "9caa99176efc041eebbc5af9e80913d01bc39bce3ae02180515f40ca0132eec2"
+    }
+  },
+  "visualReview": {
+    "artifact": "handle-retried.png",
+    "sha256": "2f04d9c2bbfd57297d83fafc755300ff6fb757de5b1cd349cde80116ae59ed70",
+    "observed": "Successful retry displays the platform at X 6 with matching numeric control, selected bounds, cutout outline, move handles and snapping. Props and terrain remain visible; transform toolbar fits in the viewport."
+  }
+}

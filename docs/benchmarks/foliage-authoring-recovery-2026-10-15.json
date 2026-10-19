@@ -1,0 +1,560 @@
+{
+  "verifiedAt": "2026-10-15T03:52:22.465Z",
+  "scope": "Editor brush definitions, legacy model-ID conversion, per-model response/detail, model removal, procedural population and per-brush clearing. Recoverable generation, draw-buffer construction and history-capture failures; not fatal process/GPU failure or recovery for unrelated material/world controls.",
+  "checks": {
+    "unitTests": {
+      "tests": 169,
+      "files": 23,
+      "status": 0,
+      "signal": null,
+      "timedOut": false,
+      "completed": "2026-10-15T03:42:24.674Z"
+    },
+    "targetedChrome": {
+      "scenarios": 5,
+      "status": 0,
+      "signal": null,
+      "timedOut": false,
+      "completed": "2026-10-15T03:44:12.889Z",
+      "scope": "Before final clear-button synchronization and paint/clear/undo assertions."
+    },
+    "build": {
+      "status": 0,
+      "signal": null,
+      "timedOut": false,
+      "completed": "2026-10-15T03:45:18.272Z"
+    },
+    "publicTypes": {
+      "checked": "2026-10-15T03:51:04.030Z",
+      "strictNodeNextCoreThree": 0,
+      "strictBundlerWithRapier": 0,
+      "skipLibCheck": false
+    },
+    "chromeFullSuite": {
+      "scenarios": 40,
+      "status": 0,
+      "signal": null,
+      "timedOut": false,
+      "completed": "2026-10-15T03:51:13.947Z"
+    }
+  },
+  "legacy": {
+    "evidence": [
+      {
+        "action": "name",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "duplicate",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "add-model",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "density",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "foliage-spacing",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "max-foliage-slope",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "min-weight",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "model-weight",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "min-scale",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "max-scale",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "min-rotation",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "max-rotation",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "allowed-surface",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "wind",
+        "stage": "buffers",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "crush",
+        "stage": "buffers",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "align",
+        "stage": "buffers",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "asset",
+        "stage": "buffers",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "flexibility",
+        "stage": "buffers",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "add-lod",
+        "stage": "buffers",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "prepared-history",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      }
+    ],
+    "unchangedCommittedAutosave": true,
+    "metadataRetryWithoutDrawAllocation": true,
+    "legacyConversionUndoRedoAndReload": true,
+    "errors": []
+  },
+  "population": {
+    "evidence": [
+      {
+        "action": "populate-population",
+        "stage": "population",
+        "failAt": 4,
+        "calls": 4,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "populate-buffers",
+        "stage": "buffers",
+        "failAt": 2,
+        "calls": 2,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "populate-history",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "clear-buffers",
+        "stage": "buffers",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "clear-history",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "remove-model-buffers",
+        "stage": "buffers",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "remove-model-history",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "flexibility-start",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "flexibility-end",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "flexibility-exponent",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "lod-distance-0",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "lod-density-0",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "foliage-cull-distance",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "foliage-lod-hysteresis",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "foliage-lod-fade",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "lod-asset",
+        "stage": "buffers",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      },
+      {
+        "action": "remove-lod",
+        "stage": "history",
+        "failAt": 1,
+        "calls": 1,
+        "exactPixelsDataHistoryAndSelection": true
+      }
+    ],
+    "unchangedCommittedAutosave": true,
+    "clearPreservesOtherBrushesAndDefinitions": true,
+    "clearButtonTracksPaintingAndUndo": true,
+    "populationCount": 112,
+    "reusedUnconsumedFirstId": 5,
+    "retryUndoRedoAndReload": true,
+    "errors": []
+  },
+  "nativeFiles": {
+    "legacy": {
+      "add-lod-failed.terrain": {
+        "bytes": 91352,
+        "sha256": "bfdd6a8b20bdffea419962bc8692647862e6539cc6e1c371c06d062d7d513d31"
+      },
+      "add-model-failed.terrain": {
+        "bytes": 91352,
+        "sha256": "bfdd6a8b20bdffea419962bc8692647862e6539cc6e1c371c06d062d7d513d31"
+      },
+      "align-failed.terrain": {
+        "bytes": 91352,
+        "sha256": "bfdd6a8b20bdffea419962bc8692647862e6539cc6e1c371c06d062d7d513d31"
+      },
+      "allowed-surface-failed.terrain": {
+        "bytes": 91352,
+        "sha256": "bfdd6a8b20bdffea419962bc8692647862e6539cc6e1c371c06d062d7d513d31"
+      },
+      "asset-failed.terrain": {
+        "bytes": 91352,
+        "sha256": "bfdd6a8b20bdffea419962bc8692647862e6539cc6e1c371c06d062d7d513d31"
+      },
+      "baseline.terrain": {
+        "bytes": 91352,
+        "sha256": "bfdd6a8b20bdffea419962bc8692647862e6539cc6e1c371c06d062d7d513d31"
+      },
+      "crush-failed.terrain": {
+        "bytes": 91352,
+        "sha256": "bfdd6a8b20bdffea419962bc8692647862e6539cc6e1c371c06d062d7d513d31"
+      },
+      "density-failed.terrain": {
+        "bytes": 91352,
+        "sha256": "bfdd6a8b20bdffea419962bc8692647862e6539cc6e1c371c06d062d7d513d31"
+      },
+      "duplicate-failed.terrain": {
+        "bytes": 91352,
+        "sha256": "bfdd6a8b20bdffea419962bc8692647862e6539cc6e1c371c06d062d7d513d31"
+      },
+      "flexibility-failed.terrain": {
+        "bytes": 91352,
+        "sha256": "bfdd6a8b20bdffea419962bc8692647862e6539cc6e1c371c06d062d7d513d31"
+      },
+      "foliage-spacing-failed.terrain": {
+        "bytes": 91352,
+        "sha256": "bfdd6a8b20bdffea419962bc8692647862e6539cc6e1c371c06d062d7d513d31"
+      },
+      "max-foliage-slope-failed.terrain": {
+        "bytes": 91352,
+        "sha256": "bfdd6a8b20bdffea419962bc8692647862e6539cc6e1c371c06d062d7d513d31"
+      },
+      "max-rotation-failed.terrain": {
+        "bytes": 91352,
+        "sha256": "bfdd6a8b20bdffea419962bc8692647862e6539cc6e1c371c06d062d7d513d31"
+      },
+      "max-scale-failed.terrain": {
+        "bytes": 91352,
+        "sha256": "bfdd6a8b20bdffea419962bc8692647862e6539cc6e1c371c06d062d7d513d31"
+      },
+      "metadata-retried.terrain": {
+        "bytes": 91576,
+        "sha256": "7350a12b47974378ed482efe4eaf6f5831d26c1e38addb5dc12a869f8240e8c8"
+      },
+      "min-rotation-failed.terrain": {
+        "bytes": 91352,
+        "sha256": "bfdd6a8b20bdffea419962bc8692647862e6539cc6e1c371c06d062d7d513d31"
+      },
+      "min-scale-failed.terrain": {
+        "bytes": 91352,
+        "sha256": "bfdd6a8b20bdffea419962bc8692647862e6539cc6e1c371c06d062d7d513d31"
+      },
+      "min-weight-failed.terrain": {
+        "bytes": 91352,
+        "sha256": "bfdd6a8b20bdffea419962bc8692647862e6539cc6e1c371c06d062d7d513d31"
+      },
+      "model-weight-failed.terrain": {
+        "bytes": 91352,
+        "sha256": "bfdd6a8b20bdffea419962bc8692647862e6539cc6e1c371c06d062d7d513d31"
+      },
+      "name-failed.terrain": {
+        "bytes": 91352,
+        "sha256": "bfdd6a8b20bdffea419962bc8692647862e6539cc6e1c371c06d062d7d513d31"
+      },
+      "prepared-history-failed.terrain": {
+        "bytes": 91352,
+        "sha256": "bfdd6a8b20bdffea419962bc8692647862e6539cc6e1c371c06d062d7d513d31"
+      },
+      "redone.terrain": {
+        "bytes": 91576,
+        "sha256": "7350a12b47974378ed482efe4eaf6f5831d26c1e38addb5dc12a869f8240e8c8"
+      },
+      "reopened.terrain": {
+        "bytes": 91576,
+        "sha256": "7350a12b47974378ed482efe4eaf6f5831d26c1e38addb5dc12a869f8240e8c8"
+      },
+      "undone.terrain": {
+        "bytes": 91352,
+        "sha256": "bfdd6a8b20bdffea419962bc8692647862e6539cc6e1c371c06d062d7d513d31"
+      },
+      "wind-failed.terrain": {
+        "bytes": 91352,
+        "sha256": "bfdd6a8b20bdffea419962bc8692647862e6539cc6e1c371c06d062d7d513d31"
+      }
+    },
+    "population": {
+      "baseline.terrain": {
+        "bytes": 91872,
+        "sha256": "6e5e3aea83bf526c8f0d1c74889f0868537e020e74587f3dd7a19844c48bde45"
+      },
+      "clear-buffers-failed.terrain": {
+        "bytes": 91872,
+        "sha256": "6e5e3aea83bf526c8f0d1c74889f0868537e020e74587f3dd7a19844c48bde45"
+      },
+      "clear-history-failed.terrain": {
+        "bytes": 91872,
+        "sha256": "6e5e3aea83bf526c8f0d1c74889f0868537e020e74587f3dd7a19844c48bde45"
+      },
+      "clear-redone.terrain": {
+        "bytes": 91708,
+        "sha256": "b9d638166b80313b318ac0ae2b8ababec0a55893a3c55bd716c29b33e6170ef6"
+      },
+      "clear-undone.terrain": {
+        "bytes": 91872,
+        "sha256": "6e5e3aea83bf526c8f0d1c74889f0868537e020e74587f3dd7a19844c48bde45"
+      },
+      "cleared.terrain": {
+        "bytes": 91708,
+        "sha256": "b9d638166b80313b318ac0ae2b8ababec0a55893a3c55bd716c29b33e6170ef6"
+      },
+      "flexibility-end-failed.terrain": {
+        "bytes": 91872,
+        "sha256": "6e5e3aea83bf526c8f0d1c74889f0868537e020e74587f3dd7a19844c48bde45"
+      },
+      "flexibility-exponent-failed.terrain": {
+        "bytes": 91872,
+        "sha256": "6e5e3aea83bf526c8f0d1c74889f0868537e020e74587f3dd7a19844c48bde45"
+      },
+      "flexibility-start-failed.terrain": {
+        "bytes": 91872,
+        "sha256": "6e5e3aea83bf526c8f0d1c74889f0868537e020e74587f3dd7a19844c48bde45"
+      },
+      "foliage-cull-distance-failed.terrain": {
+        "bytes": 91872,
+        "sha256": "6e5e3aea83bf526c8f0d1c74889f0868537e020e74587f3dd7a19844c48bde45"
+      },
+      "foliage-lod-fade-failed.terrain": {
+        "bytes": 91872,
+        "sha256": "6e5e3aea83bf526c8f0d1c74889f0868537e020e74587f3dd7a19844c48bde45"
+      },
+      "foliage-lod-hysteresis-failed.terrain": {
+        "bytes": 91872,
+        "sha256": "6e5e3aea83bf526c8f0d1c74889f0868537e020e74587f3dd7a19844c48bde45"
+      },
+      "lod-asset-failed.terrain": {
+        "bytes": 91872,
+        "sha256": "6e5e3aea83bf526c8f0d1c74889f0868537e020e74587f3dd7a19844c48bde45"
+      },
+      "lod-density-0-failed.terrain": {
+        "bytes": 91872,
+        "sha256": "6e5e3aea83bf526c8f0d1c74889f0868537e020e74587f3dd7a19844c48bde45"
+      },
+      "lod-distance-0-failed.terrain": {
+        "bytes": 91872,
+        "sha256": "6e5e3aea83bf526c8f0d1c74889f0868537e020e74587f3dd7a19844c48bde45"
+      },
+      "paint-clear-undone.terrain": {
+        "bytes": 98628,
+        "sha256": "539def30a980fe6285b77daa68680abd23d041177e3c61a39bf90f9323e79a2e"
+      },
+      "painted-after-clear.terrain": {
+        "bytes": 98628,
+        "sha256": "539def30a980fe6285b77daa68680abd23d041177e3c61a39bf90f9323e79a2e"
+      },
+      "populate-buffers-failed.terrain": {
+        "bytes": 91872,
+        "sha256": "6e5e3aea83bf526c8f0d1c74889f0868537e020e74587f3dd7a19844c48bde45"
+      },
+      "populate-history-failed.terrain": {
+        "bytes": 91872,
+        "sha256": "6e5e3aea83bf526c8f0d1c74889f0868537e020e74587f3dd7a19844c48bde45"
+      },
+      "populate-population-failed.terrain": {
+        "bytes": 91872,
+        "sha256": "6e5e3aea83bf526c8f0d1c74889f0868537e020e74587f3dd7a19844c48bde45"
+      },
+      "populated.terrain": {
+        "bytes": 108504,
+        "sha256": "7587c74200cd2d48919eed0e5ae1c57e6504ba5fba7076327aaa79136203c62c"
+      },
+      "population-redone.terrain": {
+        "bytes": 108504,
+        "sha256": "7587c74200cd2d48919eed0e5ae1c57e6504ba5fba7076327aaa79136203c62c"
+      },
+      "population-undone.terrain": {
+        "bytes": 91872,
+        "sha256": "6e5e3aea83bf526c8f0d1c74889f0868537e020e74587f3dd7a19844c48bde45"
+      },
+      "remove-lod-failed.terrain": {
+        "bytes": 91872,
+        "sha256": "6e5e3aea83bf526c8f0d1c74889f0868537e020e74587f3dd7a19844c48bde45"
+      },
+      "remove-model-buffers-failed.terrain": {
+        "bytes": 91872,
+        "sha256": "6e5e3aea83bf526c8f0d1c74889f0868537e020e74587f3dd7a19844c48bde45"
+      },
+      "remove-model-history-failed.terrain": {
+        "bytes": 91872,
+        "sha256": "6e5e3aea83bf526c8f0d1c74889f0868537e020e74587f3dd7a19844c48bde45"
+      },
+      "reopened.terrain": {
+        "bytes": 108504,
+        "sha256": "7587c74200cd2d48919eed0e5ae1c57e6504ba5fba7076327aaa79136203c62c"
+      }
+    }
+  },
+  "sourceHashes": {
+    "src/main.ts": {
+      "bytes": 110259,
+      "sha256": "a51de1d43f3036482aef2e9c3d4730a6b04bf5f34cfd6aaa82b030aea3bb2144"
+    },
+    "src/runtime/foliage.ts": {
+      "bytes": 29170,
+      "sha256": "4bdd53f7f051ec91a8fd0cddda3a52e2fc56f45f5b4ff66b1f2f157396551316"
+    },
+    "src/core/foliage.ts": {
+      "bytes": 2396,
+      "sha256": "ffb4c3fd6eb34517ad1899701f0b7822d2b053c2cd58f52134c585bcd2c2d356"
+    },
+    "src/core/terrain.ts": {
+      "bytes": 15969,
+      "sha256": "5e1a0319d78680db50a091c6657d2a51579e0d6be5046eb79b0e235d8378a78b"
+    },
+    "tests/browser/foliage-recovery.spec.mjs": {
+      "bytes": 16483,
+      "sha256": "5702e5cb7acacc1dd7408957574b092b925c1c85c06cef72319aa2dfdc1c0128"
+    }
+  },
+  "visualReview": {
+    "artifact": "population-retried.png",
+    "sha256": "f96aefd1a838e049e293db875c34cddcedc8e6780f4a43afbc6b3859f0ac79c6",
+    "observed": "Populated grass/rock mixture renders with a total of 114 plants, including two untouched plants from another brush. Populate and Clear buttons and undo explanation fit the inspector without overlap."
+  }
+}

@@ -1,0 +1,163 @@
+{
+  "timestamp": "2026-10-14T23:52:30.872Z",
+  "browser": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+  "gpu": "ANGLE (AMD, AMD Radeon(TM) 860M Graphics (0x00001114) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "count": 50000,
+  "samples": 30,
+  "resolution": [960, 540],
+  "pixelRatio": 1,
+  "antialias": false,
+  "shadows": true,
+  "shadowResolution": 1024,
+  "fadeDuration": 0.25,
+  "wind": true,
+  "prepareMs": 253.09999999403954,
+  "timerQueryAvailable": true,
+  "phases": [
+    {
+      "mode": "full",
+      "selected": {
+        "instances": 50000,
+        "culled": 0,
+        "batches": 512,
+        "triangles": 4100000,
+        "levels": [50000, 0, 0, 0],
+        "transitioning": 0,
+        "drawnInstances": 50000
+      },
+      "modePrepareMs": 0,
+      "transitioning": {
+        "median": 0,
+        "p95": 0
+      },
+      "drawnInstances": {
+        "median": 50000,
+        "p95": 50000
+      },
+      "selectionCpuMs": {
+        "median": 0,
+        "p95": 0.10000002384185791
+      },
+      "submissionCpuMs": {
+        "median": 3.600000023841858,
+        "p95": 4.800000011920929
+      },
+      "blockingFrameMs": {
+        "median": 7.199999988079071,
+        "p95": 8.199999988079071
+      },
+      "renderedTriangles": {
+        "median": 3598882,
+        "p95": 3605540
+      },
+      "drawCalls": {
+        "median": 440,
+        "p95": 442
+      },
+      "gpuMs": {
+        "median": 4.67061,
+        "p95": 5.52489,
+        "validSamples": 30,
+        "disjoint": false,
+        "unavailableQueries": 0
+      }
+    },
+    {
+      "mode": "distance-detail",
+      "selected": {
+        "instances": 12153,
+        "culled": 37847,
+        "batches": 232,
+        "triangles": 401790,
+        "levels": [1139, 11014, 0, 0],
+        "transitioning": 0,
+        "drawnInstances": 12153
+      },
+      "modePrepareMs": 0,
+      "transitioning": {
+        "median": 0,
+        "p95": 0
+      },
+      "drawnInstances": {
+        "median": 12077,
+        "p95": 12140
+      },
+      "selectionCpuMs": {
+        "median": 0.4000000059604645,
+        "p95": 0.699999988079071
+      },
+      "submissionCpuMs": {
+        "median": 2,
+        "p95": 2.4000000059604645
+      },
+      "blockingFrameMs": {
+        "median": 4,
+        "p95": 6.200000017881393
+      },
+      "renderedTriangles": {
+        "median": 309634,
+        "p95": 315970
+      },
+      "drawCalls": {
+        "median": 168,
+        "p95": 172
+      },
+      "gpuMs": {
+        "median": 1.13224,
+        "p95": 1.98565,
+        "validSamples": 30,
+        "disjoint": false,
+        "unavailableQueries": 0
+      }
+    },
+    {
+      "mode": "cross-fade",
+      "selected": {
+        "instances": 12272,
+        "culled": 37728,
+        "batches": 240,
+        "triangles": 419860,
+        "levels": [1316, 11141, 0, 0],
+        "transitioning": 505,
+        "drawnInstances": 12457
+      },
+      "modePrepareMs": 84.40000000596046,
+      "transitioning": {
+        "median": 226,
+        "p95": 482
+      },
+      "drawnInstances": {
+        "median": 12248,
+        "p95": 12440
+      },
+      "selectionCpuMs": {
+        "median": 0.5999999940395355,
+        "p95": 1.199999988079071
+      },
+      "submissionCpuMs": {
+        "median": 2.2999999821186066,
+        "p95": 3.199999988079071
+      },
+      "blockingFrameMs": {
+        "median": 4.9000000059604645,
+        "p95": 7.4000000059604645
+      },
+      "renderedTriangles": {
+        "median": 317416,
+        "p95": 326018
+      },
+      "drawCalls": {
+        "median": 168,
+        "p95": 173
+      },
+      "gpuMs": {
+        "median": 1.37968,
+        "p95": 2.72361,
+        "validSamples": 30,
+        "disjoint": false,
+        "unavailableQueries": 0
+      }
+    }
+  ],
+  "scope": "Built-in procedural pines, fixed camera path, 512 m flat terrain. CPU measurements include selection/submission; blocking-frame timings include GPU completion and a synchronous 1-pixel readback, and are not interactive FPS. GPU timers are reported only when valid. Asset decode, history, autosave and realistic asset complexity are not benchmarked."
+}

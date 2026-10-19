@@ -1,0 +1,118 @@
+{
+  "repository": "https://github.com/noniv/web-ocean",
+  "commit": "a07c7fd522ef0a897601c114f927a49d93d95520",
+  "date": "2026-10-18T20:27:47.686Z",
+  "browser": "155.0.8059.82",
+  "cases": [
+    {
+      "name": "default-sunset",
+      "query": "",
+      "adapter": {
+        "vendor": "nvidia",
+        "architecture": "blackwell",
+        "device": "",
+        "description": "",
+        "isFallbackAdapter": false
+      },
+      "samples": [
+        "60 fps  16.67 ms  |  GPU 7.47 ms  |  906 nodes  1920x1080",
+        "60 fps  16.67 ms  |  GPU 7.41 ms  |  906 nodes  1920x1080",
+        "60 fps  16.67 ms  |  GPU 7.52 ms  |  906 nodes  1920x1080",
+        "60 fps  16.67 ms  |  GPU 7.61 ms  |  906 nodes  1920x1080",
+        "60 fps  16.67 ms  |  GPU 7.54 ms  |  906 nodes  1920x1080",
+        "60 fps  16.67 ms  |  GPU 7.40 ms  |  906 nodes  1920x1080",
+        "60 fps  16.67 ms  |  GPU 7.47 ms  |  906 nodes  1920x1080",
+        "60 fps  16.67 ms  |  GPU 7.51 ms  |  906 nodes  1920x1080",
+        "60 fps  16.67 ms  |  GPU 7.67 ms  |  906 nodes  1920x1080",
+        "60 fps  16.66 ms  |  GPU 7.61 ms  |  906 nodes  1920x1080"
+      ],
+      "errors": [],
+      "reportedGpuMs": {
+        "min": 7.4,
+        "medianOfHudSamples": 7.515,
+        "max": 7.67
+      },
+      "reportedFps": [60],
+      "localScreenshot": ".qa/ocean-research/default-sunset.png"
+    },
+    {
+      "name": "daylight-wind",
+      "query": "&sunElev=35&windSpeed=12&swellHs=2",
+      "adapter": {
+        "vendor": "nvidia",
+        "architecture": "blackwell",
+        "device": "",
+        "description": "",
+        "isFallbackAdapter": false
+      },
+      "samples": [
+        "60 fps  16.66 ms  |  GPU 8.30 ms  |  906 nodes  1920x1080",
+        "60 fps  16.67 ms  |  GPU 8.34 ms  |  906 nodes  1920x1080",
+        "60 fps  16.67 ms  |  GPU 8.40 ms  |  906 nodes  1920x1080",
+        "60 fps  16.67 ms  |  GPU 8.40 ms  |  906 nodes  1920x1080",
+        "60 fps  16.66 ms  |  GPU 8.23 ms  |  906 nodes  1920x1080",
+        "60 fps  16.67 ms  |  GPU 8.30 ms  |  906 nodes  1920x1080",
+        "60 fps  16.67 ms  |  GPU 8.30 ms  |  906 nodes  1920x1080",
+        "60 fps  16.67 ms  |  GPU 8.31 ms  |  906 nodes  1920x1080",
+        "60 fps  16.67 ms  |  GPU 8.50 ms  |  906 nodes  1920x1080",
+        "60 fps  16.66 ms  |  GPU 8.56 ms  |  906 nodes  1920x1080"
+      ],
+      "errors": [],
+      "reportedGpuMs": {
+        "min": 8.23,
+        "medianOfHudSamples": 8.325,
+        "max": 8.56
+      },
+      "reportedFps": [60],
+      "localScreenshot": ".qa/ocean-research/daylight-wind.png"
+    }
+  ],
+  "status": "Upstream standalone reference only; no application integration",
+  "sourceHtml": "https://raw.githubusercontent.com/noniv/web-ocean/a07c7fd522ef0a897601c114f927a49d93d95520/ocean.html",
+  "sourceHtmlSha256": "61e4fe5edf10253b0552570b574da7206754c2fb6033e2e6d73845daae4b36e8",
+  "platform": "Windows",
+  "renderSize": [1920, 1080],
+  "headless": true,
+  "gpuInventory": [
+    {
+      "Name": "AMD Radeon(TM) 860M Graphics",
+      "Vendor": 4098,
+      "Device": 4372,
+      "Low": 71890,
+      "High": 0
+    },
+    {
+      "Name": "NVIDIA GeForce RTX 5060 Laptop GPU",
+      "Vendor": 4318,
+      "Device": 11545,
+      "Low": 79562,
+      "High": 0
+    },
+    {
+      "Name": "Microsoft Basic Render Driver",
+      "Vendor": 5140,
+      "Device": 140,
+      "Low": 79509,
+      "High": 0
+    }
+  ],
+  "adapterVerification": "Actual demo requestAdapter result reports nvidia / blackwell / isFallbackAdapter false. Device/description are privacy-redacted. The sole NVIDIA DXGI adapter is the GeForce RTX 5060 Laptop GPU; AMD 860M is not the selected WebGPU vendor.",
+  "method": {
+    "launch": "Installed Chrome, temporary profile, scripts/chrome-gpu.mjs high-performance/DXGI flags",
+    "input": "Pinned self-contained ocean.html served unchanged over ephemeral loopback HTTP; only requestAdapter metadata instrumented",
+    "camera": "Unmodified upstream initial camera; no navigation during sampling",
+    "warmup": "4 seconds after the HUD first reports FPS",
+    "sampling": "10 HUD text samples at 1-second intervals for each case",
+    "timing": "Upstream smoothed GPU timestamp interval: first compute pass through final composite; includes ocean simulation/rendering/sky/postprocessing",
+    "screenshot": "After sampling; not included in collected timing samples",
+    "localReproduction": "node .qa/ocean-research/probe-web-ocean.mjs (local review harness and pinned HTML, no dependency installation)"
+  },
+  "limits": [
+    "Short isolated upstream ocean views, no Terrain Studio terrain, foliage, shoreline, depth/refraction integration or editor work.",
+    "HUD values are rounded and smoothed; not per-frame timing distributions or physical input-to-display latency.",
+    "No incremental integrated-renderer cost, GPU memory measurement, other browsers or sustained performance validation.",
+    "Daylight case changes sun/wind/swell while retaining default exposure; screenshot is visibly bright.",
+    "GodotOceanWaves source and MIT license reviewed at a171446f8174348895aaafc426576c26261058b9; Godot not installed or executed.",
+    "Research changes documentation only; no upstream source added to production app."
+  ]
+}

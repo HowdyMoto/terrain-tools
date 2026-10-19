@@ -1,0 +1,15 @@
+Pine Tree 01
+Source: https://polyhaven.com/a/pine_tree_01
+Provider: Poly Haven
+License: CC0 1.0 Universal (CC0-1.0)
+License URL: https://creativecommons.org/publicdomain/zero/1.0/
+Provider license: https://polyhaven.com/license
+
+Creators:
+Rico Cilliers - Modeling - https://www.artstation.com/rico_b3d
+Rob Tuytel - Photography - https://www.artstation.com/tuytel
+
+Downloaded: 2026-10-16 (UTC)
+Format: glTF 2.0, 2K textures
+Changes: none; original ZIP and byte-identical extracted files retained.
+See ../../CREDITS.md and ../../manifest.json for the collection record.

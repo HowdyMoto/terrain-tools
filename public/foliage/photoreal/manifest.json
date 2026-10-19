@@ -1,0 +1,218 @@
+{
+  "license": "CC0-1.0",
+  "generator": "scripts/build-photoreal-foliage.mjs",
+  "sources": {
+    "fern_02": {
+      "source": "https://polyhaven.com/a/fern_02",
+      "credits": "Rico Cilliers (modeling); Rob Tuytel (scanning)",
+      "license": "CC0-1.0",
+      "gltfSha256": "50540d37531f93fd693d5340d5b3095c9d6d2834fa05c74bea797d54f290cb6a",
+      "binarySha256": "fe1abb762bcbbc7ad9e86925c8080437a62add257d9280e9142fdc85c226e64c",
+      "alpha": {
+        "asset": "fern_02",
+        "file": "fern_02_alpha_2k.png",
+        "size": 230089,
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fern_02/fern_02_alpha_2k.png",
+        "md5": "ff18f7e8e869c58eac8f9c7d7c519f4a",
+        "sha256": "f51eb9b8f9f4b25a882f8fe12d1ef53ba69448bac7e71396ec1f05b684e9ea75"
+      }
+    },
+    "shrub_sorrel_01": {
+      "source": "https://polyhaven.com/a/shrub_sorrel_01",
+      "credits": "Rico Cilliers (author)",
+      "license": "CC0-1.0",
+      "gltfSha256": "803e54269cd9cd787eef44a797b399e6d7c433e897013602dd3569bf45ceb164",
+      "binarySha256": "725f46bf6d330486bf22d4b897fa1d8ef01cdc77a72f1400a3939f86740b4e5d",
+      "alpha": {
+        "asset": "shrub_sorrel_01",
+        "file": "shrub_sorrel_01_alpha_2k.png",
+        "size": 152339,
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/shrub_sorrel_01/shrub_sorrel_01_alpha_2k.png",
+        "md5": "103c750f2bcac491ea47b4efea48477c",
+        "sha256": "41780f20a9721ad58ed30381a80845408c331c31c293d5987c7c782de618ac0f"
+      }
+    },
+    "grass_medium_01": {
+      "source": "https://polyhaven.com/a/grass_medium_01",
+      "credits": "Rico Cilliers (modeling); Rob Tuytel (photography)",
+      "license": "CC0-1.0",
+      "gltfSha256": "aed63929a83fb694e6884e3a5c0fdb962ab8cf9153830247c8201a482ff02664",
+      "binarySha256": "f4587cabdb96a2e96d8be644923dc954a248edfaaa717a0ff224cacb898bee1f",
+      "alpha": {
+        "asset": "grass_medium_01",
+        "file": "grass_medium_01_alpha_2k.png",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/grass_medium_01/grass_medium_01_alpha_2k.png",
+        "md5": "0810166131307c1094d37e73a8490542",
+        "size": 1580653,
+        "sha256": "4af2c3d5ebf167764ad3746f8c925dc4fbe28f0df023656599123cb593b793dd"
+      }
+    },
+    "pine_tree_01": {
+      "source": "https://polyhaven.com/a/pine_tree_01",
+      "credits": "Rico Cilliers (modeling); Rob Tuytel (photography)",
+      "license": "CC0-1.0",
+      "gltfSha256": "3ba564fda11ee173d43b1302908e51ef491f95453f2793b1b17c3bf74ed0ad0b",
+      "binarySha256": "9955ac7e2f8fe28dc6da8e4d478593ad830f8a23d44e39a2187ef7dffac2646b",
+      "alpha": {
+        "asset": "pine_tree_01",
+        "file": "pine_tree_01_twig_alpha_2k.png",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/pine_tree_01/pine_tree_01_twig_alpha_2k.png",
+        "md5": "85f9f62d98dc35cce642895d75f79fa6",
+        "size": 814656,
+        "sha256": "1e5a1fe741f4cb731a3f537589db62a1cbcd380775e44d13f1b88b9e717df56b"
+      }
+    }
+  },
+  "models": {
+    "ph-fern-b": {
+      "source": "fern_02",
+      "node": "fern_02_b",
+      "triangles": 2384,
+      "vertices": 1660,
+      "name": "Fern B",
+      "file": "ph-fern-b.glb",
+      "bytes": 1536872,
+      "sha256": "c209330cb06bb05c0de91285c06ccf3f8312ca6bfb208c9d8a5b40f489c9628f"
+    },
+    "ph-fern-b-low": {
+      "source": "fern_02",
+      "node": "fern_02_b",
+      "triangles": 1072,
+      "vertices": 844,
+      "name": "Fern B · Low Detail",
+      "file": "ph-fern-b-low.glb",
+      "bytes": 472944,
+      "sha256": "1a0ed3665307fafbe7c33d78030d83a9e4cd3f416c5ff28f52cffe22df63d17e"
+    },
+    "ph-fern-a": {
+      "source": "fern_02",
+      "node": "fern_02_a",
+      "triangles": 784,
+      "vertices": 544,
+      "name": "Fern A",
+      "file": "ph-fern-a.glb",
+      "bytes": 1481956,
+      "sha256": "e206202ead63f1a712927cf1036ac190072324021c72243819bfa8be64365049"
+    },
+    "ph-fern-a-low": {
+      "source": "fern_02",
+      "node": "fern_02_a",
+      "triangles": 351,
+      "vertices": 279,
+      "name": "Fern A · Low Detail",
+      "file": "ph-fern-a-low.glb",
+      "bytes": 446208,
+      "sha256": "9ec7da96d2fef00ab9773930a9826538709d7743389dcf182b6769b3d7216ec7"
+    },
+    "ph-sorrel-b": {
+      "source": "shrub_sorrel_01",
+      "node": "shrub_sorrel_01_b",
+      "triangles": 414,
+      "vertices": 351,
+      "name": "Sorrel B",
+      "file": "ph-sorrel-b.glb",
+      "bytes": 1829528,
+      "sha256": "43930ab78f2a114096feb7a3d5ed6b12c9835ea76da2da04899be17a28a7261d"
+    },
+    "ph-sorrel-b-low": {
+      "source": "shrub_sorrel_01",
+      "node": "shrub_sorrel_01_b",
+      "triangles": 186,
+      "vertices": 207,
+      "name": "Sorrel B · Low Detail",
+      "file": "ph-sorrel-b-low.glb",
+      "bytes": 565012,
+      "sha256": "487eb1f8ee3074d08bb8cea34f022ce6f1c54923d11369e3b37b32fca8b0630f"
+    },
+    "ph-sorrel-d": {
+      "source": "shrub_sorrel_01",
+      "node": "shrub_sorrel_01_d",
+      "triangles": 990,
+      "vertices": 852,
+      "name": "Sorrel D",
+      "file": "ph-sorrel-d.glb",
+      "bytes": 1852480,
+      "sha256": "18557dcf2784968bb7bd6d76dd35de078d65393a8a87af61d1fe815a540f9977"
+    },
+    "ph-sorrel-d-low": {
+      "source": "shrub_sorrel_01",
+      "node": "shrub_sorrel_01_d",
+      "triangles": 445,
+      "vertices": 504,
+      "name": "Sorrel D · Low Detail",
+      "file": "ph-sorrel-d-low.glb",
+      "bytes": 577608,
+      "sha256": "b983f06b956ac0dcf38ffa23f13062e6c5acec850c8439e1a8de2aee249bf297"
+    },
+    "ph-grass-tall-a": {
+      "source": "grass_medium_01",
+      "node": "grass_medium_01_tall_a_LOD0",
+      "triangles": 290,
+      "vertices": 330,
+      "name": "Grass Tall A",
+      "file": "ph-grass-tall-a.glb",
+      "bytes": 1821152,
+      "sha256": "4a67caa32e114aff9e6644547c27b633a6524e7ef841578f0d9856d5f86450a3"
+    },
+    "ph-grass-tall-a-low": {
+      "source": "grass_medium_01",
+      "node": "grass_medium_01_tall_a_LOD0",
+      "triangles": 130,
+      "vertices": 172,
+      "name": "Grass Tall A · Low Detail",
+      "file": "ph-grass-tall-a-low.glb",
+      "bytes": 548600,
+      "sha256": "ed776c47865b634be2111eb8693bd2941c246f1aea0483e12e592420a5e6cf39"
+    },
+    "ph-grass-tall-b": {
+      "source": "grass_medium_01",
+      "node": "grass_medium_01_tall_b_LOD0",
+      "triangles": 310,
+      "vertices": 354,
+      "name": "Grass Tall B",
+      "file": "ph-grass-tall-b.glb",
+      "bytes": 1822160,
+      "sha256": "07ea438a60bd3d4d0b4947db2e685b122697bf4e4e7b439ae1eda4bd1cb19992"
+    },
+    "ph-grass-tall-b-low": {
+      "source": "grass_medium_01",
+      "node": "grass_medium_01_tall_b_LOD0",
+      "triangles": 139,
+      "vertices": 183,
+      "name": "Grass Tall B · Low Detail",
+      "file": "ph-grass-tall-b-low.glb",
+      "bytes": 549080,
+      "sha256": "e5e99884818c51b7067025dcbc0895fab4cd7e6e8bb910b1aa5ec75a1251da7a"
+    },
+    "ph-pine-b": {
+      "source": "pine_tree_01",
+      "node": "pine_tree_01_b_LOD0",
+      "triangles": 25630,
+      "vertices": 37937,
+      "name": "Pine B",
+      "file": "ph-pine-b.glb",
+      "bytes": 5080776,
+      "sha256": "ba01a1365e6e25b6d52a743562592f4064f7a169a5d160275949a194d21f0704"
+    },
+    "ph-pine-b-mid": {
+      "source": "pine_tree_01",
+      "node": "pine_tree_01_b_LOD0",
+      "triangles": 10942,
+      "vertices": 18141,
+      "name": "Pine B · Medium Detail",
+      "file": "ph-pine-b-mid.glb",
+      "bytes": 1704836,
+      "sha256": "0dbe2431783587a87a23c12c9b98801cda1797136a18650b1d78cf66ec825fbb"
+    },
+    "ph-pine-b-low": {
+      "source": "pine_tree_01",
+      "node": "pine_tree_01_b_LOD0",
+      "triangles": 4774,
+      "vertices": 8566,
+      "name": "Pine B · Low Detail",
+      "file": "ph-pine-b-low.glb",
+      "bytes": 1324400,
+      "sha256": "007c9bf06a9022d8d13c365c4402cb42cea9ebcccc5294c5014ce9795eb6033b"
+    }
+  }
+}

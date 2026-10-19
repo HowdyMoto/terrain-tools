@@ -1,0 +1,129 @@
+{
+  "verifiedAt": "2026-10-15T02:29:34.721Z",
+  "scope": "Recoverable CPU construction/allocation failures in scene replacement; individual terrain/foliage/prop/collider rebuild resource preservation. Not whole-edit rollback or fatal GPU/process recovery.",
+  "checks": {
+    "unitTests": 164,
+    "unitFiles": 22,
+    "chromeScenarios": 33,
+    "buildStatus": 0
+  },
+  "runtime": {
+    "attempts": [
+      {
+        "failed": true,
+        "calls": 3,
+        "samePixels": true,
+        "geometryCount": 7,
+        "sameProject": true,
+        "sameMeshes": true,
+        "sameFoliage": true,
+        "sameProps": true
+      },
+      {
+        "failed": true,
+        "calls": 3,
+        "samePixels": true,
+        "geometryCount": 7,
+        "sameProject": true,
+        "sameMeshes": true,
+        "sameFoliage": true,
+        "sameProps": true
+      },
+      {
+        "failed": true,
+        "calls": 3,
+        "samePixels": true,
+        "geometryCount": 7,
+        "sameProject": true,
+        "sameMeshes": true,
+        "sameFoliage": true,
+        "sameProps": true
+      }
+    ],
+    "geometryCount": 7,
+    "changedPixels": true,
+    "propHeight": 12,
+    "remainingGeometry": 0
+  },
+  "editor": {
+    "injectedFailures": [
+      {
+        "stage": "terrain",
+        "array": "Float32Array",
+        "length": 3267,
+        "failAt": 3
+      },
+      {
+        "stage": "picking",
+        "array": "Uint32Array",
+        "length": 6144,
+        "failAt": 2
+      },
+      {
+        "stage": "collision",
+        "array": "Float32Array",
+        "length": 3267,
+        "failAt": 10
+      }
+    ],
+    "unchangedPixelsAndHistory": true,
+    "failedRedoRetainsHistory": true,
+    "retryUndoRedoAndSubsequentSculptPassed": true,
+    "nativeFiles": {
+      "baseline.terrain": {
+        "bytes": 91228,
+        "sha256": "3b8799a2cfe996e6a15fc17089690fb3a1e2e39265a6a306f6b6588c0f705ce2"
+      },
+      "terrain-failure.terrain": {
+        "bytes": 91228,
+        "sha256": "3b8799a2cfe996e6a15fc17089690fb3a1e2e39265a6a306f6b6588c0f705ce2"
+      },
+      "picking-failure.terrain": {
+        "bytes": 91228,
+        "sha256": "3b8799a2cfe996e6a15fc17089690fb3a1e2e39265a6a306f6b6588c0f705ce2"
+      },
+      "collision-failure.terrain": {
+        "bytes": 91228,
+        "sha256": "3b8799a2cfe996e6a15fc17089690fb3a1e2e39265a6a306f6b6588c0f705ce2"
+      },
+      "failed-redo.terrain": {
+        "bytes": 91228,
+        "sha256": "3b8799a2cfe996e6a15fc17089690fb3a1e2e39265a6a306f6b6588c0f705ce2"
+      },
+      "retried.terrain": {
+        "bytes": 91236,
+        "sha256": "42b081a6b1fb5f9e6a8fc8733c2d1849b15e96976e4fe4a92d58092f8ff8d053"
+      },
+      "undone.terrain": {
+        "bytes": 91228,
+        "sha256": "3b8799a2cfe996e6a15fc17089690fb3a1e2e39265a6a306f6b6588c0f705ce2"
+      },
+      "redone.terrain": {
+        "bytes": 91236,
+        "sha256": "42b081a6b1fb5f9e6a8fc8733c2d1849b15e96976e4fe4a92d58092f8ff8d053"
+      },
+      "edited-after-recovery.terrain": {
+        "bytes": 91440,
+        "sha256": "9adeda8d2b5c37cbc1c9c53e1609700fe18f8f2c17464ea966a2f9ae63ceaf2f"
+      }
+    }
+  },
+  "publicTypes": {
+    "checked": "2026-10-15T02:26:31.749Z",
+    "strict": true,
+    "skipLibCheck": false,
+    "coreAndThreeNodeNext": {
+      "status": 0,
+      "config": ".qa/recovery-three.tsconfig.json"
+    },
+    "includingRapierBundler": {
+      "status": 0,
+      "config": ".qa/recovery-bundler.tsconfig.json"
+    },
+    "includingRapierNodeNext": {
+      "status": 2,
+      "config": ".qa/recovery-public.tsconfig.json",
+      "limitation": "Installed @dimforge/rapier3d-compat 0.19.3 rapier.d.ts imports ./exports without an ESM extension (TS2834). Dependency files were not changed."
+    }
+  }
+}

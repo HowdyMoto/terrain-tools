@@ -1,0 +1,317 @@
+{
+  "collection": "CC0 foliage source assets",
+  "verifiedAt": "2026-10-16T15:12:58.796120+00:00",
+  "license": "CC0-1.0",
+  "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "providerLicenseUrl": "https://polyhaven.com/license",
+  "resolution": "2K",
+  "format": "glTF 2.0 with external binary buffers and JPEG textures",
+  "downloadMethod": "Official asset page in Chrome; glTF / 2K / Download",
+  "modifications": "None; original archives and byte-identical extracted contents retained.",
+  "verification": "ZIP CRC checks; extracted bytes match archive; local glTF buffers, images, views and accessors checked. Not a visual or engine compatibility test.",
+  "assets": [
+    {
+      "id": "fern_02",
+      "name": "Fern 02",
+      "provider": "Poly Haven",
+      "sourceUrl": "https://polyhaven.com/a/fern_02",
+      "authors": [
+        {
+          "name": "Rico Cilliers",
+          "url": "https://www.artstation.com/rico_b3d",
+          "role": "Modeling"
+        },
+        {
+          "name": "Rob Tuytel",
+          "url": "https://www.artstation.com/tuytel",
+          "role": "Scanning"
+        }
+      ],
+      "archive": {
+        "path": "poly-haven/fern_02/fern_02_2k.gltf.zip",
+        "bytes": 3393953,
+        "sha256": "757fe30e23daf1b2ded56e3d047b8e89116c8301e2ffe78d8f1a8c6ca024c002"
+      },
+      "entryPoint": "poly-haven/fern_02/gltf-2k/fern_02_2k.gltf",
+      "meshCount": 4,
+      "nodeCount": 4,
+      "sceneCount": 1,
+      "meshes": ["Plane.024", "Plane.044", "Plane.006", "Plane.059"],
+      "files": [
+        {
+          "path": "poly-haven/fern_02/gltf-2k/fern_02_2k.gltf",
+          "bytes": 6899,
+          "sha256": "50540d37531f93fd693d5340d5b3095c9d6d2834fa05c74bea797d54f290cb6a"
+        },
+        {
+          "path": "poly-haven/fern_02/gltf-2k/textures/fern_02_diff_2k.jpg",
+          "bytes": 993703,
+          "sha256": "9ee18172170728050871772e2cd6d8d37b52f9138e61b49b04486623f9caf84b"
+        },
+        {
+          "path": "poly-haven/fern_02/gltf-2k/textures/fern_02_arm_2k.jpg",
+          "bytes": 850856,
+          "sha256": "1eaf9bd29e2d83a77ca5d89bdddebcd9216b8b4ba244644580fe5b89bbe713f1"
+        },
+        {
+          "path": "poly-haven/fern_02/gltf-2k/fern_02.bin",
+          "bytes": 176176,
+          "sha256": "fe1abb762bcbbc7ad9e86925c8080437a62add257d9280e9142fdc85c226e64c"
+        },
+        {
+          "path": "poly-haven/fern_02/gltf-2k/textures/fern_02_nor_gl_2k.jpg",
+          "bytes": 1365615,
+          "sha256": "dfe1ac4a428d21f7c134411500177d66b8dd800c8fec6f0040c50f44414a777b"
+        }
+      ]
+    },
+    {
+      "id": "shrub_sorrel_01",
+      "name": "Shrub Sorrel 01",
+      "provider": "Poly Haven",
+      "sourceUrl": "https://polyhaven.com/a/shrub_sorrel_01",
+      "authors": [
+        {
+          "name": "Rico Cilliers",
+          "url": "https://www.artstation.com/rico_b3d",
+          "role": "Author"
+        }
+      ],
+      "archive": {
+        "path": "poly-haven/shrub_sorrel_01/shrub_sorrel_01_2k.gltf.zip",
+        "bytes": 3702919,
+        "sha256": "de4b644a46fdd4bbf025ae1752d8c092f2b66c8b58c069587df06b3a4d260911"
+      },
+      "entryPoint": "poly-haven/shrub_sorrel_01/gltf-2k/shrub_sorrel_01_2k.gltf",
+      "meshCount": 11,
+      "nodeCount": 11,
+      "sceneCount": 1,
+      "meshes": [
+        "Plane.016",
+        "Plane.020",
+        "Plane.026",
+        "Plane.030",
+        "Plane.038",
+        "Plane.044",
+        "Plane.047",
+        "Plane.015",
+        "Plane.014",
+        "Plane.013",
+        "Plane.012"
+      ],
+      "files": [
+        {
+          "path": "poly-haven/shrub_sorrel_01/gltf-2k/shrub_sorrel_01_2k.gltf",
+          "bytes": 17428,
+          "sha256": "803e54269cd9cd787eef44a797b399e6d7c433e897013602dd3569bf45ceb164"
+        },
+        {
+          "path": "poly-haven/shrub_sorrel_01/gltf-2k/textures/shrub_sorrel_01_diff_2k.jpg",
+          "bytes": 1208902,
+          "sha256": "956ea2f96f3d8a1156233b773293fdef8d255ff0e076e69ddb05ff66695e7d4c"
+        },
+        {
+          "path": "poly-haven/shrub_sorrel_01/gltf-2k/shrub_sorrel_01.bin",
+          "bytes": 110936,
+          "sha256": "725f46bf6d330486bf22d4b897fa1d8ef01cdc77a72f1400a3939f86740b4e5d"
+        },
+        {
+          "path": "poly-haven/shrub_sorrel_01/gltf-2k/textures/shrub_sorrel_01_arm_2k.jpg",
+          "bytes": 613088,
+          "sha256": "376e8d768a156b6f498df7d639df83056607b5c4c0334b2079a6a8838d52dd2f"
+        },
+        {
+          "path": "poly-haven/shrub_sorrel_01/gltf-2k/textures/shrub_sorrel_01_nor_gl_2k.jpg",
+          "bytes": 1751781,
+          "sha256": "de0374dcb0c346d1fc9ac4a9babb60b9aa70fc8f55db991f89683dbc949e98a1"
+        }
+      ]
+    },
+    {
+      "id": "grass_medium_01",
+      "name": "Grass Medium 01",
+      "provider": "Poly Haven",
+      "sourceUrl": "https://polyhaven.com/a/grass_medium_01",
+      "authors": [
+        {
+          "name": "Rico Cilliers",
+          "url": "https://www.artstation.com/rico_b3d",
+          "role": "Modeling"
+        },
+        {
+          "name": "Rob Tuytel",
+          "url": "https://www.artstation.com/tuytel",
+          "role": "Photography"
+        }
+      ],
+      "archive": {
+        "path": "poly-haven/grass_medium_01/grass_medium_01_2k.gltf.zip",
+        "bytes": 7987802,
+        "sha256": "1c855dbcc417fa6e3882065dc2664ebdb82c01cb8c9df0f2175689a5605f89c5"
+      },
+      "entryPoint": "poly-haven/grass_medium_01/gltf-2k/grass_medium_01_2k.gltf",
+      "meshCount": 17,
+      "nodeCount": 17,
+      "sceneCount": 1,
+      "meshes": [
+        "Plane.037",
+        "Plane.038",
+        "Plane.039",
+        "Plane.042",
+        "Plane.043",
+        "Plane.045",
+        "Plane.047",
+        "Plane.048",
+        "Plane.050",
+        "Plane.051",
+        "Plane.053",
+        "Plane.054",
+        "Plane.055",
+        "Plane.056",
+        "Plane.057",
+        "Plane.058",
+        "Plane.059"
+      ],
+      "files": [
+        {
+          "path": "poly-haven/grass_medium_01/gltf-2k/grass_medium_01_2k.gltf",
+          "bytes": 27110,
+          "sha256": "aed63929a83fb694e6884e3a5c0fdb962ab8cf9153830247c8201a482ff02664"
+        },
+        {
+          "path": "poly-haven/grass_medium_01/gltf-2k/textures/grass_medium_01_nor_gl_2k.jpg",
+          "bytes": 3530394,
+          "sha256": "245349ce6d1910b3b7474da6013452a5be993f9058be78e17171a0866a6889e9"
+        },
+        {
+          "path": "poly-haven/grass_medium_01/gltf-2k/textures/grass_medium_01_diff_2k.jpg",
+          "bytes": 1166527,
+          "sha256": "f768aa68daf14f37a92dd96621628a5252b169f4d94b4d1cc830d62cd3ac9e68"
+        },
+        {
+          "path": "poly-haven/grass_medium_01/gltf-2k/textures/grass_medium_01_arm_2k.jpg",
+          "bytes": 2256355,
+          "sha256": "7b593b1c470c1817b937bb3ca00da7e4b27ca00120e98b06b43bb3a7d5810aa1"
+        },
+        {
+          "path": "poly-haven/grass_medium_01/gltf-2k/grass_medium_01.bin",
+          "bytes": 1006632,
+          "sha256": "f4587cabdb96a2e96d8be644923dc954a248edfaaa717a0ff224cacb898bee1f"
+        }
+      ]
+    },
+    {
+      "id": "pine_tree_01",
+      "name": "Pine Tree 01",
+      "provider": "Poly Haven",
+      "sourceUrl": "https://polyhaven.com/a/pine_tree_01",
+      "authors": [
+        {
+          "name": "Rico Cilliers",
+          "url": "https://www.artstation.com/rico_b3d",
+          "role": "Modeling"
+        },
+        {
+          "name": "Rob Tuytel",
+          "url": "https://www.artstation.com/tuytel",
+          "role": "Photography"
+        }
+      ],
+      "archive": {
+        "path": "poly-haven/pine_tree_01/pine_tree_01_2k.gltf.zip",
+        "bytes": 982151347,
+        "sha256": "1c247d0532b917f045ce7dfb7caa889b95d7258a2c62a61c33e86aa274db6f3b"
+      },
+      "entryPoint": "poly-haven/pine_tree_01/gltf-2k/pine_tree_01_2k.gltf",
+      "meshCount": 3,
+      "nodeCount": 3,
+      "sceneCount": 1,
+      "meshes": ["NurbsPath.022", "NurbsPath.023", "NurbsPath.024"],
+      "files": [
+        {
+          "path": "poly-haven/pine_tree_01/gltf-2k/pine_tree_01_2k.gltf",
+          "bytes": 30596,
+          "sha256": "3ba564fda11ee173d43b1302908e51ef491f95453f2793b1b17c3bf74ed0ad0b"
+        },
+        {
+          "path": "poly-haven/pine_tree_01/gltf-2k/textures/pine_tree_01_bark_nor_gl_2k.jpg",
+          "bytes": 3373886,
+          "sha256": "5b0cc5c45f8f42c2bb7f20518f6a06485d4eaa5444380907916e278517cc5b1e"
+        },
+        {
+          "path": "poly-haven/pine_tree_01/gltf-2k/textures/pine_tree_01_bark_diff_2k.jpg",
+          "bytes": 2700448,
+          "sha256": "359bb1be7aab30f5b79d391af9ef088503d6d135d529c9fc06bce60adf28ef60"
+        },
+        {
+          "path": "poly-haven/pine_tree_01/gltf-2k/textures/pine_tree_01_bark_arm_2k.jpg",
+          "bytes": 2941366,
+          "sha256": "7afccadf4d239dfbcb99338067bf1b4d0c3316b42021ac2d7cdf17f8dddb7346"
+        },
+        {
+          "path": "poly-haven/pine_tree_01/gltf-2k/textures/pine_tree_01_trunk_a_nor_gl_2k.jpg",
+          "bytes": 3642074,
+          "sha256": "783e714a9916f411ed6686e2558f469e4b3e0de407c9e2ed797f97020b7bf6e9"
+        },
+        {
+          "path": "poly-haven/pine_tree_01/gltf-2k/textures/pine_tree_01_trunk_a_diff_2k.jpg",
+          "bytes": 3028704,
+          "sha256": "34dc75688c783a9ecbbd79f072449f270baededb5787f556846c03759fa2f818"
+        },
+        {
+          "path": "poly-haven/pine_tree_01/gltf-2k/textures/pine_tree_01_trunk_a_arm_2k.jpg",
+          "bytes": 2974686,
+          "sha256": "ee5d9aad98a063ed67698ab39d972a764a719986dc704957f9b2a0e18a7d4ef2"
+        },
+        {
+          "path": "poly-haven/pine_tree_01/gltf-2k/textures/pine_tree_01_twig_nor_gl_2k.jpg",
+          "bytes": 2924424,
+          "sha256": "d1275b97c77199d22aa523bb408389d1c661517fee1a73961b2f64d0697819c2"
+        },
+        {
+          "path": "poly-haven/pine_tree_01/gltf-2k/textures/pine_tree_01_twig_diff_2k.jpg",
+          "bytes": 1623201,
+          "sha256": "288f8752514dfcfb78e5d6bc927b585605a13b050a1a79de78044f7c0574c0fc"
+        },
+        {
+          "path": "poly-haven/pine_tree_01/gltf-2k/textures/pine_tree_01_twig_arm_2k.jpg",
+          "bytes": 1524195,
+          "sha256": "4906628f36f545db1bb9fb3d83ce247ef1266ae2ad77942f23066030c3abce22"
+        },
+        {
+          "path": "poly-haven/pine_tree_01/gltf-2k/textures/pine_tree_01_trunk_b_nor_gl_2k.jpg",
+          "bytes": 3269280,
+          "sha256": "e8c30af34534ae51f24f445b4a77f650f52f3e0771ef92ce834bbc148b2ad979"
+        },
+        {
+          "path": "poly-haven/pine_tree_01/gltf-2k/textures/pine_tree_01_trunk_b_diff_2k.jpg",
+          "bytes": 2548347,
+          "sha256": "ce30477f492b6aeee5c467350024fa375eb5f95e19f4ab60a2dc778c1559b696"
+        },
+        {
+          "path": "poly-haven/pine_tree_01/gltf-2k/textures/pine_tree_01_trunk_b_arm_2k.jpg",
+          "bytes": 2718246,
+          "sha256": "f4c3473798c9096a9050eeafc699d1d6aedc13c949a24a46405dd70869e80d08"
+        },
+        {
+          "path": "poly-haven/pine_tree_01/gltf-2k/pine_tree_01.bin",
+          "bytes": 948849556,
+          "sha256": "9955ac7e2f8fe28dc6da8e4d478593ad830f8a23d44e39a2187ef7dffac2646b"
+        }
+      ]
+    }
+  ],
+  "unavailable": [
+    {
+      "id": "LeafSet030",
+      "name": "Leaf Set 030",
+      "provider": "ambientCG",
+      "sourceUrl": "https://ambientcg.com/view?id=LeafSet030",
+      "downloadUrl": "https://ambientcg.com/get?file=LeafSet030_2K-JPG.zip",
+      "status": "not-downloaded",
+      "reason": "Chrome blocked acg-download.struffelproductions.com with ERR_BLOCKED_BY_CLIENT."
+    }
+  ],
+  "archiveBytes": 997236021,
+  "extractedBytes": 997231411
+}

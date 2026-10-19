@@ -1,0 +1,151 @@
+{
+  "timestamp": "2026-10-15T01:52:42.470Z",
+  "browser": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+  "gpu": "ANGLE (AMD, AMD Radeon(TM) 860M Graphics (0x00001114) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "samplesPerPhase": 30,
+  "resolution": [960, 540],
+  "textureResolution": 1024,
+  "antialias": false,
+  "shadows": false,
+  "prepareMs": 291.80000001192093,
+  "timerQueryAvailable": true,
+  "phases": [
+    {
+      "pass": "forward",
+      "enabledLayers": 0,
+      "blockingFrameMs": {
+        "median": 2.5,
+        "p95": 3.0999999940395355
+      },
+      "submissionCpuMs": {
+        "median": 0.29999998211860657,
+        "p95": 0.4000000059604645
+      },
+      "gpuMs": {
+        "median": 1.26512,
+        "p95": 1.72076,
+        "validSamples": 30,
+        "disjoint": false,
+        "unavailableQueries": 0
+      },
+      "triangles": 32768,
+      "drawCalls": 16,
+      "gpuTextures": 4,
+      "capture": "test-results/surface-variation-0.png"
+    },
+    {
+      "pass": "forward",
+      "enabledLayers": 1,
+      "blockingFrameMs": {
+        "median": 3,
+        "p95": 3.699999988079071
+      },
+      "submissionCpuMs": {
+        "median": 0.19999998807907104,
+        "p95": 0.30000001192092896
+      },
+      "gpuMs": {
+        "median": 2.0852,
+        "p95": 2.58904,
+        "validSamples": 30,
+        "disjoint": false,
+        "unavailableQueries": 0
+      },
+      "triangles": 32768,
+      "drawCalls": 16,
+      "gpuTextures": 4,
+      "capture": "test-results/surface-variation-1.png"
+    },
+    {
+      "pass": "forward",
+      "enabledLayers": 4,
+      "blockingFrameMs": {
+        "median": 5.399999976158142,
+        "p95": 5.800000011920929
+      },
+      "submissionCpuMs": {
+        "median": 0.20000001788139343,
+        "p95": 0.30000001192092896
+      },
+      "gpuMs": {
+        "median": 4.07724,
+        "p95": 4.60504,
+        "validSamples": 30,
+        "disjoint": false,
+        "unavailableQueries": 0
+      },
+      "triangles": 32768,
+      "drawCalls": 16,
+      "gpuTextures": 4,
+      "capture": "test-results/surface-variation-4.png"
+    },
+    {
+      "pass": "reverse",
+      "enabledLayers": 4,
+      "blockingFrameMs": {
+        "median": 5.4000000059604645,
+        "p95": 5.9000000059604645
+      },
+      "submissionCpuMs": {
+        "median": 0.20000001788139343,
+        "p95": 0.30000001192092896
+      },
+      "gpuMs": {
+        "median": 4.1662,
+        "p95": 4.65716,
+        "validSamples": 30,
+        "disjoint": false,
+        "unavailableQueries": 0
+      },
+      "triangles": 32768,
+      "drawCalls": 16,
+      "gpuTextures": 4
+    },
+    {
+      "pass": "reverse",
+      "enabledLayers": 1,
+      "blockingFrameMs": {
+        "median": 3.0999999940395355,
+        "p95": 3.399999976158142
+      },
+      "submissionCpuMs": {
+        "median": 0.19999998807907104,
+        "p95": 0.30000001192092896
+      },
+      "gpuMs": {
+        "median": 1.90932,
+        "p95": 2.26932,
+        "validSamples": 30,
+        "disjoint": false,
+        "unavailableQueries": 0
+      },
+      "triangles": 32768,
+      "drawCalls": 16,
+      "gpuTextures": 4
+    },
+    {
+      "pass": "reverse",
+      "enabledLayers": 0,
+      "blockingFrameMs": {
+        "median": 2.5,
+        "p95": 3.2000000178813934
+      },
+      "submissionCpuMs": {
+        "median": 0.20000001788139343,
+        "p95": 0.30000001192092896
+      },
+      "gpuMs": {
+        "median": 1.43468,
+        "p95": 1.7684,
+        "validSamples": 30,
+        "disjoint": false,
+        "unavailableQueries": 0
+      },
+      "triangles": 32768,
+      "drawCalls": 16,
+      "gpuTextures": 4
+    }
+  ],
+  "scope": "Reference terrain and generated color maps only; foliage/props omitted. Eight warm-up frames per phase. Forward and reverse order. Blocking timings include GPU completion/readback, not interactive FPS. No hardware budget or AA-quality certification.",
+  "sourceSha256": "1e9a5223f800da7ddbb7e4fe98abf47a19ffd080ec72798b15ae83fb03169f89"
+}

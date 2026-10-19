@@ -1,0 +1,84 @@
+{
+  "verifiedAt": "2026-10-16",
+  "scope": "TIFF/TGA material texture imports; terrain geometry heightmap exchange is unchanged",
+  "checks": {
+    "typecheck": "npm run typecheck: passed",
+    "lint": "npm run lint: passed",
+    "format": "Prettier check passed for all changed source, test and documentation files.",
+    "build": "npm run build: passed (typecheck, runtime build, declarations and editor production build). Existing bundle-size warnings remain.",
+    "units": {
+      "fullCommand": "npm test",
+      "fullResult": "253 passed; two existing large-fixture tests exceeded the default 5000 ms timeout (history mixed edits; sculpt preset full-size alpha).",
+      "retryCommand": "npm test -- tests/history.test.ts tests/sculpt-preset.test.ts --testTimeout=15000",
+      "retryResult": "15 passed",
+      "decoderCommand": "npm test -- tests/texture-decode.test.ts",
+      "decoderResult": "33 passed, including two additional 16-bit Deflate/predictor endian tests after the full run.",
+      "distinctTestsPassed": 257,
+      "files": 34
+    },
+    "editorBuild": "npx vite build --configLoader native --outDir .qa/material-formats-dist: passed",
+    "browser": {
+      "command": "npx playwright test --config .qa/material-formats.playwright.config.mjs tests/browser/material-formats.spec.mjs tests/browser/material-engine-import.spec.mjs tests/browser/material-worker.spec.mjs tests/browser/material-authoring.spec.mjs tests/browser/asset-import.spec.mjs",
+      "passed": 19,
+      "failed": 0,
+      "duration": "3.6 minutes",
+      "standardReproduction": "npm run build, then npm run test:browser -- tests/browser/material-formats.spec.mjs tests/browser/material-engine-import.spec.mjs tests/browser/material-worker.spec.mjs tests/browser/material-authoring.spec.mjs tests/browser/asset-import.spec.mjs",
+      "server": "Production preview of isolated .qa/material-formats-dist on port 5191; temporary config inherits playwright.config.ts."
+    }
+  },
+  "decoderCoverage": [
+    "Little/big-endian 16-bit TIFF, transparent RGB, exact numeric channel packing, and a resampling case that would differ if samples were quantized before packing.",
+    "All eight TIFF orientations, four TGA origins, white-is-zero TIFF, declared/associated alpha, 16-bit RGB and grayscale+alpha TGA, offset color palettes, raw and RLE TGA packets.",
+    "Independent sharp/libvips TIFFs: uncompressed/LZW/Deflate/PackBits, strips and padded tiles with horizontal prediction; noisy LZW dictionary growth/reset.",
+    "Independent 16-bit Deflate/predictor fixtures in both byte orders.",
+    "Bounded TIFF metadata, pixels and compressed blocks; malformed/truncated data, overflowing TGA runs, invalid palettes, oversized images and unsupported layouts.",
+    "TGA 2 alpha metadata with an extension and developer area."
+  ],
+  "browserCoverage": [
+    "Mixed TIFF/TGA full material sets with HDRP packed alpha, original RGB below zero alpha, normal/height/albedo conversion, thumbnails and numeric output.",
+    "Individual texture slots and legacy ORM composer, including 16-bit TIFF numeric channels and TGA alpha gloss inversion.",
+    "Corrupt-file and missing-alpha errors, cancellation of held conversion workers, unchanged native document, injected history capture failure and same-panel successful retry.",
+    "Undo, redo, autosave/reload and existing engine presets, PNG/JPEG import, inline-worker startup/rebuild recovery and rendered normal conventions."
+  ],
+  "realAsset": {
+    "source": "Existing local dirtwithrocks-ogl 2048x2048 PNG textures, re-encoded for verification. This checks real texture content; it is not a survey of arbitrary third-party TIFF/TGA encoders.",
+    "files": [
+      {
+        "name": "dirtwithrocks_Base_Color.tiff",
+        "bytes": 11283220
+      },
+      {
+        "name": "dirtwithrocks_Height.tiff",
+        "bytes": 2068050
+      },
+      {
+        "name": "dirtwithrocks_Ambient_Occlusion.tiff",
+        "bytes": 2033536
+      },
+      {
+        "name": "dirtwithrocks_Normal-ogl.tga",
+        "bytes": 16777234
+      }
+    ],
+    "result": "Preview, apply, autosave and native download passed; all four surface slots embedded as PNG. No page errors.",
+    "observedPreviewMs": 8455,
+    "timingLimit": "Single observation during other local test activity, not a performance benchmark.",
+    "artifact": ".qa/material-formats-real/preview.png"
+  },
+  "visualReview": [
+    "Real 2048² TIFF/TGA material preview at 1440x960",
+    "Compact material import dialog at 980x680"
+  ],
+  "environment": {
+    "node": "v24.18.1",
+    "platform": "Windows",
+    "browser": "Google Chrome 155.0.8059.79 with --enable-unsafe-swiftshader"
+  },
+  "limits": [
+    "TIFF/TGA input: under 20 MB, at most 16,777,216 pixels. First TIFF image only. No new npm dependencies; TIFF decoding uses UTIF bundled with Three.js.",
+    "Classic unsigned 8/16-bit interleaved grayscale/RGB TIFF, 8-bit indexed TIFF; supported compression is uncompressed/LZW/Deflate/PackBits. BigTIFF, floats, CMYK, JPEG TIFF and camera RAW require external conversion.",
+    "TGA supports raw/RLE true-color/indexed/grayscale; interleaved scanlines are rejected. TGA 16-bit gray means gray+alpha, not 16-bit height precision.",
+    "ICC profiles and gamma metadata are not transformed; use sRGB albedo. Converted material slots are 8-bit PNG; TIFF numeric samples retain source precision until final ORM packing.",
+    "Chrome/Windows only. No cross-browser/device certification, maximum-size batch stress test, or exhaustive vendor-format compatibility claim."
+  ]
+}

@@ -1,0 +1,296 @@
+{
+  "date": "2026-10-17",
+  "status": "Water quality/performance follow-up; a local implementation milestone, not a photorealistic production-readiness or CryEngine-parity claim.",
+  "changes": [
+    "Per-body wet-ground strength and vertical wet-bank extent; darkening and lower roughness extend from connected water without wetting isolated dry depressions.",
+    "Procedural shallow caustics affect directly lit terrain only, fade with depth/visibility, and freeze at zero animation speed. This is an approximation, not physically traced focusing.",
+    "Water caps temporal-history contribution through the existing HDR alpha channel, without another render pass. Opaque foliage retains its normal stabilization.",
+    "Scenery reflection traces use a shorter bounded march and cheaper depth reconstruction, and defer weak reflection angles to the existing environment reflection.",
+    "New shoreline textures stage before authoring commit; allocation failures retain the document/selection/history and can be retried.",
+    "Windows test/benchmark Chrome now selects the RTX 5060 using a freshly enumerated DXGI adapter LUID. It changes no user/browser/OS graphics preferences."
+  ],
+  "validation": {
+    "build": "npm run build passed on the final source, including strict type checks, runtime declarations and editor production output.",
+    "lint": "npm run lint passed; changed-file Prettier checks passed.",
+    "unit": "npm test -- --testTimeout=15000: 37 files, 284 tests passed. Uses the existing documented extended timeout for large fixtures.",
+    "browser": "12 distinct Chrome scenarios passed across material-authoring (2), temporal-aa (1), water authoring/recovery (2), water lighting (1), and navigation (6). The new fixture initially used an unsupported tone-mapping value and the wrong runtime update argument; both fixture errors were corrected before its passing runs. Full browser suite not rerun.",
+    "recovery": "Injected both R32F bathymetry and RGBA32F shoreline allocation failures, retained document/redo/body selection, and verified successful retries.",
+    "visual": "Inspected the built runtime shallow-water fixture and the dense tropical coastal screenshots. The water fixture verifies dry-bank preservation, direct-only animated caustics and exact legacy shading restoration. The tropical comparison is dominated by the finite terrain's boundary wall, so it is a performance stress view rather than a finished photorealistic beach composition."
+  },
+  "method": {
+    "command": "npm run dev -- --port 5190 --strictPort; node scripts/benchmark-water.mjs <external scene.terrain> <report.json> http://127.0.0.1:5190 [coast|canopy]",
+    "source": "Unchanged external Tropical Grove — banana trail; 88 m terrain, 7,323 plants. Water is added in benchmark memory, never saved into the content project.",
+    "device": "NVIDIA RTX 5060 Laptop GPU, Chrome 155, Windows ANGLE D3D11, 1920 x 1080 fullscreen first person, one unfinished GPU frame.",
+    "sampling": "2.5-second warmup then 180 rendered frames for water off, sky reflections and scenery reflections. Reported GPU timer covers environment rendering; CPU timing covers JavaScript render submission. FPS is wall-time submission cadence, not display scanout.",
+    "comparison": "Before/after use identical project bytes and camera. The final preset additionally enables wet banks and caustics. A trial terrain projection optimization was removed before final measurements because its benefit was not established.",
+    "limits": [
+      "Short static views, local background/clock/thermal variability and sequential mode order; do not infer a precise percentage speedup from these runs.",
+      "The canopy has little visible water. Coast and canopy observations do not establish sustained 30 FPS throughout the scene.",
+      "No physical mouse-to-display measurement, cross-device audit or long-session memory/performance soak."
+    ]
+  },
+  "remaining": [
+    "Off-screen/planar reflections, spectral waves and breaking surf/crest whitecaps.",
+    "Physically focused caustics, volumetric scattering and dedicated water motion vectors.",
+    "Drying history, prop wetness/caustics, worker-based basin/shore preparation and finer outline editing.",
+    "A finished coastal content composition with authored seabed beyond the finite heightfield."
+  ],
+  "beforeCoast": {
+    "date": "2026-10-17T23:07:21.559Z",
+    "scene": {
+      "name": "Tropical Grove — banana trail",
+      "size": 88,
+      "foliage": 7323,
+      "seaLevel": 1.0785553097724914,
+      "adapter": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Laptop GPU (0x00002D19) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "buffer": [1920, 1080],
+      "browser": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+      "camera": [0, 4.578555309772492, 59.84],
+      "view": "coast"
+    },
+    "results": [
+      {
+        "mode": "off",
+        "frames": 180,
+        "fps": 49.50221238938053,
+        "frameMs": {
+          "median": 16.69999998807907,
+          "p95": 33.5
+        },
+        "cpuSubmitMs": {
+          "median": 10.799999982118607,
+          "p95": 16
+        },
+        "gpuMs": {
+          "median": 8.921344,
+          "p95": 19.234176
+        },
+        "gpuSamples": 179,
+        "triangles": 5827874,
+        "textures": 104,
+        "waterError": null
+      },
+      {
+        "mode": "sky",
+        "frames": 180,
+        "fps": 43.13253012048193,
+        "frameMs": {
+          "median": 16.80000001192093,
+          "p95": 33.599999994039536
+        },
+        "cpuSubmitMs": {
+          "median": 12.599999994039536,
+          "p95": 15.900000005960464
+        },
+        "gpuMs": {
+          "median": 10.86944,
+          "p95": 14.944896
+        },
+        "gpuSamples": 179,
+        "triangles": 5862691,
+        "textures": 104,
+        "waterError": null
+      },
+      {
+        "mode": "scenery",
+        "frames": 180,
+        "fps": 29.998826861489416,
+        "frameMs": {
+          "median": 33.30000001192093,
+          "p95": 33.69999998807907
+        },
+        "cpuSubmitMs": {
+          "median": 20.799999982118607,
+          "p95": 25.19999998807907
+        },
+        "gpuMs": {
+          "median": 17.149824,
+          "p95": 21.745696
+        },
+        "gpuSamples": 179,
+        "triangles": 5862691,
+        "textures": 104,
+        "waterError": null
+      }
+    ],
+    "errors": [],
+    "limits": "Static forest shoreline camera; 180 rendered frames per mode after warmup. GPU timer covers environment rendering passes. Does not measure input-to-display latency or promise performance for other views."
+  },
+  "finalCoast": {
+    "date": "2026-10-17T23:15:41.865Z",
+    "scene": {
+      "name": "Tropical Grove — banana trail",
+      "size": 88,
+      "foliage": 7323,
+      "seaLevel": 1.0785553097724914,
+      "adapter": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Laptop GPU (0x00002D19) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "buffer": [1920, 1080],
+      "browser": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+      "camera": [0, 4.578555309772492, 59.84],
+      "view": "coast"
+    },
+    "results": [
+      {
+        "mode": "off",
+        "frames": 180,
+        "fps": 35.683671231699584,
+        "frameMs": {
+          "median": 33.099999994039536,
+          "p95": 34
+        },
+        "cpuSubmitMs": {
+          "median": 14.099999994039536,
+          "p95": 18.599999994039536
+        },
+        "gpuMs": {
+          "median": 11.22592,
+          "p95": 16.818336
+        },
+        "gpuSamples": 179,
+        "triangles": 5827874,
+        "textures": 105,
+        "waterError": null
+      },
+      {
+        "mode": "sky",
+        "frames": 180,
+        "fps": 38.77564283073842,
+        "frameMs": {
+          "median": 32.900000005960464,
+          "p95": 33.900000005960464
+        },
+        "cpuSubmitMs": {
+          "median": 12.900000005960464,
+          "p95": 15.5
+        },
+        "gpuMs": {
+          "median": 11.082912,
+          "p95": 13.917536
+        },
+        "gpuSamples": 179,
+        "triangles": 5862691,
+        "textures": 105,
+        "waterError": null
+      },
+      {
+        "mode": "scenery",
+        "frames": 180,
+        "fps": 30.9538631804024,
+        "frameMs": {
+          "median": 33.29999998211861,
+          "p95": 34
+        },
+        "cpuSubmitMs": {
+          "median": 14.599999994039536,
+          "p95": 18.400000005960464
+        },
+        "gpuMs": {
+          "median": 12.035328,
+          "p95": 16.23376
+        },
+        "gpuSamples": 179,
+        "triangles": 5862691,
+        "textures": 105,
+        "waterError": null
+      }
+    ],
+    "errors": [],
+    "limits": "Static forest shoreline camera; 180 rendered frames per mode after warmup. GPU timer covers environment rendering passes. Does not measure input-to-display latency or promise performance for other views."
+  },
+  "lightingFixture": {
+    "adapter": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Laptop GPU (0x00002D19) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "dry": 33.180236111111114,
+    "wet": 17.758430555555556,
+    "bankDry": 33.41226666666667,
+    "bankWet": 24.485777777777777,
+    "dryLandDifference": 0,
+    "causticDifference": 6.396888888888889,
+    "animationDifference": 7.483625,
+    "indirectCausticDifference": 0,
+    "legacyDifference": 0,
+    "alpha": 255,
+    "error": null
+  },
+  "finalCanopy": {
+    "date": "2026-10-17T23:17:03.838Z",
+    "scene": {
+      "name": "Tropical Grove — banana trail",
+      "size": 88,
+      "foliage": 7323,
+      "seaLevel": 1.0785553097724914,
+      "adapter": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Laptop GPU (0x00002D19) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "buffer": [1920, 1080],
+      "browser": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+      "camera": [0, 3.5785553097724914, 19.36],
+      "view": "canopy"
+    },
+    "results": [
+      {
+        "mode": "off",
+        "frames": 180,
+        "fps": 25.756878093725327,
+        "frameMs": {
+          "median": 33.5,
+          "p95": 50.400000005960464
+        },
+        "cpuSubmitMs": {
+          "median": 26.19999998807907,
+          "p95": 34.099999994039536
+        },
+        "gpuMs": {
+          "median": 22.031392,
+          "p95": 30.050592
+        },
+        "gpuSamples": 179,
+        "triangles": 18440340,
+        "textures": 165,
+        "waterError": null
+      },
+      {
+        "mode": "sky",
+        "frames": 180,
+        "fps": 29.915601236734354,
+        "frameMs": {
+          "median": 33.30000001192093,
+          "p95": 33.900000005960464
+        },
+        "cpuSubmitMs": {
+          "median": 20.5,
+          "p95": 26.099999994039536
+        },
+        "gpuMs": {
+          "median": 17.608192,
+          "p95": 22.251648
+        },
+        "gpuSamples": 179,
+        "triangles": 18475157,
+        "textures": 165,
+        "waterError": null
+      },
+      {
+        "mode": "scenery",
+        "frames": 180,
+        "fps": 29.26414569953551,
+        "frameMs": {
+          "median": 33.39999997615814,
+          "p95": 49.400000005960464
+        },
+        "cpuSubmitMs": {
+          "median": 23.30000001192093,
+          "p95": 28.400000005960464
+        },
+        "gpuMs": {
+          "median": 19.802464,
+          "p95": 24.549568
+        },
+        "gpuSamples": 179,
+        "triangles": 18475157,
+        "textures": 165,
+        "waterError": null
+      }
+    ],
+    "errors": [],
+    "limits": "Static forest shoreline camera; 180 rendered frames per mode after warmup. GPU timer covers environment rendering passes. Does not measure input-to-display latency or promise performance for other views."
+  },
+  "runtimeSHA256": "65FC48B27C0B3CC78C72382C5A36770118CA0F0BA8177138EA482411155AFEA7"
+}

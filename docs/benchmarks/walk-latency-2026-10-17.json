@@ -1,0 +1,194 @@
+{
+  "date": "2026-10-17",
+  "issue": "First-person camera felt delayed despite immediate mouse-to-quaternion updates.",
+  "cause": "Unbounded GPU submissions accumulated seven unfinished frames; device scale 2 also increased fullscreen drawing from 1080p to 4K.",
+  "changes": [
+    "A zero-timeout GPU fence poll admits at most one unfinished frame while walking. Busy callbacks yield to input instead of submitting another old camera pose.",
+    "A fence on the latest orbit frame also drains pre-existing work on walk entry. Fences are flushed, released and reset on context loss; failed fences cannot freeze navigation.",
+    "Walking uses at most 1920 * 1080 drawing pixels. CSS size/aspect and lighting settings stay intact; exiting restores device resolution.",
+    "FPS statistics use uncapped elapsed wall time rather than the clamped simulation delta."
+  ],
+  "environment": {
+    "os": "Windows",
+    "browser": "Chrome 155.0.8059.79",
+    "gpu": "NVIDIA GeForce RTX 5060 Laptop GPU, ANGLE Direct3D11",
+    "cssViewport": [1920, 1080],
+    "deviceScaleFactors": [1, 2],
+    "project": "External Namaqualand-detailed-daylight.terrain; project artwork remains outside the repository.",
+    "projectSha256": "92d0fe6ee23e9851a98e5309e0ecc7fe2f157a108ec34032d160359c89bbf199",
+    "effects": "Three 2048 shadow cascades, contact occlusion, temporal AA, wind; first-person FOV 75."
+  },
+  "method": {
+    "harness": "scripts/benchmark-walk.mjs",
+    "developmentServer": "npm run dev -- --port 5174 --strictPort",
+    "command": "node scripts/benchmark-walk.mjs \"<external project.terrain>\" .qa/walk-latency.json",
+    "input": "150 Playwright mouse movements while genuinely pointer locked; 8 ms Node delay between awaited moves, not a fixed mouse sampling rate.",
+    "measuredLatency": "Latest handled mouse event in a rendered frame to first observed completion of a fence inserted after lighting.render. Polled at submitted frames; includes polling quantization. Input delivery age is recorded separately.",
+    "fps": "Wall-time rate of completed JavaScript render submissions across input sweep and one-second settling period.",
+    "instrumentation": "Injects a development-only viewport reference through Playwright route interception. No product debug API, gl.finish or blocking readback."
+  },
+  "before": [
+    {
+      "dpr": 1,
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Laptop GPU (0x00002D19) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "canvas": [1920, 1080],
+      "fps": 38.88367460311137,
+      "submitMs": {
+        "median": 12.5,
+        "p95": 17.700000017881393,
+        "max": 34.29999998211861
+      },
+      "gpuCompleteMs": {
+        "median": 146.80000001192093,
+        "p95": 190.19999998807907,
+        "max": 359.90000000596046
+      },
+      "eventDeliveryMs": {
+        "median": 9.199999988079071,
+        "p95": 25.400000005960464,
+        "max": 56.599999994039536
+      },
+      "inputToSubmitMs": {
+        "median": 0.09999999403953552,
+        "p95": 0.29999998211860657,
+        "max": 3.5
+      },
+      "inputToGPUCompleteMs": {
+        "median": 148.5,
+        "p95": 204.09999999403954,
+        "max": 360.5
+      },
+      "maxPending": 7,
+      "frames": 204,
+      "events": 150
+    },
+    {
+      "dpr": 2,
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Laptop GPU (0x00002D19) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "canvas": [3840, 2160],
+      "fps": 23.846510233578904,
+      "submitMs": {
+        "median": 12.199999988079071,
+        "p95": 17.400000005960464,
+        "max": 21
+      },
+      "gpuCompleteMs": {
+        "median": 244.19999998807907,
+        "p95": 276.09999999403954,
+        "max": 333.90000000596046
+      },
+      "eventDeliveryMs": {
+        "median": 25.5,
+        "p95": 33.900000005960464,
+        "max": 84.39999997615814
+      },
+      "inputToSubmitMs": {
+        "median": 0.09999999403953552,
+        "p95": 0.20000001788139343,
+        "max": 0.4000000059604645
+      },
+      "inputToGPUCompleteMs": {
+        "median": 245.7999999821186,
+        "p95": 282.40000000596046,
+        "max": 334
+      },
+      "maxPending": 7,
+      "frames": 176,
+      "events": 150
+    }
+  ],
+  "after": [
+    {
+      "dpr": 1,
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Laptop GPU (0x00002D19) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "canvas": [1920, 1080],
+      "fps": 27.25568008362318,
+      "submitMs": {
+        "median": 16.399999976158142,
+        "p95": 20.799999982118607,
+        "max": 42.30000001192093
+      },
+      "gpuCompleteMs": {
+        "median": 33.400000005960464,
+        "p95": 50.29999998211861,
+        "max": 103.7000000178814
+      },
+      "eventDeliveryMs": {
+        "median": 6.9000000059604645,
+        "p95": 16.700000017881393,
+        "max": 35.70000001788139
+      },
+      "inputToSubmitMs": {
+        "median": 0.20000001788139343,
+        "p95": 17,
+        "max": 17.30000001192093
+      },
+      "inputToGPUCompleteMs": {
+        "median": 33.69999998807907,
+        "p95": 66.90000000596046,
+        "max": 105.2000000178814
+      },
+      "maxPending": 1,
+      "frames": 126,
+      "events": 150
+    },
+    {
+      "dpr": 2,
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Laptop GPU (0x00002D19) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "canvas": [1920, 1080],
+      "fps": 29.456687759109755,
+      "submitMs": {
+        "median": 11.5,
+        "p95": 14.400000005960464,
+        "max": 18.30000001192093
+      },
+      "gpuCompleteMs": {
+        "median": 33.30000001192093,
+        "p95": 39,
+        "max": 49.80000001192093
+      },
+      "eventDeliveryMs": {
+        "median": 6.800000011920929,
+        "p95": 15.699999988079071,
+        "max": 29.799999982118607
+      },
+      "inputToSubmitMs": {
+        "median": 0.19999998807907104,
+        "p95": 16.900000005960464,
+        "max": 29.700000017881393
+      },
+      "inputToGPUCompleteMs": {
+        "median": 33.60000002384186,
+        "p95": 50.30000001192093,
+        "max": 66.60000002384186
+      },
+      "maxPending": 1,
+      "frames": 136,
+      "events": 150
+    }
+  ],
+  "verification": {
+    "build": "npm run build passed; existing large-chunk warning.",
+    "lint": "npm run lint passed.",
+    "unit": "npm test -- --testTimeout=15000: 274 tests in 36 files passed.",
+    "browser": "npm run test:browser -- tests/browser/navigation.spec.mjs --output .qa/walk-latency-browser-results: all 6 passed against production build.",
+    "newRegression": "Injects a GPU-busy response while pointer locked at device scale 2. Confirms no new frames are submitted while busy, ten mouse reports all affect the very next rendered view matrix, no later drift, zero blocking timeouts, 1080p walk buffer and restored 4K orbit buffer.",
+    "preservedBehavior": "Existing navigation checks cover native mouse capture, fullscreen, cancellation/refusal/retry, focus loss, exact orbit restoration, selection, unchanged saved document and undo/redo."
+  },
+  "limits": [
+    "GPU completion is not physical mouse-to-monitor latency; display scanout/compositor latency is not measured.",
+    "Short development-page measurements with instrumentation and other desktop activity, not a guaranteed minimum frame rate. DPR1 after run overlapped final build activity; measured 27.3 FPS versus 29.5 FPS in DPR2 run.",
+    "Automated Windows Chrome and this RTX 5060 only. Dedicated GPU is explicitly selected for the test profile; user OS/browser preference is not modified.",
+    "One-frame pacing trades maximum throughput for input latency. It does not reduce asset geometry or solve shader compilation stalls.",
+    "High-DPI walking deliberately uses the agreed 1080p pixel budget; it is not native 4K rendering.",
+    "Full browser suite and other external content projects were not rerun for this fix."
+  ],
+  "sources": {
+    "src/render/frame-pacing.ts": "a6d7f1ec83865c4947970484810c653c06217596b145faf958b35e55bc5acdda",
+    "src/render/viewport.ts": "9c587fb0281da86d516b8c95c927ac263fe2ba844298aa097c7121a7a81bed77",
+    "tests/frame-pacing.test.ts": "82997468254f1366be49eddf2b8c29eef95050be58e769ee728ec28568b018a7",
+    "tests/first-person.test.ts": "d5e0cd1fc8d70f95a1e5a2fc1e25ee1d228f491ae352e2aeb8820e0e6c2bcf40",
+    "tests/browser/navigation.spec.mjs": "41af210730be14138e1b7a108ad6bf4919f3b4769d4a73c1c807204b61d42983",
+    "scripts/benchmark-walk.mjs": "516d24c6c1e8a781d57bd067522bc0a5d501e952cbb83cb65ba71d2d4ad87528"
+  }
+}

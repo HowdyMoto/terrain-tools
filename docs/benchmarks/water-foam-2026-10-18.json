@@ -1,0 +1,225 @@
+{
+  "date": "2026-10-18",
+  "status": "Shore foam detail correction. Procedural surface shading; not breaking-surf simulation or proof of photorealistic production readiness.",
+  "changes": [
+    "Replace broad soft noise with a generated 1024 x 1024 seamless texture containing rounded pores of varying sizes, microfroth and macro breakup.",
+    "Two world-space drifting layers; four-metre base tile (~3.9 mm texels), mipmaps and up to 8x anisotropic filtering.",
+    "Millimetre-scale normal relief and foam-dependent roughness respond to scene lighting.",
+    "One RGBA8 texture per prepared water state, shared across its ocean and local bodies (~5.3 MiB including mipmaps); immutable CPU bytes cached after first generation.",
+    "GPU texture upload and validation occur before document/history commit; failed allocations dispose candidate resources and retain existing water."
+  ],
+  "validation": {
+    "build": "npm run build passed (strict types, runtime/declarations, editor).",
+    "lint": "npm run lint and changed-file Prettier checks passed.",
+    "unit": "npm test -- --testTimeout=15000: 37 files, 284 tests passed.",
+    "browser": "Five scenarios passed: water-foam (1), water authoring/recovery (2), water-lighting (1), temporal-aa (1). Full browser suite not rerun.",
+    "command": "npm run test:browser -- tests/browser/water-foam.spec.mjs tests/browser/water.spec.mjs tests/browser/water-lighting.spec.mjs tests/browser/temporal-aa.spec.mjs --output .qa/foam-validation",
+    "recovery": "Injected RGBA8 1024 x 1024 foam allocation failure as well as existing height/shore failures; previous document, redo and visibility retained; retry and undo/redo passed.",
+    "visual": "Inspected before/after close-up, oblique and temporal fixture screenshots. Initial polygonal cellular detail was revised to rounded, differently sized pores and patch breakup.",
+    "fixture": "1280 x 720 built-runtime planar beach, six-metre orthographic close-up, real lighting/refraction; metric measures two-pixel (~9 mm) variation in the foam-minus-plain image, not a photorealism score.",
+    "baselineDetail": {
+      "adapter": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Laptop GPU (0x00002D19) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "detail": 0.7372277992277992,
+      "foamDifference": 33.76829772079772,
+      "outsideBandDifference": 0,
+      "pausedDifference": 0,
+      "animationDifference": 17.856918328584996,
+      "unlitFoamDifference": 0,
+      "error": null
+    },
+    "detail": {
+      "adapter": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Laptop GPU (0x00002D19) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "detail": 6.9813899613899615,
+      "coarseGridDifference": 0,
+      "temporalDetail": 6.383281853281853,
+      "foamDifference": 11.663915004748338,
+      "outsideBandDifference": 0,
+      "pausedDifference": 0,
+      "animationDifference": 16.09446106362773,
+      "unlitFoamDifference": 0,
+      "error": null
+    },
+    "images": {
+      "before": ".qa/foam-before/water-foam-shore-foam-reso-ad1a7-paused-and-follows-lighting/foam-close.png",
+      "after": ".qa/foam-validation/water-foam-shore-foam-reso-ad1a7-paused-and-follows-lighting/foam-close.png",
+      "temporal": ".qa/foam-validation/water-foam-shore-foam-reso-ad1a7-paused-and-follows-lighting/foam-temporal.png",
+      "oblique": ".qa/foam-validation/water-foam-shore-foam-reso-ad1a7-paused-and-follows-lighting/foam-oblique.png"
+    }
+  },
+  "performance": {
+    "method": "scripts/benchmark-water.mjs, unchanged external Tropical Grove .terrain, water added in memory. Identical coastal camera at 1920 x 1080, dedicated RTX 5060, 2.5-second warmup + 180 frames per off/sky/scenery mode. GPU timer covers environment rendering, CPU timer covers submission.",
+    "before": {
+      "date": "2026-10-18T20:09:20.925Z",
+      "scene": {
+        "name": "Tropical Grove — banana trail",
+        "size": 88,
+        "foliage": 7323,
+        "seaLevel": 1.0785553097724914,
+        "adapter": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Laptop GPU (0x00002D19) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "buffer": [1920, 1080],
+        "browser": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+        "camera": [0, 4.578555309772492, 59.84],
+        "view": "coast"
+      },
+      "results": [
+        {
+          "mode": "off",
+          "frames": 180,
+          "fps": 58.69044886763477,
+          "frameMs": {
+            "median": 16.69999998807907,
+            "p95": 17
+          },
+          "cpuSubmitMs": {
+            "median": 10.800000011920929,
+            "p95": 12.900000035762787
+          },
+          "gpuMs": {
+            "median": 8.943776,
+            "p95": 11.169312
+          },
+          "gpuSamples": 179,
+          "triangles": 5827874,
+          "textures": 105,
+          "waterError": null
+        },
+        {
+          "mode": "sky",
+          "frames": 180,
+          "fps": 57.126444118644926,
+          "frameMs": {
+            "median": 16.69999998807907,
+            "p95": 33
+          },
+          "cpuSubmitMs": {
+            "median": 11,
+            "p95": 12.900000035762787
+          },
+          "gpuMs": {
+            "median": 9.401696,
+            "p95": 11.419424
+          },
+          "gpuSamples": 179,
+          "triangles": 5862691,
+          "textures": 105,
+          "waterError": null
+        },
+        {
+          "mode": "scenery",
+          "frames": 180,
+          "fps": 57.745661011276056,
+          "frameMs": {
+            "median": 16.69999998807907,
+            "p95": 17.100000023841858
+          },
+          "cpuSubmitMs": {
+            "median": 10.899999976158142,
+            "p95": 12.699999988079071
+          },
+          "gpuMs": {
+            "median": 9.614368,
+            "p95": 11.558208
+          },
+          "gpuSamples": 179,
+          "triangles": 5862691,
+          "textures": 105,
+          "waterError": null
+        }
+      ],
+      "errors": [],
+      "limits": "Static forest shoreline camera; 180 rendered frames per mode after warmup. GPU timer covers environment rendering passes. Does not measure input-to-display latency or promise performance for other views."
+    },
+    "after": {
+      "date": "2026-10-18T20:15:06.737Z",
+      "scene": {
+        "name": "Tropical Grove — banana trail",
+        "size": 88,
+        "foliage": 7323,
+        "seaLevel": 1.0785553097724914,
+        "adapter": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Laptop GPU (0x00002D19) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "buffer": [1920, 1080],
+        "browser": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+        "camera": [0, 4.578555309772492, 59.84],
+        "view": "coast"
+      },
+      "results": [
+        {
+          "mode": "off",
+          "frames": 180,
+          "fps": 50.43247964455099,
+          "frameMs": {
+            "median": 16.69999998807907,
+            "p95": 33.5
+          },
+          "cpuSubmitMs": {
+            "median": 11.799999952316284,
+            "p95": 15.099999964237213
+          },
+          "gpuMs": {
+            "median": 9.76288,
+            "p95": 13.307904
+          },
+          "gpuSamples": 179,
+          "triangles": 5827874,
+          "textures": 106,
+          "waterError": null
+        },
+        {
+          "mode": "sky",
+          "frames": 180,
+          "fps": 55.647091740188195,
+          "frameMs": {
+            "median": 16.69999998807907,
+            "p95": 33.39999997615814
+          },
+          "cpuSubmitMs": {
+            "median": 11.899999976158142,
+            "p95": 13.699999988079071
+          },
+          "gpuMs": {
+            "median": 10.021952,
+            "p95": 11.918912
+          },
+          "gpuSamples": 179,
+          "triangles": 5862691,
+          "textures": 106,
+          "waterError": null
+        },
+        {
+          "mode": "scenery",
+          "frames": 180,
+          "fps": 52.65015589133842,
+          "frameMs": {
+            "median": 16.69999998807907,
+            "p95": 33.5
+          },
+          "cpuSubmitMs": {
+            "median": 11.699999988079071,
+            "p95": 14.5
+          },
+          "gpuMs": {
+            "median": 10.030176,
+            "p95": 12.158272
+          },
+          "gpuSamples": 179,
+          "triangles": 5862691,
+          "textures": 106,
+          "waterError": null
+        }
+      ],
+      "errors": [],
+      "limits": "Static forest shoreline camera; 180 rendered frames per mode after warmup. GPU timer covers environment rendering passes. Does not measure input-to-display latency or promise performance for other views."
+    },
+    "interpretation": "Water-enabled GPU medians changed from 9.40/9.61 to 10.02/10.03 ms; FPS changed from 57.1/57.7 to 55.6/52.7. The water-off control also varied (8.94 to 9.76 ms GPU, 58.7 to 50.4 FPS), so these sequential runs do not isolate the exact foam cost.",
+    "limits": [
+      "Static camera, short measurement, background/clock/thermal variability.",
+      "The external coastal view is dominated by the finite terrain boundary and has little foam; it checks integration/overall water rendering cost, not a worst-case foam-covered screen.",
+      "No cross-device audit, whole-forest FPS guarantee, physical input latency measurement or long-session memory soak."
+    ]
+  },
+  "remaining": [
+    "Breaking waves, foam accumulation/advection simulation and volumetric bubbles.",
+    "Arbitrary mesh contact foam; shoreline still follows the authored terrain triangles.",
+    "Dedicated motion vectors and a finished coastal content composition."
+  ]
+}

@@ -1,0 +1,90 @@
+{
+  "scope": "Dynamic solar time, atmospheric sky, moving sun/shadows and filtered sky illumination in the editor and runtime",
+  "environment": {
+    "os": "Windows",
+    "node": "24.18.1",
+    "browser": "Google Chrome 155.0.8059.79",
+    "viewport": "1440 x 960",
+    "browserLaunchFlag": "--enable-unsafe-swiftshader",
+    "three": "0.180.0"
+  },
+  "checks": {
+    "productionBuildAndTypecheck": {
+      "command": "npm run build",
+      "result": "passed",
+      "log": ".qa/daylight-build-final.log",
+      "note": "Existing large-chunk warnings remain."
+    },
+    "lint": {
+      "command": "npm run lint",
+      "result": "passed",
+      "log": ".qa/daylight-lint-final.log"
+    },
+    "units": {
+      "command": "npm test -- --testTimeout=15000",
+      "passed": 209,
+      "files": 31,
+      "log": ".qa/daylight-unit.log",
+      "note": "Uses the existing documented large-fixture allowance; configured timeouts are unchanged. Five new daylight cases."
+    },
+    "browser": {
+      "command": "npm run test:browser -- tests/browser/daylight.spec.mjs tests/browser/environment.spec.mjs tests/browser/settings-recovery.spec.mjs --output=.qa/daylight-final",
+      "passed": 9,
+      "failed": 0,
+      "log": ".qa/daylight-final.log"
+    },
+    "formatting": {
+      "command": "npm run format:check",
+      "result": "passed",
+      "log": ".qa/daylight-format-final.log"
+    }
+  },
+  "coverage": [
+    "Approximate solar position: east/west motion, latitude and seasons, north rotation, seamless midnight, polar day/night, finite direction and warm low-angle response.",
+    "Optional validated settings retain legacy static documents; JSON/native persistence; runtime ticks are independent of frame rate and do not mutate authored records.",
+    "Cached shadow bounds avoid rescanning terrain during playback; paused lighting stays fixed; leaving the dynamic sky disposes its resources and final disposal restores prior scene settings.",
+    "Rendered day/night difference, editable time, season and orientation, cycle speed and pause; advanced panels remain expanded across edits.",
+    "Playback leaves history and committed autosave unchanged while rendered time advances; GPU texture counts stay constant over several simulated hours in the fast-cycle fixture.",
+    "Native save, pause/undo/redo, autosave reload, embedded GLB round trip, standalone runtime restoration and rendered animation from a playing native document.",
+    "Four injected sky-capture/history failures, both during activation and active-sky replacement: exact viewport pixels, document, autosave and live texture counts survive. Failed activation retains redo. Retry and undo/redo succeed.",
+    "Importing EXR exits playback; enabling the sky retains embedded image bytes; invalid EXR replacements retain the dynamic sky; switching back to HDRI and fixed presets remains undoable."
+  ],
+  "visualReview": {
+    "scene": "Startup 192 m alpine terrain with 90 bundled photographic pine instances, wind disabled",
+    "times": ["12:00", "19:00", "19:45", "00:00"],
+    "artifacts": ".qa/daylight-photo-{noon,sunset,twilight,night}.png",
+    "observations": "Coherent bright daylight, warm sunset horizon, dim twilight and night silhouettes. Also inspected lower sky-intensity settings. Artist exposure/sky controls remain available.",
+    "renderErrors": [],
+    "unrelatedConsoleMessage": "favicon.ico returned 404; no shader/WebGL or uncaught page errors in this review.",
+    "metadata": ".qa/daylight-photo-review.json"
+  },
+  "fixesDuringVerification": [
+    "Preserved expanded Light panels and scroll position after setting changes.",
+    "Fixed malformed season and lighting-preset option markup discovered by browser interaction.",
+    "Limited ground-bounce blending to the illumination probe so the visible sky remains continuous at the horizon."
+  ],
+  "limits": [
+    "Chrome on Windows only. Cross-browser/mobile/device validation and dense realistic scene frame-time budgets remain open.",
+    "The procedural test fixture is small; the separate photographic-pine review validates rendering, not close-up foliage quality or AA production readiness.",
+    "Solar time uses a fixed season and approximate declination, without civil timezone, longitude, leap-year or atmospheric-refraction corrections.",
+    "Art-directed relative intensity, not measured irradiance or a calibrated physical daylight simulation. No volumetric clouds/fog, cloud shadows, moon or star field.",
+    "Filtered illumination uses a 128-pixel cube probe and two reusable PMREM outputs, refreshed at most twice per second. Fast cycles can expose this cadence; moving shadows remain limited by terrain extent and shadow-map settings.",
+    "Generic GLB viewers do not run the cycle; the toolkit restores it from embedded authoring data."
+  ],
+  "verifiedAt": "2026-10-16T12:30:52.8355083-07:00",
+  "sourceSha256": {
+    "src/core/daylight.ts": "5f750e3b4725ea27b5b50309d7093de8a59b5f0f62eb32e4ed529ae654beee14",
+    "src/core/environment.ts": "511a9cb81e5b13ad3a95bd4a36691cbf6e0ab252f7924b7810b9c77cbbbe5c95",
+    "src/runtime/daylight-sky.ts": "053512c22ec4d02e55e4272f4cd76487d5af0051f2bebed3aa688a5e9dde4cc8",
+    "src/runtime/environment.ts": "904f8b3764f7eff11cb8355a53e72de4e391486f6a0ba67b9fb2e557a635fe43",
+    "src/editor/daylight-controls.ts": "a45daaa329d99838d9eabde117945e57820f19579d80f21b586f9e98842c9df5",
+    "src/editor/environment-controls.ts": "90e6da1531ec88d12bd4b6ccf59985b9e644d085ef48225a05a135bb0ce6161a",
+    "src/main.ts": "04180abbeb6e2e56b786592bc85c0f61105f4317e4b71fdfbb79f53762a0b06c",
+    "src/render/viewport.ts": "44dc71a40e98e71cd9ae350b7f991d01393a18eb2abe02a54d4e5cabb7b82227",
+    "src/style.css": "5d2f6cea1c49933dd0aa8d0faf0bbfbef3b0b2432923da03b1f4703855d79f2a",
+    "src/index.ts": "daaabc191ee1c9183672d58978655ad56741d99869694b2d3e510266aed3999e",
+    "examples/runtime.mjs": "ff0b383c3f61c1aa99f093c1be3024075a52602574422d22268d920554ac858a",
+    "tests/daylight.test.ts": "8742b1943ad18663ed22401dd452b782533b2938e9d5e79991c0d204d2b5706f",
+    "tests/browser/daylight.spec.mjs": "51c0e46aa2bdcdbf95375765400c339a43b9c75abd0c3348095273d83dad1732"
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "verifiedAt": "2026-10-17",
+  "scope": "Material texture admission based on decoded pixels, with a larger file allowance and unchanged project asset budget",
+  "limits": {
+    "sourceFileBytes": 268435456,
+    "decodedPixels": 16777216,
+    "projectAssetBytes": 402653184,
+    "portablePresetJsonBytes": 134217728
+  },
+  "changes": [
+    "All material-set, individual-slot, ORM and worker paths share a 256 MiB file allowance. A 4K RGBA16 source plus metadata fits.",
+    "PNG/JPEG/WebP headers are checked before browser thumbnails and decoding. TIFF/TGA workers retain dimension checks before pixel allocation.",
+    "All material inputs use a 16-megapixel decoded-image bound; project Apply retains the existing 384 MiB distinct-asset budget.",
+    "PNG conversion supports source dimensions beyond the previous 2048-pixel render-size assumption, up to 16 MP / 8192 per side.",
+    "Serialized texture data URLs and native package image chunks accept the larger maps. Model/environment limits remain unchanged.",
+    "Material channel buffers transfer to the inline worker without structured-clone copies.",
+    "Portable surface presets retain their separate 128 MiB synchronous JSON limit; large native projects remain the appropriate container when a preset exceeds it."
+  ],
+  "checks": {
+    "build": "npm run build: passed, including typecheck, runtime/declarations and editor build. Existing bundle-size warnings remain.",
+    "lint": "npm run lint: passed",
+    "units": {
+      "command": "npm test -- --testTimeout=15000",
+      "passed": 269,
+      "files": 35,
+      "timeout": "Existing 15-second allowance for large fixtures."
+    },
+    "browserInitial": {
+      "command": "npx playwright test --config .qa/texture-limits.playwright.config.mjs tests/browser/material-formats.spec.mjs tests/browser/material-engine-import.spec.mjs tests/browser/material-worker.spec.mjs tests/browser/material-authoring.spec.mjs tests/browser/asset-import.spec.mjs",
+      "passed": 20,
+      "failed": 1,
+      "failure": "New 4K case exposed the PNG encoder's previous 2048-per-side limit; fixed."
+    },
+    "browserSecond": {
+      "command": "npx playwright test --config .qa/texture-limits.playwright.config.mjs tests/browser/material-formats.spec.mjs -g '4K uncompressed' --output .qa/texture-limits-4k-results",
+      "passed": 0,
+      "failed": 1,
+      "failure": "4K import/save succeeded; native package reopening exposed a separate 32 MB per-asset cap. Raised the cap for image chunks only."
+    },
+    "browserFinal": {
+      "command": "npx playwright test --config .qa/texture-limits.playwright.config.mjs tests/browser/material-formats.spec.mjs -g '4K uncompressed' --output .qa/texture-limits-4k-final-results",
+      "passed": 1,
+      "failed": 0,
+      "seconds": 20.3
+    },
+    "distinctBrowserScenariosPassed": 21,
+    "browserReproduction": "After npm run build, use npm run test:browser -- tests/browser/material-formats.spec.mjs tests/browser/material-engine-import.spec.mjs tests/browser/material-worker.spec.mjs tests/browser/material-authoring.spec.mjs tests/browser/asset-import.spec.mjs",
+    "server": "Production dist served on isolated port 5193; temporary config inherits playwright.config.ts."
+  },
+  "coverage": [
+    "Real 4096x4096 uncompressed BGRA TGA with seeded, difficult-to-compress pixels: 67,108,882 bytes. ORM channel output matches the source.",
+    "Full material preview/apply embeds PNG exceeding the former 28-million-character schema ceiling. PNG dimensions and first pixel independently checked with sharp.",
+    "Native download, undo, redo, IndexedDB autosave/reload and exact SHA-256 match of the restored embedded texture.",
+    "33 MiB schema fixture round-trips through native packages, exceeding both the former schema and 32 MB package limits. Shared project asset-budget enforcement and unchanged model rejection also checked.",
+    "File/decoded-dimension boundary checks; independent PNG, baseline/progressive JPEG, lossy/lossless/extended WebP fixtures; truncated headers and cancellation.",
+    "Small PNG/JPEG/WebP headers declaring 8192x8192 images are rejected before browser allocation. Chrome confirms no thumbnail, unchanged committed document, and successful replacement/retry.",
+    "Existing engine conversions, alpha/precision, cancellation, failure retry, history, rendering and worker-startup recovery scenarios.",
+    "Compact dialog visually reviewed at 980x680."
+  ],
+  "artifacts": [
+    ".qa/texture-limits-4k-final-results/",
+    ".qa/texture-limits-results/asset-import-cancels-pendi-72120-ts-drop-and-compact-layouts/compact-material-import.png"
+  ],
+  "limitations": [
+    "Windows/installed Chrome with --enable-unsafe-swiftshader only; no cross-device or cross-browser certification.",
+    "The 4K case is a deterministic synthetic texture, not a broad vendor-asset survey or peak-memory benchmark.",
+    "File and pixel limits bound individual inputs; they are not a guarantee of maximum process memory for every multi-map batch.",
+    "PNG numeric decoding and TIFF/TGA conversion retain an 8192-per-side bound in addition to pixel count; render texture arrays remain 256-2048 per side.",
+    "Surface presets keep the separate 128 MiB JSON limit. Terrain geometry/brush-alpha imports keep their existing limits."
+  ]
+}

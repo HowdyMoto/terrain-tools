@@ -1,0 +1,65 @@
+{
+  "scope": "Generated-asset reference workflow and rendering checks in Chrome; not a hardware performance or AA quality benchmark.",
+  "packageSha256": "1e9a5223f800da7ddbb7e4fe98abf47a19ffd080ec72798b15ae83fb03169f89",
+  "buildReproducedIdentically": true,
+  "render": {
+    "models": {
+      "upland-tuft": {
+        "triangles": 192,
+        "mapped": true,
+        "alphaTest": 0.45
+      },
+      "upland-lean": {
+        "triangles": 128,
+        "mapped": true,
+        "alphaTest": 0.45
+      },
+      "upland-distant": {
+        "triangles": 32,
+        "mapped": true,
+        "alphaTest": 0.45
+      },
+      "upland-limestone": {
+        "triangles": 320,
+        "mapped": true,
+        "alphaTest": 0
+      }
+    },
+    "foliage": 5263,
+    "props": 34,
+    "contactChangedChannels": 14743,
+    "recoveredChangedChannels": 0,
+    "windChangedChannels": 3593
+  },
+  "assets": [
+    {
+      "model": "upland-tuft",
+      "embeddedPngUnchanged": true,
+      "externalUris": false
+    },
+    {
+      "model": "upland-lean",
+      "embeddedPngUnchanged": true,
+      "externalUris": false
+    },
+    {
+      "model": "upland-distant",
+      "embeddedPngUnchanged": true,
+      "externalUris": false
+    },
+    {
+      "model": "upland-limestone",
+      "embeddedPngUnchanged": true,
+      "externalUris": false
+    }
+  ],
+  "editor": [
+    "cancelled download preserves scene/history",
+    "HTTP 503 preserves scene/history",
+    "one-step load undo and redo",
+    "surface edit preserves embedded assets and foliage",
+    "autosave and native reopen with source URLs blocked"
+  ],
+  "browserScenarios": 29,
+  "unitTests": 154
+}
