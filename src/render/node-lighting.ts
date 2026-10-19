@@ -1,6 +1,7 @@
 import type { MeshStandardMaterial, Node, WebGPURenderer } from 'three/webgpu';
 import { NodeMaterial } from 'three/webgpu';
 import { property } from 'three/tsl';
+import { installSharedGeometryOwnership } from './shared-geometry';
 
 export const terrainIndirect = property('vec3', 'terrainIndirect');
 export const terrainDirectSpecular = property('vec3', 'terrainDirectSpecular');
@@ -10,6 +11,7 @@ const installed = new WeakSet<WebGPURenderer>();
 /** Capture lighting while its actual accumulator nodes are in scope. Looking up
  * their debug names creates unrelated variables and silently loses illumination. */
 export function installTerrainLighting(renderer: WebGPURenderer) {
+  installSharedGeometryOwnership(renderer);
   if (installed.has(renderer)) return;
   installed.add(renderer);
   const configured = new WeakSet<NodeMaterial>();

@@ -14,7 +14,7 @@ import { referenceWorld, referenceHeight } from './world-source';
 import { createProject } from '../core/terrain';
 import { environmentPreset } from '../core/environment';
 
-const renderer = await createTerrainRenderer();
+const renderer = await createTerrainRenderer({ timestamps: true });
 renderer.setPixelRatio(1);
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;

@@ -10,7 +10,9 @@ export function isWebGPU(renderer?: unknown): renderer is WebGPURenderer {
 }
 
 /** Native WebGPU is required. Never silently run the WebGL fallback backend. */
-export async function createTerrainRenderer() {
+export async function createTerrainRenderer({
+  timestamps = false,
+}: { timestamps?: boolean } = {}) {
   if (!navigator.gpu)
     throw new Error(
       'Terrain Studio requires WebGPU. Open it in current Chrome or Edge with hardware acceleration enabled.',
@@ -19,7 +21,7 @@ export async function createTerrainRenderer() {
     antialias: true,
     alpha: false,
     powerPreference: 'high-performance',
-    trackTimestamp: true,
+    trackTimestamp: timestamps,
   });
   try {
     await renderer.init();

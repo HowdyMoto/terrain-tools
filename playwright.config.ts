@@ -15,7 +15,14 @@ export default defineConfig({
       args: [
         '--enable-unsafe-swiftshader',
         ...(process.env.CI && process.platform === 'linux'
-          ? ['--enable-unsafe-webgpu', '--use-webgpu-adapter=swiftshader']
+          ? [
+              '--enable-unsafe-webgpu',
+              '--enable-features=Vulkan',
+              '--use-angle=vulkan',
+              '--disable-vulkan-surface',
+              '--ignore-gpu-blocklist',
+              '--disable-gpu-watchdog',
+            ]
           : chromeGPUArgs()),
       ],
     },

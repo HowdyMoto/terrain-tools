@@ -52,6 +52,9 @@ function watchErrors(page) {
   return errors;
 }
 async function save(page, name) {
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   const pending = page.waitForEvent('download');
   await page.locator('#save').click();
   await (await pending).saveAs(name);

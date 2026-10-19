@@ -37,6 +37,9 @@ async function setup(page) {
     mimeType: 'application/json',
     buffer: Buffer.from(serializeProject(p)),
   });
+  await expect(page.locator('#toast')).toHaveText('Project loaded.', {
+    timeout: 60000,
+  });
   await expect(page.locator('#project-name')).toHaveValue(p.name, {
     timeout: 60000,
   });

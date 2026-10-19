@@ -89,8 +89,8 @@ export class Viewport {
     return this.content.terrainMaterial;
   }
   physics?: TerrainPhysics;
-  private cursor: THREE.LineLoop;
-  private readonly waterGuide = new THREE.LineLoop(
+  private cursor: THREE.Line;
+  private readonly waterGuide = new THREE.Line(
     new THREE.BufferGeometry(),
     new THREE.LineBasicMaterial({
       color: 0x71e4df,
@@ -138,10 +138,17 @@ export class Viewport {
       'position',
     ) as THREE.BufferAttribute;
     points
-      .slice(0, 129)
+      .slice(0, 128)
       .forEach((p, i) => position.setXYZ(i, p.x, p.y + 0.18, p.z));
+    if (points.length)
+      position.setXYZ(
+        Math.min(128, points.length),
+        points[0].x,
+        points[0].y + 0.18,
+        points[0].z,
+      );
     position.needsUpdate = true;
-    this.waterGuide.geometry.setDrawRange(0, Math.min(129, points.length));
+    this.waterGuide.geometry.setDrawRange(0, Math.min(128, points.length) + 1);
     this.waterGuide.visible = points.length > 1 && !this.navigationActive;
   }
   static async create(container: HTMLElement, project: TerrainProject) {
@@ -221,7 +228,7 @@ export class Viewport {
       this.renderer.domElement,
       this.controls,
     );
-    this.cursor = new THREE.LineLoop(
+    this.cursor = new THREE.Line(
       new THREE.BufferGeometry(),
       new THREE.LineBasicMaterial({
         color: '#e0ffd0',
@@ -229,6 +236,12 @@ export class Viewport {
         transparent: true,
         opacity: 0.9,
       }),
+    );
+    this.cursor.geometry.setAttribute(
+      'position',
+      new THREE.BufferAttribute(new Float32Array(97 * 3), 3).setUsage(
+        THREE.DynamicDrawUsage,
+      ),
     );
     this.cursor.renderOrder = 10;
     this.cursor.frustumCulled = false;
@@ -830,7 +843,10 @@ export class Viewport {
     this.cursor.visible = !!point && this.showBrush && !this.propTools.dragging;
     this.onHover?.(point);
     if (point && this.cursor.visible) {
-      const vertices = new Float32Array(96 * 3);
+      const position = this.cursor.geometry.getAttribute(
+        'position',
+      ) as THREE.BufferAttribute;
+      const vertices = position.array as Float32Array;
       for (let i = 0; i < 96; i++) {
         const a = (i / 96) * Math.PI * 2,
           divisor = this.brushSquare
@@ -848,10 +864,8 @@ export class Viewport {
             Math.cos(this.brushRotation) * lz;
         vertices.set([x, heightAt(this.project, x, z) + 0.2, z], i * 3);
       }
-      this.cursor.geometry.setAttribute(
-        'position',
-        new THREE.BufferAttribute(vertices, 3),
-      );
+      vertices.set(vertices.subarray(0, 3), 96 * 3);
+      position.needsUpdate = true;
     }
     if (this.pressed) this.emitStroke(point);
     if (this.physics) {

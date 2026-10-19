@@ -11,6 +11,7 @@ interface Owner {
 }
 const owners = new WeakMap<Attribute, Owner>();
 const registered = new WeakSet<BufferGeometry>();
+const installed = new WeakSet<WebGPURenderer>();
 
 /** Immutable model buffers belong to the leased base geometry, not a batch view. */
 export function registerSharedGeometry(base: BufferGeometry) {
@@ -34,6 +35,8 @@ export function registerSharedGeometry(base: BufferGeometry) {
  * cleanup finds them again. Defer their deletion to the leased base's disposal.
  * Keep this version-specific adapter local to initialized native renderers. */
 export function installSharedGeometryOwnership(renderer: WebGPURenderer) {
+  if (installed.has(renderer)) return;
+  installed.add(renderer);
   const attributes = (
     renderer as unknown as {
       _attributes: { delete(attribute: Attribute): unknown };

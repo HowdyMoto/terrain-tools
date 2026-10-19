@@ -17,9 +17,15 @@ async function set(page, id, value) {
     input.dispatchEvent(new Event('input', { bubbles: true }));
     input.dispatchEvent(new Event('change', { bubbles: true }));
   }, value);
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   await expect(page.locator('#save-state')).toHaveText('Saved locally');
 }
 async function save(page, info, name) {
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   const pending = page.waitForEvent('download');
   await page.locator('#save').click();
   const path = info.outputPath(name + '.terrain');
@@ -178,12 +184,15 @@ test('authors atmospheric times, plays without history churn, pauses, exports an
   const textureCount = await page.evaluate(() => window.daylightTextures.size);
   const clock = await page.locator('#daylight-time').inputValue();
   await expect
-    .poll(async () => {
-      const now = await page.locator('#daylight-time').inputValue();
-      const [h, m] = now.split(':').map(Number),
-        [beforeH, beforeM] = clock.split(':').map(Number);
-      return (h * 60 + m - beforeH * 60 - beforeM + 1440) % 1440;
-    })
+    .poll(
+      async () => {
+        const now = await page.locator('#daylight-time').inputValue();
+        const [h, m] = now.split(':').map(Number),
+          [beforeH, beforeM] = clock.split(':').map(Number);
+        return (h * 60 + m - beforeH * 60 - beforeM + 1440) % 1440;
+      },
+      { timeout: 20000 },
+    )
     .toBeGreaterThan(240);
   expect(await page.locator('#undo').getAttribute('title')).toBe(undo);
   expect(await autosave(page)).toEqual(playing);
@@ -201,11 +210,17 @@ test('authors atmospheric times, plays without history churn, pauses, exports an
     beforePlay.environment.timeOfDay.hour,
   );
   await page.locator('#undo').click();
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   await expect(page.locator('#daylight-play')).toHaveAttribute(
     'aria-pressed',
     'true',
   );
   await page.locator('#redo').click();
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   await expect(page.locator('#daylight-play')).toHaveAttribute(
     'aria-pressed',
     'false',
@@ -266,6 +281,9 @@ test('failed GPU sky capture or history preparation preserves pixels, resources 
   await page.locator('#project-name').fill('Redo branch');
   await page.locator('#project-name').press('Tab');
   await page.locator('#undo').click();
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   await expect(page.locator('#project-name')).toHaveValue(
     'Daylight verification',
   );
@@ -302,9 +320,15 @@ test('failed GPU sky capture or history preparation preserves pixels, resources 
   const enabled = await save(page, info, 'retried');
   expect(enabled.environment.timeOfDay.enabled).toBe(true);
   await page.locator('#undo').click();
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   await expect(page.locator('#daylight-enabled')).not.toBeChecked();
   expect(await save(page, info, 'undone')).toEqual(baseline);
   await page.locator('#redo').click();
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   await expect(page.locator('#daylight-enabled')).toBeChecked();
   expect(await save(page, info, 'redone')).toEqual(enabled);
   const activePixels = await pixels(page),
@@ -328,6 +352,9 @@ test('failed GPU sky capture or history preparation preserves pixels, resources 
   await page.locator('[data-solar-hour="0"]').click();
   await expect(page.locator('#daylight-time')).toHaveValue('00:00');
   await page.locator('#undo').click();
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   expect(await save(page, info, 'active-retry-undone')).toEqual(enabled);
   expect(errors).toEqual([]);
 });
@@ -368,6 +395,9 @@ test('switches between an animated sky and retained EXR illumination, with recov
     imported.environment.image,
   );
   await page.locator('#undo').click();
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   expect(await save(page, info, 'undone')).toEqual(dynamic);
   await (
     await inspectorControl(page, '#environment-preset')

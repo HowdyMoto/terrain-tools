@@ -32,6 +32,9 @@ async function range(page, key, value) {
   await expect(page.locator('#save-state')).toHaveText('Saved locally');
 }
 async function save(page, name) {
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   const pending = page.waitForEvent('download');
   await page.locator('#save').click();
   const path = 'test-results/' + name + '.json';
@@ -103,8 +106,14 @@ test('imports EXR illumination, rejects a damaged replacement, and restores it t
   );
   expect(await save(page, 'exr-after-invalid')).toEqual(imported);
   await page.locator('#undo').click();
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   await expect(page.locator('#env-rotation')).toHaveValue('0');
   await page.locator('#redo').click();
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   expect(await save(page, 'exr-redone')).toEqual(imported);
   await expect(page.locator('#save-state')).toHaveText('Saved locally');
   await page.reload();
@@ -222,6 +231,9 @@ test('authors lighting and HDRI, recovers invalid imports, and restores the auth
   await (await inspectorControl(page, '#remove-environment')).click();
   await expect(page.locator('#env-mode')).toHaveValue('sky');
   await page.locator('#undo').click();
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   await expect(page.locator('#env-mode')).toHaveValue('image');
   expect(await save(page, 'lighting-undone')).toEqual(imported);
   await page.reload();

@@ -328,6 +328,15 @@ export class WebGPUPipeline {
           }
         )._previousDepthNode.value;
         this.effects.push(temporal, initialDepth);
+        // Binding setup can upload the 1×1 bootstrap history before its first
+        // render. Register target ownership now so the first resize disposes
+        // that upload as well (Three otherwise retains one texture per rebuild).
+        const history = (
+          temporal as typeof temporal & {
+            _historyRenderTarget: RenderTarget;
+          }
+        )._historyRenderTarget;
+        this.renderer.initRenderTarget(history);
         result = mix(nodeObject(result), temporal, color.a);
         {
           const sharpenInput = convertToTexture(result);

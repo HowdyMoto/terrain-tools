@@ -89,6 +89,9 @@ test('shadow, occlusion and temporal allocation failures preserve the document, 
     expect(await history()).toEqual(beforeHistory);
     expect(await save(feature + '-failed')).toEqual(baseline);
     await page.reload();
+    await expect(page.locator('#app')).not.toHaveAttribute('inert', {
+      timeout: 90000,
+    });
     await expect(page.locator('#project-name')).toHaveValue(p.name, {
       timeout: 60000,
     });
@@ -106,6 +109,9 @@ test('shadow, occlusion and temporal allocation failures preserve the document, 
       else input.checked = true;
       input.dispatchEvent(new Event('change', { bubbles: true }));
     }, feature);
+    await expect(page.locator('#preparation-status')).toBeHidden({
+      timeout: 60000,
+    });
     await expect(page.locator('#save-state')).toHaveText('Saved locally', {
       timeout: 60000,
     });
@@ -137,6 +143,9 @@ test('shadow, occlusion and temporal allocation failures preserve the document, 
     const input = document.querySelector('#env-temporalSharpness');
     input.value = '0.65';
     input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
   });
   await expect(page.locator('#save-state')).toHaveText('Saved locally');
   // Detail is a uniform update: it must reuse the existing GPU resources.

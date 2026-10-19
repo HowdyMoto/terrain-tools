@@ -52,12 +52,13 @@ export function installNavigationProbe() {
         valid &&
         fields.cameraViewMatrix !== undefined &&
         fields.cameraProjectionMatrix !== undefined
-      )
+      ) {
         modules.set(result, {
           fields,
           binding: Number(binding[1]),
           group: Number(binding[2]),
         });
+      }
     }
     return result;
   };
@@ -78,7 +79,13 @@ export function installNavigationProbe() {
   const bind = GPUDevice.prototype.createBindGroup;
   GPUDevice.prototype.createBindGroup = function (descriptor) {
     const group = bind.call(this, descriptor);
-    groups.set(group, descriptor.entries);
+    groups.set(
+      group,
+      descriptor.entries.map((e) => ({
+        binding: e.binding,
+        resource: e.resource.buffer ? { ...e.resource } : e.resource,
+      })),
+    );
     return group;
   };
   const write = GPUQueue.prototype.writeBuffer;

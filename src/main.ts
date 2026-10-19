@@ -242,7 +242,6 @@ let dirty = false;
 let documentRevision = 0;
 let activePreparation: AbortController | undefined;
 let assetLodIndex: number | null = null;
-let environmentRequest = 0;
 let surfacePresetRules = false;
 let selectedWater = 'ocean';
 let waterPlacement: 'ellipse' | 'basin' | 'polygon' | null = null;
@@ -3358,38 +3357,32 @@ $('#save').onclick = async () => {
   }
 };
 async function changeEnvironment(value: EnvironmentSettings) {
-  viewport.finishStroke();
-  cancelPreparation();
-  erosionPanel?.close();
-  const settings = parseEnvironmentSettings(value),
-    source = project,
-    revision = ++documentRevision;
+  const settings = parseEnvironmentSettings(value);
   assertProjectCapacity({ ...project, environment: settings });
-  const request = ++environmentRequest;
-  const prepared = viewport.lighting.matchesSource(settings)
-    ? undefined
-    : await viewport.lighting.prepare(settings);
-  let applied = false;
-  try {
-    if (
-      project !== source ||
-      documentRevision !== revision ||
-      request !== environmentRequest
-    ) {
-      throw new Error(
-        'The document changed during environment import. Try again.',
-      );
-    }
-    history.checkpoint(project);
-    if (prepared) viewport.lighting.apply(prepared, project);
-    else viewport.lighting.set(settings, project);
-    applied = true;
-    project.environment = settings;
-    persist();
-    renderInspector();
-  } finally {
-    if (!applied) prepared?.dispose();
-  }
+  await prepareAction(
+    'Preparing lighting…',
+    async () => {
+      const prepared = viewport.lighting.matchesSource(settings)
+        ? undefined
+        : await viewport.lighting.prepare(settings);
+      let applied = false;
+      return {
+        apply() {
+          history.checkpoint(project);
+          if (prepared) viewport.lighting.apply(prepared, project);
+          else viewport.lighting.set(settings, project);
+          applied = true;
+          project.environment = settings;
+          persist();
+          renderInspector();
+        },
+        dispose() {
+          if (!applied) prepared?.dispose();
+        },
+      };
+    },
+    (prepared) => prepared.apply(),
+  );
 }
 $<HTMLInputElement>('#environment-open').onchange = async (event) => {
   const input = event.target as HTMLInputElement,

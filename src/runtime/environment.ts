@@ -316,7 +316,11 @@ type DisplayRenderer = Pick<
  * Three.js generates/caches PMREM maps and releases them when the source is disposed.
  */
 export class TerrainEnvironment {
-  readonly sun = new THREE.DirectionalLight();
+  private sunLight = new THREE.DirectionalLight();
+  /** Authored sun. Native shadow layout changes replace its GPU light identity. */
+  get sun() {
+    return this.sunLight;
+  }
   readonly ambient = new THREE.HemisphereLight();
   private readonly group = new THREE.Group();
   private prepared?: PreparedEnvironment;
@@ -327,11 +331,28 @@ export class TerrainEnvironment {
   private gpuCascades?: CSMShadowNode;
   private cascadeProjection = '';
   private releaseGPUCascades() {
-    this.gpuCascades?.lights.forEach((light) => light.dispose());
+    // CSM's lightweight lights are Object3D instances, not DirectionalLights;
+    // their dispose() does not release the child ShadowNodes in Three r186.
+    (
+      this.gpuCascades as
+        (CSMShadowNode & { _shadowNodes: { dispose(): void }[] }) | undefined
+    )?._shadowNodes.forEach((node) => node.dispose());
+    this.gpuCascades?.lights.forEach((light) => {
+      light.shadow?.dispose();
+      light.dispose();
+    });
     this.gpuCascades?.dispose();
     this.gpuCascades = undefined;
     this.cascadeProjection = '';
     this.sun.shadow.shadowNode = undefined;
+  }
+  private replaceGPUSun() {
+    const previous = this.sun;
+    this.sunLight = previous.clone();
+    this.sun.shadow.shadowNode = undefined;
+    this.group.remove(previous, previous.target);
+    previous.dispose();
+    this.group.add(this.sun, this.sun.target);
   }
   private hour = 12;
   private shadowCenter = 0;
@@ -456,7 +477,25 @@ export class TerrainEnvironment {
       throw new Error('Environment resources have been disposed.');
     this.revision++;
     const old = this.prepared;
-    this.releaseGPUCascades();
+    if (
+      isWebGPU(this.renderer) &&
+      old &&
+      [
+        old.settings.shadows,
+        old.settings.shadowCascades,
+        old.settings.shadowResolution,
+      ].join('|') !==
+        [
+          prepared.settings.shadows,
+          prepared.settings.shadowCascades,
+          prepared.settings.shadowResolution,
+        ].join('|')
+    ) {
+      this.releaseGPUCascades();
+      // Native LightsNode keys shadow layout by light identity/castShadow, not
+      // by a changed custom shadow node. Retire the old light to rebuild bindings.
+      this.replaceGPUSun();
+    }
     this.gpuPipeline?.reset();
     this.prepared = prepared;
     this.sun.visible = true;
@@ -606,8 +645,10 @@ export class TerrainEnvironment {
     if (isWebGPU(this.renderer) && prepared) {
       this.sun.visible = true;
       if (prepared.settings.shadows && prepared.settings.shadowCascades === 3) {
-        if (this.gpuCascades?.camera && this.gpuCascades.camera !== camera)
+        if (this.gpuCascades?.camera && this.gpuCascades.camera !== camera) {
           this.releaseGPUCascades();
+          this.replaceGPUSun();
+        }
         if (!this.gpuCascades) {
           this.gpuCascades = new CSMShadowNode(this.sun, {
             cascades: 3,

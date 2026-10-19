@@ -125,6 +125,9 @@ async function setup(page, info, tab = 'light') {
           return Reflect.construct(target, args, constructor);
         },
       });
+      // Native vertex-format lookup keys by constructor identity. Keep our
+      // allocation fault proxy transparent to that lookup.
+      Original.prototype.constructor = window[name];
     }
     const push = Array.prototype.push;
     Array.prototype.push = function (...items) {
@@ -153,6 +156,9 @@ async function setup(page, info, tab = 'light') {
     name: 'settings.json',
     mimeType: 'application/json',
     buffer: Buffer.from(serializeProject(project)),
+  });
+  await expect(page.locator('#toast')).toHaveText('Project loaded.', {
+    timeout: 60000,
   });
   await expect(page.locator('#project-name')).toHaveValue(project.name, {
     timeout: 60000,
