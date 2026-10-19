@@ -123,6 +123,24 @@
     "unit": "npm test -- --testTimeout=15000: 299 tests in 39 files passed",
     "browser": "npm run test:browser -- tests/browser/stroke-recovery.spec.mjs tests/browser/water.spec.mjs tests/browser/water-lighting.spec.mjs: 6 passed",
     "adapter": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Laptop GPU (0x00002D19) Direct3D11 vs_5_0 ps_5_0, D3D11)",
-    "scope": "Targeted Chrome recovery/rendering checks; full browser suite and sustained world traversal were not run."
+    "scope": "Targeted Chrome recovery/rendering checks; full browser suite and sustained world traversal were not run.",
+    "repeatedRun": {
+      "passed": 5,
+      "failed": 1,
+      "scenario": "Existing foliage-erasure cancellation exact pixel comparison",
+      "difference": {
+        "width": 828,
+        "height": 866,
+        "changedPixels": 1,
+        "maxChannelDelta": 1,
+        "x": 232,
+        "y": 422,
+        "channel": "green",
+        "before": 141,
+        "after": 140
+      },
+      "retry": "Passed unchanged in isolation; strict pixel equality retained",
+      "retryCommand": "npm run test:browser -- tests/browser/stroke-recovery.spec.mjs -g \"Escape and pointer cancellation\""
+    }
   }
 }
