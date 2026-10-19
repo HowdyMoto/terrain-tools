@@ -133,5 +133,14 @@ export function foliageGeometryView(
   geometry.boundingSphere = base.boundingSphere;
   for (const [name, attribute] of Object.entries(attributes))
     geometry.setAttribute(name, attribute);
+  // Three deletes attributes on geometry disposal. A batch owns only its
+  // instance attributes; deleting shared buffers would invalidate other tiles.
+  const dispose = geometry.dispose.bind(geometry);
+  geometry.dispose = () => {
+    geometry.setIndex(null);
+    for (const name of Object.keys(geometry.attributes))
+      if (!(name in attributes)) geometry.deleteAttribute(name);
+    dispose();
+  };
   return geometry;
 }

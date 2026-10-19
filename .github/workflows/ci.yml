@@ -25,7 +25,7 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - name: Browser correctness (software GPU; not a performance benchmark)
-        run: npm run test:browser -- tests/browser/ci-smoke.spec.mjs
+        run: npm run test:browser -- tests/browser/ci-smoke.spec.mjs tests/browser/prepared-assets.spec.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

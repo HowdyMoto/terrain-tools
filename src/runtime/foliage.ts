@@ -321,12 +321,22 @@ export class TerrainFoliage extends THREE.Group {
             prepared.set(part, variants);
             let baseGeometry = variants.get(geometryKey);
             if (!baseGeometry) {
-              baseGeometry = this.own(part.geometry.clone());
-              baseGeometry.applyMatrix4(part.matrix);
-              baseGeometry.computeBoundingSphere();
-              baseGeometry.computeBoundingBox();
-              if (model.flexibility)
-                prepareFlexibility(baseGeometry, model.flexibility, bounds);
+              const lease = this.library.geometry(part, geometryKey, () => {
+                const geometry = part.geometry.clone();
+                try {
+                  geometry.applyMatrix4(part.matrix);
+                  geometry.computeBoundingSphere();
+                  geometry.computeBoundingBox();
+                  if (model.flexibility)
+                    prepareFlexibility(geometry, model.flexibility, bounds);
+                  return geometry;
+                } catch (error) {
+                  geometry.dispose();
+                  throw error;
+                }
+              });
+              this.own({ dispose: () => lease.release() });
+              baseGeometry = lease.value;
               variants.set(geometryKey, baseGeometry);
             }
             const contact = model.flexibility

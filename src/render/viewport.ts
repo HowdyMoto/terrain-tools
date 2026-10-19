@@ -44,6 +44,7 @@ type PreparedPicking = PreparedResource<{
   retired: THREE.Mesh[];
 }>;
 import { TerrainScene } from '../runtime/terrain-scene';
+import { createModelDecoder } from './model-loader';
 import type { TerrainRegion } from '../runtime/terrain-scene';
 import type { RigidBody } from '@dimforge/rapier3d-compat';
 export class Viewport {
@@ -146,12 +147,16 @@ export class Viewport {
     this.waterGuide.renderOrder = 10000;
     this.waterGuide.userData.waterOverlay = true;
     this.scene.add(this.waterGuide);
-    this.content = new TerrainScene(project);
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
       preserveDrawingBuffer: true,
       powerPreference: 'high-performance',
     });
+    const decoder = createModelDecoder(
+      this.renderer,
+      import.meta.env.BASE_URL + 'basis/',
+    );
+    this.content = new TerrainScene(project, { decoder: decoder.decode });
     const gl = this.renderer.getContext();
     this.framePacing = new FramePacing(gl as WebGL2RenderingContext);
     const debugRenderer = gl.getExtension('WEBGL_debug_renderer_info');

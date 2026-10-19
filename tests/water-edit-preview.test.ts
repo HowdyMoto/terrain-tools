@@ -39,6 +39,61 @@ function fixture(basin = false) {
 }
 
 describe('water during regional geometry previews', () => {
+  it('removes wetting and caustics from missing terrain while preserving continuous ocean water and a raised wet bank', () => {
+    const { p, scene } = fixture();
+    const candidate = structuredClone(p),
+      edit = scene.beginEdit(candidate);
+    const bank = 16 * 33 + 16,
+      hole = 10 * 33 + 10;
+    candidate.heights[bank] = 0.3;
+    for (const z of [9, 10])
+      for (const x of [9, 10]) candidate.holes[z * 32 + x] = 1;
+    const prepared = scene.prepareTerrain(region, candidate, {
+      waterPreview: true,
+    });
+    scene.applyTerrain(prepared);
+    prepared.dispose();
+    expect(
+      scene.waterSystem.snapshotTerrain()!.shore[hole * 4 + 1],
+    ).toBeGreaterThan(0);
+    scene.finalizeWaterPreview();
+    edit.commit();
+    const final = scene.waterSystem.snapshotTerrain()!;
+    expect(final.ocean[10 * 32 + 10]).toBe(255);
+    expect([...final.shore.slice(hole * 4, hole * 4 + 4)]).toEqual([
+      0, 0, 0, 0,
+    ]);
+    expect(final.shore[bank * 4]).toBeGreaterThan(0);
+    expect(final.shore[bank * 4]).toBeLessThan(p.water!.ocean.surface.wetness);
+    expect(final.shore[bank * 4 + 1]).toBe(0);
+    expect(final.shore[(bank + 1) * 4 + 1]).toBeGreaterThan(0);
+  });
+  it('rejects a basin opened through a hole, restores water exactly, and commits a repaired retry', () => {
+    const { p, scene } = fixture(true),
+      before = scene.waterSystem.snapshotTerrain();
+    const candidate = structuredClone(p),
+      edit = scene.beginEdit(candidate);
+    candidate.holes[16 * 32 + 16] = 1;
+    const prepared = scene.prepareTerrain(region, candidate, {
+      waterPreview: true,
+    });
+    scene.applyTerrain(prepared);
+    prepared.dispose();
+    expect(() => scene.finalizeWaterPreview()).toThrow(/spill/);
+    edit.rollback();
+    expect(scene.waterSystem.snapshotTerrain()).toEqual(before);
+    candidate.holes.fill(0);
+    candidate.heights[16 * 33 + 16] = -1;
+    const retry = scene.beginEdit(candidate),
+      next = scene.prepareTerrain(region, candidate, { waterPreview: true });
+    scene.applyTerrain(next);
+    next.dispose();
+    scene.finalizeWaterPreview();
+    retry.commit();
+    expect(
+      scene.waterSystem.snapshotTerrain()!.shore[(16 * 33 + 16) * 4 + 2],
+    ).toBe(1);
+  });
   it('updates touched height rows without flooding again, then resolves the complete water state before commit', () => {
     const { p, scene } = fixture();
     const original = scene.waterSystem.snapshotTerrain()!;

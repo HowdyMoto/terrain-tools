@@ -104,6 +104,17 @@ export class WorldStreamer<T> {
   get residentKeys(): readonly string[] {
     return [...this.residents.keys()];
   }
+  /** Reject a prepared cell during host activation (for example a mismatched shared edge). */
+  reject(key: string, error: Error) {
+    const resource = this.residents.get(key);
+    if (resource) {
+      this.residents.delete(key);
+      this.cpuBytes -= resource.cpuBytes;
+      this.gpuBytes -= resource.gpuBytes;
+      resource.dispose();
+    }
+    if (this.wanted.has(key)) this.failures.set(key, error);
+  }
   get errors(): ReadonlyMap<string, Error> {
     return new Map(this.failures);
   }

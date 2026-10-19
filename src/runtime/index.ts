@@ -7,6 +7,23 @@ export {
   MAX_ENVIRONMENT_BYTES,
 } from './environment';
 export { TerrainScene } from './terrain-scene';
+export { WorldAssets } from './world-assets';
+export { RuntimeMaterialLibrary } from './material-library';
+export type {
+  MaterialLibraryManifest,
+  PreparedMapFile,
+} from './material-library';
+export { modelMemory } from './asset-memory';
+export { createModelDecoder } from '../render/model-loader';
+export type { ModelDecoder, DecodedModel } from '../render/model-loader';
+export { TerrainLod } from './terrain-lod';
+export type { TerrainLodOptions } from './terrain-lod';
+export { TerrainWorldScene } from './world-scene';
+export type {
+  WorldSceneOptions,
+  WorldCollisionSource,
+  WorldColliders,
+} from './world-scene';
 export { configureFoliageSubsurface } from './foliage-shading';
 export type { EditTransaction } from '../render/edit-transaction';
 export type { PreparedTerrain, PreparedTerrainGeometry } from './terrain-scene';
@@ -25,7 +42,11 @@ import { TerrainScene } from './terrain-scene';
 import { parseProjectFile, readProjectFile } from '../core/glb-project';
 export async function loadTerrain(
   input: string | ArrayBuffer | Blob,
-  options: { signal?: AbortSignal } = {},
+  options: {
+    signal?: AbortSignal;
+    assets?: import('./world-assets').WorldAssets;
+    decoder?: import('../render/model-loader').ModelDecoder;
+  } = {},
 ) {
   checkSignal(options.signal);
   const project =
@@ -33,7 +54,7 @@ export async function loadTerrain(
       ? await readProjectFile(input)
       : parseProjectFile(input);
   checkSignal(options.signal);
-  const terrain = new TerrainScene(project);
+  const terrain = new TerrainScene(project, options);
   try {
     if (!(await terrain.load(terrain.project, true, options.signal)))
       throw cancelled();

@@ -9,6 +9,7 @@ import type { PreparedFoliage } from './foliage';
 import type { GroundContact } from '../core/interaction';
 import { TerrainMaterial } from '../render/material';
 import { ModelLibrary } from '../render/models';
+import type { WorldAssets } from './world-assets';
 import type { PreparedModels } from '../render/models';
 import type { PreparedMaterial } from '../render/material';
 import {
@@ -54,13 +55,10 @@ export class TerrainScene extends THREE.Group {
   readonly terrain = new THREE.Group();
   readonly foliage: TerrainFoliage;
   readonly props = new THREE.Group();
-  readonly library = new ModelLibrary();
-  readonly terrainMaterial = new TerrainMaterial();
+  readonly library: ModelLibrary;
+  readonly terrainMaterial: TerrainMaterial;
   readonly water: THREE.Mesh;
-  readonly waterSystem = new TerrainWater(
-    this.terrainMaterial.material,
-    this.terrainMaterial.shoreUniforms,
-  );
+  readonly waterSystem: TerrainWater;
   private chunks = new Map<string, THREE.Mesh>();
   private disposed = false;
   private geometryRevision = 0;
@@ -69,8 +67,23 @@ export class TerrainScene extends THREE.Group {
   private loading?: AbortController;
   private requests = new Set<AbortController>();
   project: TerrainProject;
-  constructor(project: TerrainProject) {
+  constructor(
+    project: TerrainProject,
+    private options: {
+      assets?: WorldAssets;
+      decoder?: import('../render/model-loader').ModelDecoder;
+    } = {},
+  ) {
     super();
+    this.library = new ModelLibrary(
+      options.assets?.decode ?? options.decoder,
+      !!options.assets,
+    );
+    this.terrainMaterial = new TerrainMaterial(options.assets);
+    this.waterSystem = new TerrainWater(
+      this.terrainMaterial.material,
+      this.terrainMaterial.shoreUniforms,
+    );
     this.name = project.name;
     this.project = project;
     this.foliage = new TerrainFoliage(project, this.library);
@@ -136,7 +149,12 @@ export class TerrainScene extends THREE.Group {
       geometry = this.prepareTerrain(undefined, project);
       foliage = this.foliage.prepare(project, models);
       const props = this.prepareProps(project, models);
-      water = this.waterSystem.prepare(project);
+      water = this.waterSystem.prepare(
+        project,
+        project.water
+          ? await this.options.assets?.foam(controller.signal)
+          : undefined,
+      );
       checkSignal(controller.signal);
       return new PreparedResource(
         this,

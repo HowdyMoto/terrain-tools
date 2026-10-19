@@ -20,6 +20,9 @@ Create directories only when needed. Keep `README.md` entry points and `docs/ROA
 Requires Node.js 22.12+ (Node 24 is used for development) and npm. Install locked dependencies with `npm ci`.
 
 - `npm run dev`: start the local Vite editor; `/runtime.html` is the integration example.
+- `/world.html`: the streamed 2 × 2 km reference with shared compressed assets and optional Rapier integration.
+- `npm run build:assets:runtime`: rebuild the bundled Meshopt/KTX2 pack from checked-in derivatives using pinned WASM/Node tools; ordinary builds do not encode assets.
+- `npm run benchmark:world`: sustained 1080p traversal/teleport benchmark after building; requires the RTX 5060 unless explicitly passed `--allow-other-gpu`.
 - `npm run typecheck`: strict TypeScript checks.
 - `npm run lint`: ESLint recommended JavaScript/TypeScript checks for production code in `src/`; Prettier handles formatting.
 - `npm test`: full Vitest suite.
