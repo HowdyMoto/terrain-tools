@@ -8,9 +8,11 @@ The engine audit is tracked as [prioritized GitHub issues](https://github.com/Ho
 
 **Water:** open **Water**, enable **Show ocean**, and set **Water height (m)** for an ocean at sea level, independent ponds/lakes, adjustable swells, depth-dependent clarity, reflections and detailed shoreline foam. See the [water guide and current limits](docs/WATER.md) and [complete system design](docs/WATER-DESIGN.md).
 
+**Rendering:** the editor, import previews, `/runtime.html`, and `/world.html` use native **WebGPU**. Terrain, vegetation, shadows, atmosphere, water and PBR baking use node shaders. Startup rejects a WebGL fallback and explains recovery if WebGPU is unavailable. Existing project files need no conversion. See [WebGPU integration and validation](docs/WEBGPU.md).
+
 ## Run locally
 
-Requires Node.js 22.12+ (Node 24 is used for development), npm, and a browser with WebGL 2.
+Requires Node.js 22.12+ (Node 24 is used for development), npm, and current Chrome or Edge with native WebGPU and hardware acceleration. Serve over localhost or HTTPS.
 
 ```sh
 git clone https://github.com/HowdyMoto/terrain-tools.git
@@ -44,13 +46,15 @@ npm run test:browser  # Browser integration checks against the production build
 npm run format        # Format source, tests, and documentation
 ```
 
-Browser tests currently use installed Google Chrome and serve the production build on port 5175. Run the build first. For other environments, change the browser channel in `playwright.config.ts` or install Playwright Chromium.
+Browser tests currently use installed Google Chrome and serve the production build on port 5175. Run the build first. For other environments, install Playwright Chromium with `npx playwright install --with-deps chromium`. Linux CI explicitly uses SwiftShader for WebGPU correctness; those results are not hardware performance evidence.
 
-The editor requests a high-performance GPU. Hover over the FPS counter or green GPU indicator to see the adapter Chrome selected. On Windows laptops, a browser/OS graphics preference can still override that request. Choose the dedicated GPU for Chrome in Windows **Settings → System → Display → Graphics**, then restart Chrome. Automated Windows browser checks and the water benchmark launch a separate temporary profile. Their shared helper uses built-in PowerShell/.NET to read DXGI adapters and explicitly selects the RTX 5060 when present using Chromium's [adapter-selection switch](https://chromium.googlesource.com/chromium/src/+/main/ui/gl/gl_switches.cc). Other hosts retain the high-performance request. No extra package installation is needed, and neither the user profile nor Windows graphics settings are changed. Performance evidence must record the actual adapter.
+The editor requests a high-performance GPU. Hover over the FPS counter or green GPU indicator to see the adapter Chrome selected. On Windows laptops, a browser/OS graphics preference can still override that request. Choose the dedicated GPU for Chrome in Windows **Settings → System → Display → Graphics**, then restart Chrome. Automated Windows browser checks and the water benchmark launch a separate temporary profile. Their shared helper uses built-in PowerShell/.NET to read DXGI adapters and explicitly selects the RTX 5060 when present using Chromium's [adapter-selection switch](https://chromium.googlesource.com/chromium/src/+/main/ui/gl/gl_switches.cc). Other hosts retain the high-performance request. No extra package installation is needed, and neither the user profile nor Windows graphics settings are changed. WebGPU may report only the vendor and architecture for privacy. Performance evidence must record the actual adapter.
 
 Run the navigation checks with `npm run test:browser -- tests/browser/navigation.spec.mjs` after building. If the large unit-test fixtures exceed Vitest’s default five-second limit, use `npm test -- --testTimeout=15000`; see [verification scope](docs/ROADMAP.md#verified-evidence).
 
 ESLint checks `src/` using the recommended JavaScript and TypeScript rules; formatting stays with Prettier. Test/build-script lint coverage is separate remaining work. The pinned lint setup uses `npm install --save-dev --save-exact eslint@10.13.0 @eslint/js@10.0.1 typescript-eslint@8.71.2 globals@17.13.0`; ordinary setup remains `npm ci`. Configuration follows the [typescript-eslint flat-config guide](https://typescript-eslint.io/getting-started/).
+
+Three.js is pinned to 0.186.1, with `@types/three` 0.186.0 and `@webgpu/types` 0.1.64. The upgrade command is `npm install --save-dev --save-exact three@0.186.1 @types/three@0.186.0 @webgpu/types@0.1.64`; normal setup uses the committed lockfile with `npm ci`. The runtime peer requires Three ^0.186.1. This includes the WGSL array-texture gradient fix required by layered terrain.
 
 ## Prepared runtime assets
 
@@ -101,7 +105,7 @@ To reproduce the mouse/GPU measurement with an external content project, start `
 
 **Fullscreen view:** press `Shift+F` or the expand button above the viewport to toggle fullscreen rendering of the 3D view. It works with orbit or first person; the editor panels stay outside fullscreen. `Esc` can also release fullscreen through the browser. If the browser releases mouse capture during a fullscreen change, press `V` and choose a starting spot again. Mouse capture and fullscreen require browser support; failures show a message and leave editing available.
 
-For outdoor lighting, start with **Light → Sun → Lighting preset → Natural sunlight · fine shadows**, then tune solar time and exposure. It enables three camera-following shadow cascades, indirect contact shading and temporal foliage stabilization. **Light → View → Foliage detail recovery** adjusts contrast after temporal smoothing (0–1, default 0.25). The renderer reuses contact-shading depth to avoid shading hidden foliage. **Foliage → Effects → Leaf lighting** adds shadowed translucency to selected leaf materials, with absorption/tint controls and smooth cutout edges. Dense scenes can use 2048 px per cascade and a shorter shadow reach. See [forest lighting guidance and current limits](docs/ENVIRONMENT.md#natural-sunlight-and-forest-quality).
+For outdoor lighting, start with **Light → Sun → Lighting preset → Natural sunlight · fine shadows**, then tune solar time and exposure. It enables three camera-following shadow cascades, indirect contact shading and temporal foliage stabilization. **Light → View → Foliage detail recovery** adjusts contrast after temporal smoothing (0–1, default 0.25). The WebGPU scene pass supplies depth, normals, indirect light and velocity to the compositor. **Foliage → Effects → Leaf lighting** adds shadowed translucency to selected leaf materials, with absorption/tint controls and smooth cutout edges. Dense scenes can use 2048 px per cascade and a shorter shadow reach. See [forest lighting guidance and current limits](docs/ENVIRONMENT.md#natural-sunlight-and-forest-quality).
 
 After building, run the rendering/recovery checks with `npm run test:browser -- tests/browser/cascaded-sun.spec.mjs tests/browser/ambient-occlusion.spec.mjs tests/browser/depth-prepass.spec.mjs tests/browser/temporal-aa.spec.mjs tests/browser/forest-lighting-recovery.spec.mjs tests/browser/foliage-shading.spec.mjs`. The external Pine Forest and Namaqualand studies keep their artwork and project-specific builders outside the codebase; see [content projects](docs/CONTENT-PROJECTS.md).
 

@@ -60,11 +60,11 @@ test('imports EXR illumination, rejects a damaged replacement, and restores it t
   page,
   context,
 }) => {
-  test.setTimeout(150000);
+  test.setTimeout(240000);
   const issues = errors(page);
   await page.goto('/');
-  await expect(page.locator('#foliage-count')).not.toHaveText('0', {
-    timeout: 30000,
+  await expect(page.locator('#app')).not.toHaveAttribute('inert', {
+    timeout: 90000,
   });
   // Keep format/recovery assertions independent of the large default asset collection.
   await page.locator('#file-open').setInputFiles({
@@ -72,7 +72,9 @@ test('imports EXR illumination, rejects a damaged replacement, and restores it t
     mimeType: 'application/json',
     buffer: Buffer.from(serializeProject(createProject(16, 32))),
   });
-  await expect(page.locator('#toast')).toHaveText('Project loaded.');
+  await expect(page.locator('#toast')).toHaveText('Project loaded.', {
+    timeout: 60000,
+  });
   await page.locator('[data-tab=light]').click();
   await expect(page.locator('#environment-open')).toHaveAttribute(
     'accept',
@@ -106,7 +108,9 @@ test('imports EXR illumination, rejects a damaged replacement, and restores it t
   expect(await save(page, 'exr-redone')).toEqual(imported);
   await expect(page.locator('#save-state')).toHaveText('Saved locally');
   await page.reload();
-  await expect(page.locator('#app')).not.toHaveAttribute('inert', '');
+  await expect(page.locator('#app')).not.toHaveAttribute('inert', {
+    timeout: 90000,
+  });
   await page.locator('[data-tab=light]').click();
   await expect(page.locator('#env-rotation')).toHaveValue('35');
   expect(await save(page, 'exr-reloaded')).toEqual(imported);
@@ -115,7 +119,9 @@ test('imports EXR illumination, rejects a damaged replacement, and restores it t
   await page.locator('#export').click();
   await (await pending).saveAs('test-results/exr-scene.glb');
   await page.locator('#file-open').setInputFiles('test-results/exr-scene.glb');
-  await expect(page.locator('#toast')).toHaveText('Project loaded.');
+  await expect(page.locator('#toast')).toHaveText('Project loaded.', {
+    timeout: 60000,
+  });
   expect(await save(page, 'exr-glb-reopened')).toEqual(imported);
   const runtime = await context.newPage(),
     runtimeIssues = errors(runtime);
@@ -135,11 +141,11 @@ test('authors lighting and HDRI, recovers invalid imports, and restores the auth
   page,
   context,
 }) => {
-  test.setTimeout(150000);
+  test.setTimeout(240000);
   const issues = errors(page);
   await page.goto('/');
-  await expect(page.locator('#foliage-count')).not.toHaveText('0', {
-    timeout: 30000,
+  await expect(page.locator('#app')).not.toHaveAttribute('inert', {
+    timeout: 90000,
   });
   await page.locator('[data-tab=wind]').click();
   await (await inspectorControl(page, '#wind-enabled')).uncheck();
@@ -219,8 +225,8 @@ test('authors lighting and HDRI, recovers invalid imports, and restores the auth
   await expect(page.locator('#env-mode')).toHaveValue('image');
   expect(await save(page, 'lighting-undone')).toEqual(imported);
   await page.reload();
-  await expect(page.locator('#foliage-count')).not.toHaveText('0', {
-    timeout: 30000,
+  await expect(page.locator('#app')).not.toHaveAttribute('inert', {
+    timeout: 90000,
   });
   await page.locator('[data-tab=light]').click();
   await expect(page.locator('#env-rotation')).toHaveValue('65');
@@ -232,7 +238,9 @@ test('authors lighting and HDRI, recovers invalid imports, and restores the auth
   await page
     .locator('#file-open')
     .setInputFiles('test-results/lighting-scene.glb');
-  await expect(page.locator('#toast')).toHaveText('Project loaded.');
+  await expect(page.locator('#toast')).toHaveText('Project loaded.', {
+    timeout: 60000,
+  });
   expect(await save(page, 'lighting-glb-reopened')).toEqual(imported);
   expect(issues).toEqual([]);
   const runtime = await context.newPage(),

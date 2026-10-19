@@ -1,5 +1,7 @@
+import { nodeGraphKey } from '../render/node-uniforms';
 import * as THREE from 'three';
 import type { FoliageSubsurface } from '../core/foliage-shading';
+import { configureLeafNodes } from './foliage-nodes';
 
 /** Add shadowed, albedo-tinted transmission to the existing PBR direct-light loop. */
 export function configureFoliageSubsurface(
@@ -14,6 +16,7 @@ export function configureFoliageSubsurface(
   )
     return;
   material.side = THREE.DoubleSide;
+  configureLeafNodes(material, settings);
   material.alphaToCoverage =
     settings.smoothEdges && material.alphaTest > 0 && !material.transparent;
   const previous = material.onBeforeCompile;
@@ -52,5 +55,6 @@ export function configureFoliageSubsurface(
       #define RE_Direct RE_Direct_TerrainLeaf`,
     );
   };
-  material.customProgramCacheKey = () => 'terrain-leaf-v1|' + key();
+  material.customProgramCacheKey = () =>
+    'terrain-leaf-v1|' + key() + '|' + nodeGraphKey(material);
 }

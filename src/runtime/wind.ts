@@ -1,4 +1,6 @@
+import { nodeGraphKey } from '../render/node-uniforms';
 import * as THREE from 'three';
+import { configureWindNodes } from './foliage-nodes';
 export type WindUniforms = Record<string, THREE.IUniform>;
 export function windUniforms(): WindUniforms {
   return {
@@ -16,6 +18,7 @@ export function configureWind(
   uniforms: WindUniforms,
   root?: number,
 ) {
+  configureWindNodes(material, amount, uniforms, root);
   const declarations = `
     uniform float uTime; uniform float uStrength; uniform vec2 uDirection; uniform float uGust; uniform float uSpeed;
     vec3 windLocalDirection(){
@@ -84,9 +87,11 @@ export function configureWind(
     );
   };
   material.customProgramCacheKey = () =>
-    masked
+    (masked
       ? 'terrain-flexibility-v1-' + root + '-' + amount
-      : 'terrain-wind-v2-' + amount;
+      : 'terrain-wind-v2-' + amount) +
+    '|' +
+    nodeGraphKey(material);
 }
 export function shadowMaterials(
   source: THREE.Material,

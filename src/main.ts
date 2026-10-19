@@ -403,8 +403,70 @@ $('#app').innerHTML =
 <aside class="inspector"><div id="inspector-content"></div><div class="inspector-footer"><span class="live-dot"></span>All dimensions in metres</div></aside>
 <main class="stage"><div id="viewport"></div><div class="viewport-top"><div class="viewport-label"><span class="live-dot"></span><span id="view-mode">Perspective</span> <span class="muted">/</span> Lit</div><div class="viewport-actions"><button id="walk" title="Choose where to walk · V" aria-label="Walk in first person" aria-keyshortcuts="V" aria-pressed="false">${icon('footprints')}</button><button id="fullscreen" title="Fullscreen 3D view · Shift+F" aria-label="Fullscreen 3D view" aria-keyshortcuts="Shift+F" aria-pressed="false">${icon('expand')}</button><button id="frame" title="Frame terrain · F" aria-label="Frame terrain">${icon('maximize')}</button><button id="wire" title="Toggle wireframe" aria-label="Toggle wireframe">${icon('grid-2x2')}</button><button id="screenshot" title="Save viewport image" aria-label="Save viewport image">${icon('image-plus')}</button></div></div><div id="walk-placement-label" aria-hidden="true" hidden></div><div id="walk-reticle" aria-hidden="true"></div><div class="viewport-bottom"><div id="walk-hint" class="tool-pill" role="status" hidden></div><div class="tool-pill" id="active-tool">${icon('brush')}<span>Raise terrain</span><kbd>LMB</kbd></div><div class="axis-widget"><span class="axis-y">Y</span><span class="axis-z">Z</span><span class="axis-x">X</span></div></div><div id="toast" role="status" aria-live="polite"></div></main>
 <aside class="scene-panel"><div class="panel-heading"><h2>Scene</h2><span class="count" id="scene-count">01</span></div><div class="scene-root">${icon('chevron-down')}${icon('layers')}<span>Landscape</span></div><button class="scene-item selected" id="terrain-select">${icon('mountain')}<span>Terrain surface</span><span class="tag">MESH</span></button><div class="scene-item">${icon('trees')}<span>Foliage instances</span><span id="foliage-count" class="count">0</span></div><div class="scene-item">${icon('waves')}<span>Ocean</span><button id="water-toggle" class="text-button" aria-label="Toggle ocean visibility" title="Show or hide the ocean. Set its height in Water.">On</button></div><div id="prop-list"></div><div class="scene-section"><h3>Surface layers <span>4</span></h3><div id="layer-list"></div></div><div class="scene-section terrain-info"><h3>Terrain information</h3><dl><dt>Grid / size</dt><dd><span id="resolution-label"></span> cells<small id="size-label"></small></dd><dt>Cell spacing</dt><dd id="spacing-label"></dd><dt>Shading</dt><dd id="shading-label">Smooth</dd></dl></div><div class="scene-section physics-card"><div class="physics-heading">${icon('circle')}<h3>Physics preview</h3><span class="tag">RAPIER</span></div><p>Drop a body to test the surface, cutouts, and foliage recovery.</p><button id="physics" class="full-button">${icon('play')}Enable physics</button><button id="clear-balls" class="text-button full-button">Clear test bodies</button></div><div class="scene-bottom"><span class="live-dot"></span><span id="physics-state">Collision preview off</span></div></aside></div>
-<footer class="statusbar"><div><span class="status-key">LMB</span> sculpt <span class="status-key">RMB</span> orbit <span class="status-key">MMB</span> pan <span class="status-key">Scroll</span> zoom</div><div id="coordinates">X 0.0 &nbsp; Y 0.0 &nbsp; Z 0.0</div><div><span id="triangle-count">— triangles</span><span class="status-separator">|</span><span id="fps">— FPS</span><span class="gpu-dot"></span>WebGL 2</div></footer><div id="prop-transform-tools" hidden><div class="button-row"><button data-prop-transform="translate" aria-pressed="true">Move</button><button data-prop-transform="rotate" aria-pressed="false">Rotate</button><button data-prop-transform="scale" aria-pressed="false">Scale</button></div><label title="Move: 0.5 m · Rotate: 15° · Uniform scale: 0.1"><input id="prop-snap" type="checkbox"/> Snap</label><span id="prop-transform-hint">Drag a handle · Esc cancels</span></div><div id="preparation-status" hidden role="status"><span></span><button id="cancel-preparation">Cancel</button></div><input id="file-open" type="file" accept=".json,.terrain,.glb" hidden/><input id="heightmap-open" type="file" accept=".png,.r16,.raw" hidden/><input id="alpha-open" type="file" accept="image/png" hidden/><input id="sculpt-preset-open" type="file" accept=".json" hidden/><input id="surface-preset-open" type="file" accept=".json" hidden/><input id="brush-open" type="file" accept=".json" hidden/><input id="asset-open" type="file" accept=".glb" hidden/><input id="environment-open" type="file" accept=".hdr,.exr" hidden/><input id="texture-open" type="file" accept="${textureAccept}" hidden/><dialog id="guide"><button id="close-guide" class="icon-button dialog-close" aria-label="Close guide">${icon('x')}</button><span class="eyebrow">FIELD NOTES / 01</span><h1>Shape a world.</h1><p>Sculpt the landscape, define its surfaces, then bring it to life.</p><div class="guide-grid"><div><h3>Navigate</h3><p>Right drag to orbit. Middle drag to pan. Scroll to zoom. Press F to frame the terrain. Shift+F toggles fullscreen for the 3D view.</p><h3>Walk the terrain</h3><p>Press V or the footprints button, then point anywhere on the terrain. The marker shows your standing height and facing direction. Click (or press Enter) to start there, including on steep slopes. Right drag while choosing a spot to change your facing direction. V or Esc cancels placement. Move with WASD, look with the mouse, and hold Shift to run. V or Esc restores your editor view. Set eye height (default 1.8 m) and terrain dimensions in the Project tab. Walking follows terrain and stops at edges and holes; it has no continuous prop or foliage collision.</p><h3>Sculpt</h3><p>Left drag applies the selected brush. [ and ] resize it. Flatten uses the target elevation; terrace uses the step height. Cut hole removes entire terrain cells and their collision. Press Esc during a stroke to cancel it.</p></div><div><h3>Build an ecosystem</h3><p>Surfaces blend by altitude and slope. Foliage brushes restrict placement to allowed surface types. Populate uses a reproducible seed.</p><h3>Keep your work</h3><p>Changes autosave in this browser. Save project downloads a compact .terrain package with embedded assets. Existing JSON projects remain readable. Export scene creates a GLB with terrain, instanced foliage, props, and embedded authoring data. Open the GLB here or in the terrain runtime to restore layered PBR, wind, and interaction. Other GLB viewers show a static scene. Choose PBR beside Export scene to include baked terrain textures, or Fast colors for a smaller vertex-color presentation.</p></div></div><p class="guide-note">This development build supports a single heightfield up to 512 × 512 cells, four material layers, static GLB assets, and 50,000 foliage instances. Large-world streaming and production asset/export workflows are still in development.</p></dialog>`;
-const viewport = new Viewport($('#viewport'), project);
+<footer class="statusbar"><div><span class="status-key">LMB</span> sculpt <span class="status-key">RMB</span> orbit <span class="status-key">MMB</span> pan <span class="status-key">Scroll</span> zoom</div><div id="coordinates">X 0.0 &nbsp; Y 0.0 &nbsp; Z 0.0</div><div><span id="triangle-count">— triangles</span><span class="status-separator">|</span><span id="fps">— FPS</span><span class="gpu-dot"></span>WebGPU</div></footer><div id="prop-transform-tools" hidden><div class="button-row"><button data-prop-transform="translate" aria-pressed="true">Move</button><button data-prop-transform="rotate" aria-pressed="false">Rotate</button><button data-prop-transform="scale" aria-pressed="false">Scale</button></div><label title="Move: 0.5 m · Rotate: 15° · Uniform scale: 0.1"><input id="prop-snap" type="checkbox"/> Snap</label><span id="prop-transform-hint">Drag a handle · Esc cancels</span></div><div id="preparation-status" hidden role="status"><span></span><button id="cancel-preparation">Cancel</button></div><input id="file-open" type="file" accept=".json,.terrain,.glb" hidden/><input id="heightmap-open" type="file" accept=".png,.r16,.raw" hidden/><input id="alpha-open" type="file" accept="image/png" hidden/><input id="sculpt-preset-open" type="file" accept=".json" hidden/><input id="surface-preset-open" type="file" accept=".json" hidden/><input id="brush-open" type="file" accept=".json" hidden/><input id="asset-open" type="file" accept=".glb" hidden/><input id="environment-open" type="file" accept=".hdr,.exr" hidden/><input id="texture-open" type="file" accept="${textureAccept}" hidden/><dialog id="guide"><button id="close-guide" class="icon-button dialog-close" aria-label="Close guide">${icon('x')}</button><span class="eyebrow">FIELD NOTES / 01</span><h1>Shape a world.</h1><p>Sculpt the landscape, define its surfaces, then bring it to life.</p><div class="guide-grid"><div><h3>Navigate</h3><p>Right drag to orbit. Middle drag to pan. Scroll to zoom. Press F to frame the terrain. Shift+F toggles fullscreen for the 3D view.</p><h3>Walk the terrain</h3><p>Press V or the footprints button, then point anywhere on the terrain. The marker shows your standing height and facing direction. Click (or press Enter) to start there, including on steep slopes. Right drag while choosing a spot to change your facing direction. V or Esc cancels placement. Move with WASD, look with the mouse, and hold Shift to run. V or Esc restores your editor view. Set eye height (default 1.8 m) and terrain dimensions in the Project tab. Walking follows terrain and stops at edges and holes; it has no continuous prop or foliage collision.</p><h3>Sculpt</h3><p>Left drag applies the selected brush. [ and ] resize it. Flatten uses the target elevation; terrace uses the step height. Cut hole removes entire terrain cells and their collision. Press Esc during a stroke to cancel it.</p></div><div><h3>Build an ecosystem</h3><p>Surfaces blend by altitude and slope. Foliage brushes restrict placement to allowed surface types. Populate uses a reproducible seed.</p><h3>Keep your work</h3><p>Changes autosave in this browser. Save project downloads a compact .terrain package with embedded assets. Existing JSON projects remain readable. Export scene creates a GLB with terrain, instanced foliage, props, and embedded authoring data. Open the GLB here or in the terrain runtime to restore layered PBR, wind, and interaction. Other GLB viewers show a static scene. Choose PBR beside Export scene to include baked terrain textures, or Fast colors for a smaller vertex-color presentation.</p></div></div><p class="guide-note">This development build supports a single heightfield up to 512 × 512 cells, four material layers, static GLB assets, and 50,000 foliage instances. Large-world streaming and production asset/export workflows are still in development.</p></dialog>`;
+// Native device initialization is asynchronous. Keep controls inert until their
+// handlers and the restored project are ready.
+$('#app').inert = true;
+const viewport = await Viewport.create($('#viewport'), project).catch(
+  (error) => {
+    const panel = document.createElement('section');
+    panel.id = 'renderer-unavailable';
+    panel.className = 'renderer-notice';
+    panel.setAttribute('role', 'alert');
+    const title = document.createElement('h1');
+    title.textContent = 'WebGPU could not start';
+    const message = document.createElement('p');
+    message.textContent = String(
+      error instanceof Error ? error.message : error,
+    );
+    const save = document.createElement('button');
+    save.textContent = 'Download locally saved project';
+    save.onclick = async () => {
+      save.disabled = true;
+      try {
+        const saved = await loadLocal();
+        if (!saved) {
+          message.textContent =
+            'No locally saved project was found in this browser.';
+          return;
+        }
+        download(
+          await projectDownload(saved),
+          saved.name.replace(/[^a-z0-9-_]/gi, '-') + '.terrain',
+        );
+      } catch (failure) {
+        message.textContent =
+          'Could not recover local save: ' + String(failure);
+      } finally {
+        save.disabled = false;
+      }
+    };
+    const retry = document.createElement('button');
+    retry.textContent = 'Reload';
+    retry.onclick = () => location.reload();
+    panel.append(title, message, save, retry);
+    document.body.append(panel);
+    throw error;
+  },
+);
+$('#viewport').addEventListener('terrain-renderer-lost', () => {
+  cancelPreparation();
+  $('#app').inert = true;
+  const panel = document.createElement('section');
+  panel.className = 'renderer-notice';
+  panel.setAttribute('role', 'alert');
+  const message = document.createElement('p');
+  message.textContent =
+    'The graphics device disconnected. Save your project, then reload to restart WebGPU.';
+  const save = document.createElement('button');
+  save.textContent = 'Save project';
+  save.onclick = () => $('#save').click();
+  const reload = document.createElement('button');
+  reload.textContent = 'Reload';
+  reload.onclick = () => location.reload();
+  panel.append(message, save, reload);
+  document.body.append(panel);
+});
 bindViewportNavigation(viewport, {
   unavailable: () =>
     $('#app').inert ||
@@ -697,11 +759,7 @@ function delayedTerrain(stroke: BrushStroke) {
   rebuildTimer = setTimeout(flushBrush, 20);
 }
 type WorldSettings = Pick<TerrainProject, 'wind' | 'interaction' | 'view'>;
-function editWater(change: (water: WaterSettings) => void) {
-  viewport.finishStroke();
-  cancelPreparation();
-  erosionPanel?.close();
-  let prepared: PreparedWater | undefined;
+async function editWater(change: (water: WaterSettings) => void) {
   try {
     const water = structuredClone(
       project.water ?? defaultWaterSettings(project),
@@ -716,31 +774,50 @@ function editWater(change: (water: WaterSettings) => void) {
         waterLevel: water.seaLevel,
       },
     };
-    if (!viewport.content.waterSystem.canUpdateSettings(candidate)) {
-      prepared = viewport.content.waterSystem.prepare(candidate);
-      viewport.lighting.prepareWater();
-      viewport.content.waterSystem.prepareGPU(
-        prepared,
-        viewport.renderer,
-        viewport.camera,
-        viewport.scene,
-      );
-    }
-    history.checkpoint(project);
-    project.water = candidate.water;
-    project.view = candidate.view;
-    if (prepared) viewport.content.waterSystem.apply(prepared);
-    else viewport.content.waterSystem.updateSettings(project);
-    viewport.content.refreshView();
-    viewport.lighting.invalidateHistory();
-    documentRevision++;
-    if (
-      selectedWater !== 'ocean' &&
-      !water.bodies.some((b) => b.id === selectedWater)
-    )
-      selectedWater = 'ocean';
-    refreshed();
-    return true;
+    return await prepareAction(
+      'Preparing water…',
+      async (signal) => {
+        let prepared: PreparedWater | undefined;
+        try {
+          if (!viewport.content.waterSystem.canUpdateSettings(candidate)) {
+            prepared = viewport.content.waterSystem.prepare(candidate);
+            viewport.lighting.prepareWater();
+            await viewport.content.waterSystem.prepareGPU(
+              prepared,
+              viewport.renderer,
+              viewport.camera,
+              viewport.scene,
+            );
+          }
+          checkSignal(signal);
+          return {
+            prepared,
+            dispose() {
+              prepared?.dispose();
+            },
+          };
+        } catch (error) {
+          prepared?.dispose();
+          throw error;
+        }
+      },
+      ({ prepared }) => {
+        history.checkpoint(project);
+        project.water = candidate.water;
+        project.view = candidate.view;
+        if (prepared) viewport.content.waterSystem.apply(prepared);
+        else viewport.content.waterSystem.updateSettings(project);
+        viewport.content.refreshView();
+        viewport.lighting.invalidateHistory();
+        documentRevision++;
+        if (
+          selectedWater !== 'ocean' &&
+          !water.bodies.some((b) => b.id === selectedWater)
+        )
+          selectedWater = 'ocean';
+        refreshed();
+      },
+    );
   } catch (error) {
     renderInspector();
     updateHistory();
@@ -750,8 +827,6 @@ function editWater(change: (water: WaterSettings) => void) {
       true,
     );
     return false;
-  } finally {
-    prepared?.dispose();
   }
 }
 function setWaterPlacement(kind: typeof waterPlacement) {
@@ -763,7 +838,7 @@ function setWaterPlacement(kind: typeof waterPlacement) {
     kind === 'ellipse' ? Math.min(12, project.size * 0.1) : 1;
   renderInspector();
 }
-function finishWaterOutline() {
+async function finishWaterOutline() {
   if (waterPlacement !== 'polygon' || waterPoints.length < 3) {
     notify('Click at least three points to draw a lake outline.');
     return;
@@ -772,7 +847,7 @@ function finishWaterOutline() {
     previous = selectedWater;
   selectedWater = id;
   if (
-    editWater((w) =>
+    await editWater((w) =>
       w.bodies.push({
         id,
         name: 'Lake ' + (w.bodies.length + 1),
@@ -2994,33 +3069,32 @@ viewport.onTerrainClick = (point) => {
     kind = waterPlacement,
     previous = selectedWater;
   selectedWater = id;
-  if (
-    editWater((w) =>
-      w.bodies.push({
-        id,
-        name: (kind === 'basin' ? 'Lake ' : 'Pond ') + (w.bodies.length + 1),
-        enabled: true,
-        elevation: point.y + 0.8,
-        extent:
-          kind === 'basin'
-            ? { kind, x: point.x, z: point.z }
-            : {
-                kind,
-                x: point.x,
-                z: point.z,
-                radiusX: Math.min(12, project.size * 0.1),
-                radiusZ: Math.min(8, project.size * 0.07),
-                rotation: 0,
-              },
-        surface: waterPreset('lake'),
-      }),
-    )
-  )
-    setWaterPlacement(null);
-  else {
-    selectedWater = previous;
-    renderInspector();
-  }
+  void editWater((w) =>
+    w.bodies.push({
+      id,
+      name: (kind === 'basin' ? 'Lake ' : 'Pond ') + (w.bodies.length + 1),
+      enabled: true,
+      elevation: point.y + 0.8,
+      extent:
+        kind === 'basin'
+          ? { kind, x: point.x, z: point.z }
+          : {
+              kind,
+              x: point.x,
+              z: point.z,
+              radiusX: Math.min(12, project.size * 0.1),
+              radiusZ: Math.min(8, project.size * 0.07),
+              rotation: 0,
+            },
+      surface: waterPreset('lake'),
+    }),
+  ).then((applied) => {
+    if (applied) setWaterPlacement(null);
+    else {
+      selectedWater = previous;
+      renderInspector();
+    }
+  });
   return true;
 };
 viewport.propTools.onBegin = () => {

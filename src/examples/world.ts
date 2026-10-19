@@ -6,21 +6,19 @@ import {
   RuntimeMaterialLibrary,
   createModelDecoder,
   TerrainEnvironment,
+  createTerrainRenderer,
+  rendererDescription,
 } from '../runtime';
 import type { TerrainProject } from '../core/types';
 import { referenceWorld, referenceHeight } from './world-source';
 import { createProject } from '../core/terrain';
 import { environmentPreset } from '../core/environment';
 
-const renderer = new THREE.WebGLRenderer({
-  antialias: true,
-  powerPreference: 'high-performance',
-  preserveDrawingBuffer: true,
-});
+const renderer = await createTerrainRenderer();
 renderer.setPixelRatio(1);
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 document.body.append(renderer.domElement);
 const scene = new THREE.Scene(),
   camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.2, 900);
@@ -144,12 +142,8 @@ document
     (b) => (b.onclick = () => view(b.dataset.view as keyof typeof views)),
   );
 view('forest');
-const gl = renderer.getContext() as WebGL2RenderingContext,
-  debug = gl.getExtension('WEBGL_debug_renderer_info');
-const adapter = String(
-  gl.getParameter(debug?.UNMASKED_RENDERER_WEBGL ?? gl.RENDERER),
-);
-const timer = gl.getExtension('EXT_disjoint_timer_query_webgl2');
+const adapter = rendererDescription(renderer);
+let timestampPending = false;
 let last = performance.now(),
   recording = false,
   stopped = false,
@@ -157,7 +151,6 @@ let last = performance.now(),
   cpu: number[] = [],
   gpu: number[] = [],
   longTasks: number[] = [];
-const queries: WebGLQuery[] = [];
 const observer = new PerformanceObserver((list) => {
   if (recording) longTasks.push(...list.getEntries().map((e) => e.duration));
 });
@@ -208,26 +201,22 @@ function draw(now: number) {
   physics.world.step();
   environment.tick(dt);
   environment.updateCamera(camera);
-  let query: WebGLQuery | null = null;
-  if (recording && timer && queries.length < 8) {
-    query = gl.createQuery();
-    gl.beginQuery(timer.TIME_ELAPSED_EXT, query);
-  }
   environment.render(camera);
-  if (query && timer) {
-    gl.endQuery(timer.TIME_ELAPSED_EXT);
-    queries.push(query);
+  if (
+    recording &&
+    renderer.hasFeature('timestamp-query') &&
+    !timestampPending
+  ) {
+    timestampPending = true;
+    void renderer
+      .resolveTimestampsAsync('render')
+      .then(() => {
+        if (recording) gpu.push(renderer.info.render.timestamp);
+      })
+      .finally(() => {
+        timestampPending = false;
+      });
   }
-  if (timer)
-    while (
-      queries.length &&
-      gl.getQueryParameter(queries[0], gl.QUERY_RESULT_AVAILABLE)
-    ) {
-      const q = queries.shift()!;
-      if (!gl.getParameter(timer.GPU_DISJOINT_EXT))
-        gpu.push(gl.getQueryParameter(q, gl.QUERY_RESULT) / 1e6);
-      gl.deleteQuery(q);
-    }
   if (recording) cpu.push(performance.now() - started);
   if (Math.floor(now / 1000) !== Math.floor((now - dt * 1000) / 1000)) {
     const s = world.stats;
@@ -246,14 +235,13 @@ function draw(now: number) {
         ).memory?.usedJSHeapSize,
       });
   }
-  requestAnimationFrame(draw);
 }
 addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
 });
-requestAnimationFrame(draw);
+renderer.setAnimationLoop(draw);
 const api = {
   world,
   assets,

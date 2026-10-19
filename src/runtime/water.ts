@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { isWebGPU, validateGPU } from '../render/renderer';
+import type { TerrainRenderer } from '../render/renderer';
 import type { TerrainProject, TerrainRegion } from '../core/types';
 import { waterMasks, waterContains } from '../core/water';
 import { heightAt, materialWeights } from '../core/terrain';
@@ -258,13 +260,25 @@ export class TerrainWater extends THREE.Group {
   /** Upload and link detached candidates before history/document changes. */
   prepareGPU(
     prepared: PreparedWater,
-    renderer: THREE.WebGLRenderer,
+    renderer: TerrainRenderer,
     camera: THREE.Camera,
     scene: THREE.Scene,
   ) {
     prepared.assert(this);
     const state = prepared.value;
     if (!state.height) return;
+    if (isWebGPU(renderer)) {
+      return validateGPU(renderer, async () => {
+        for (const texture of [
+          state.height!,
+          ...(state.foam ? [state.foam] : []),
+          ...(state.shore ? [state.shore] : []),
+          ...state.entries.map((e) => e.mask),
+        ])
+          await renderer.initTextureAsync(texture);
+        await renderer.compileAsync(state.group, camera, scene);
+      });
+    }
     renderer.initTexture(state.height);
     if (state.foam) renderer.initTexture(state.foam);
     if (state.shore) renderer.initTexture(state.shore);

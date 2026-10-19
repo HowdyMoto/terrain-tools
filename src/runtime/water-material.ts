@@ -1,5 +1,7 @@
+import { nodeGraphKey } from '../render/node-uniforms';
 import * as THREE from 'three';
 import type { WaterExtent, WaterSurface } from '../core/water';
+import { configureWaterNodes } from './water-nodes';
 
 const terrain = /* glsl */ `
 uniform sampler2D waterHeight;
@@ -219,7 +221,8 @@ export function createWaterMaterial(
   material.name = 'Terrain water';
   material.forceSinglePass = true;
   material.userData.terrainWater = true;
-  material.customProgramCacheKey = () => 'terrain-water-v3';
+  material.customProgramCacheKey = () =>
+    'terrain-water-v3|' + nodeGraphKey(material);
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = shader.vertexShader
@@ -323,6 +326,7 @@ export function createWaterMaterial(
       `,
       );
   };
+  configureWaterNodes(material, uniforms);
   return { material, uniforms };
 }
 export type WaterMaterial = ReturnType<typeof createWaterMaterial>;

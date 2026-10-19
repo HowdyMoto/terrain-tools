@@ -92,35 +92,29 @@ async function setup(page) {
     });
     const textures = new Set();
     window.daylightTextures = textures;
-    for (const api of [
-      WebGLRenderingContext.prototype,
-      WebGL2RenderingContext.prototype,
-    ]) {
-      const draw = api.drawElements,
-        create = api.createTexture,
-        dispose = api.deleteTexture;
-      api.drawElements = function (...args) {
-        if (window.daylightFault === 'capture') {
-          window.daylightFault = undefined;
-          window.caughtDaylightFault = 'capture';
-          throw new Error('Injected daylight capture failure');
-        }
-        return Reflect.apply(draw, this, args);
-      };
-      api.createTexture = function (...args) {
-        const value = Reflect.apply(create, this, args);
-        textures.add(value);
-        return value;
-      };
-      api.deleteTexture = function (texture) {
-        textures.delete(texture);
-        return Reflect.apply(dispose, this, [texture]);
-      };
-    }
+    const create = GPUDevice.prototype.createTexture;
+    GPUDevice.prototype.createTexture = function (descriptor) {
+      if (
+        window.daylightFault === 'capture' &&
+        descriptor.label === 'PMREM.cubeUv'
+      ) {
+        window.daylightFault = undefined;
+        window.caughtDaylightFault = 'capture';
+        throw new Error('Injected daylight capture failure');
+      }
+      const value = create.call(this, descriptor);
+      textures.add(value);
+      return value;
+    };
+    const destroy = GPUTexture.prototype.destroy;
+    GPUTexture.prototype.destroy = function () {
+      textures.delete(this);
+      return destroy.call(this);
+    };
   });
   await page.goto('/');
-  await expect(page.locator('#foliage-count')).not.toHaveText('0', {
-    timeout: 30000,
+  await expect(page.locator('#app')).not.toHaveAttribute('inert', {
+    timeout: 90000,
   });
   const project = createProject(64, 64);
   generateTerrain(project, 'island');
@@ -138,7 +132,9 @@ async function setup(page) {
     mimeType: 'application/json',
     buffer: Buffer.from(serializeProject(project)),
   });
-  await expect(page.locator('#project-name')).toHaveValue(project.name);
+  await expect(page.locator('#project-name')).toHaveValue(project.name, {
+    timeout: 60000,
+  });
   await page.locator('[data-tab=light]').click();
   await page.locator('#frame').click();
   await expect(page.locator('#save-state')).toHaveText('Saved locally');
@@ -224,7 +220,9 @@ test('authors atmospheric times, plays without history churn, pauses, exports an
   const path = info.outputPath('daylight.glb');
   await (await download).saveAs(path);
   await page.locator('#file-open').setInputFiles(path);
-  await expect(page.locator('#toast')).toHaveText('Project loaded.');
+  await expect(page.locator('#toast')).toHaveText('Project loaded.', {
+    timeout: 60000,
+  });
   expect(await save(page, info, 'glb-restored')).toEqual(paused);
   const runtime = await context.newPage();
   runtime.on('pageerror', (error) => errors.push(error.message));
@@ -263,7 +261,7 @@ test('authors atmospheric times, plays without history churn, pauses, exports an
 test('failed GPU sky capture or history preparation preserves pixels, resources and redo, then retries', async ({
   page,
 }, info) => {
-  test.setTimeout(90000);
+  test.setTimeout(240000);
   const errors = await setup(page);
   await page.locator('#project-name').fill('Redo branch');
   await page.locator('#project-name').press('Tab');

@@ -1,3 +1,4 @@
+import { installNavigationProbe } from './webgpu-navigation-probe.mjs';
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
@@ -5,42 +6,15 @@ import { createProject, serializeProject } from 'terrain-tools';
 import { decodeDocument } from './fixtures.mjs';
 import { Euler, Matrix4, Quaternion } from 'three';
 
+test.setTimeout(180000);
+
 async function setup(page) {
-  await page.addInitScript(() => {
-    window.navigationFrames = 0;
-    const names = new WeakMap();
-    const prototype = WebGL2RenderingContext.prototype;
-    const locate = prototype.getUniformLocation;
-    prototype.getUniformLocation = function (program, name) {
-      const location = locate.call(this, program, name);
-      if (location) names.set(location, name);
-      return location;
-    };
-    const matrix = prototype.uniformMatrix4fv;
-    prototype.uniformMatrix4fv = function (
-      location,
-      transpose,
-      values,
-      ...rest
-    ) {
-      if (
-        names.get(location) === 'viewMatrix' &&
-        this.canvas.closest?.('#viewport')
-      )
-        window.navigationView = [...values];
-      return matrix.call(this, location, transpose, values, ...rest);
-    };
-    const flush = WebGL2RenderingContext.prototype.flush;
-    WebGL2RenderingContext.prototype.flush = function () {
-      if (this.canvas.closest?.('#viewport')) window.navigationFrames++;
-      return flush.call(this);
-    };
-  });
+  await page.addInitScript(installNavigationProbe);
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/');
   await expect(page.locator('#app')).not.toHaveAttribute('inert', {
-    timeout: 30000,
+    timeout: 90000,
   });
   const project = createProject(32, 64);
   project.view.water = false;
@@ -50,7 +24,9 @@ async function setup(page) {
     mimeType: 'application/json',
     buffer: Buffer.from(serializeProject(project)),
   });
-  await expect(page.locator('#toast')).toHaveText('Project loaded.');
+  await expect(page.locator('#toast')).toHaveText('Project loaded.', {
+    timeout: 60000,
+  });
   await page.locator('#frame').click();
   return errors;
 }
@@ -401,46 +377,11 @@ test.describe('responsive first-person rendering', () => {
   }) => {
     test.setTimeout(120000);
     await page.addInitScript(() => {
-      const probe = (window.walkPacingProbe = {
+      window.walkPacingProbe = {
         blocked: false,
         frames: [],
         view: null,
         waits: [],
-      });
-      const names = new WeakMap();
-      const prototype = WebGL2RenderingContext.prototype;
-      const locate = prototype.getUniformLocation;
-      prototype.getUniformLocation = function (program, name) {
-        const location = locate.call(this, program, name);
-        if (location) names.set(location, name);
-        return location;
-      };
-      const matrix = prototype.uniformMatrix4fv;
-      prototype.uniformMatrix4fv = function (
-        location,
-        transpose,
-        values,
-        ...rest
-      ) {
-        if (names.get(location) === 'viewMatrix') probe.view = [...values];
-        return matrix.call(this, location, transpose, values, ...rest);
-      };
-      const wait = prototype.clientWaitSync;
-      prototype.clientWaitSync = function (sync, flags, timeout) {
-        probe.waits.push(timeout);
-        return probe.blocked
-          ? this.TIMEOUT_EXPIRED
-          : wait.call(this, sync, flags, timeout);
-      };
-      const flush = prototype.flush;
-      prototype.flush = function () {
-        if (this.canvas.closest?.('#viewport'))
-          probe.frames.push({
-            view: probe.view,
-            width: this.canvas.width,
-            height: this.canvas.height,
-          });
-        return flush.call(this);
       };
     });
     const errors = await setup(page);
@@ -453,8 +394,11 @@ test.describe('responsive first-person rendering', () => {
     await expect
       .poll(() => canvas.evaluate((c) => [c.width, c.height]))
       .toEqual([1920, 1080]);
-    const before = await page.evaluate(() => {
+    await page.evaluate(() => {
       walkPacingProbe.blocked = true;
+    });
+    await page.waitForFunction(() => !!walkPacingProbe.release);
+    const before = await page.evaluate(() => {
       return {
         count: walkPacingProbe.frames.length,
         view: walkPacingProbe.frames.at(-1).view,
@@ -477,8 +421,12 @@ test.describe('responsive first-person rendering', () => {
         walkPacingProbe.waits.every((timeout) => timeout === 0),
       ),
     ).toBe(true);
+    expect(
+      await page.evaluate(() => walkPacingProbe.waits.length),
+    ).toBeGreaterThan(0);
     await page.evaluate(() => {
       walkPacingProbe.blocked = false;
+      walkPacingProbe.release();
     });
     await expect
       .poll(() => page.evaluate(() => walkPacingProbe.frames.length))

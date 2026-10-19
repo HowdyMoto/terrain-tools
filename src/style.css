@@ -1880,3 +1880,20 @@ dialog > p {
   color: var(--accent);
   text-underline-offset: 3px;
 }
+
+.renderer-notice {
+  position: fixed;
+  z-index: 1000;
+  inset: 25% auto auto 50%;
+  transform: translateX(-50%);
+  width: min(540px, calc(100vw - 40px));
+  padding: 28px;
+  background: #1b2726;
+  color: #edf2ef;
+  border: 1px solid #6d8479;
+  border-radius: 12px;
+  box-shadow: 0 12px 50px #0008;
+}
+.renderer-notice button {
+  margin: 12px 12px 0 0;
+}

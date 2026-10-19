@@ -1,4 +1,10 @@
 export {
+  createTerrainRenderer,
+  isWebGPU,
+  rendererDescription,
+} from '../render/renderer';
+export type { TerrainRenderer } from '../render/renderer';
+export {
   TerrainEnvironment,
   prepareEnvironment,
   PreparedEnvironment,

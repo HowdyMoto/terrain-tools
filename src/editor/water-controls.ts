@@ -150,7 +150,7 @@ export function waterControls(
 export function bindWaterControls(
   w: WaterSettings,
   selected: string,
-  edit: (change: (w: WaterSettings) => void) => boolean,
+  edit: (change: (w: WaterSettings) => void) => Promise<boolean>,
   select: (id: string) => void,
   placement: (kind: 'ellipse' | 'basin' | 'polygon' | null) => void,
   finish: () => void,
@@ -266,9 +266,9 @@ export function bindWaterControls(
       w.bodies = w.bodies.filter((b) => b.id !== selected);
     }),
   );
-  click('water-duplicate', () => {
+  click('water-duplicate', async () => {
     const id = crypto.randomUUID();
-    const applied = edit((w) => {
+    const applied = await edit((w) => {
       const copy = structuredClone(w.bodies.find((b) => b.id === selected)!);
       copy.id = id;
       copy.name += ' copy';

@@ -1,5 +1,7 @@
 # Performance evidence
 
+The editor and interactive runtime examples now use native WebGPU. Measurements recorded below predate the port and are **WebGL baselines** unless explicitly marked otherwise. No WebGPU speedup or 30 FPS acceptance claim is made by the migration. Additional performance work is deferred until migration correctness is established; see [WebGPU scope](WEBGPU.md). `benchmark:surfaces` and `benchmark:foliage` still exercise the explicit legacy WebGL paths.
+
 ## Streamed world and prepared assets
 
 Build with `npm ci` and `npm run build`, then run `npm run benchmark:world`. The production `/world.html` example covers 2 × 2 km using 250 m tiles with 128 cells per side. Three 36-second laps traverse forest, open ground and coast at 20 m/s with teleports between regions. It enables Rapier terrain collision, three 2048-pixel shadow cascades, ambient occlusion and temporal AA. At most 12 tiles reside at once; two prepare concurrently. Heights and plant placement are deterministic procedural inputs, with five prepared CC0 plant GLBs and eight shared ground materials. This is a repeatable integration scene, not a calibrated photorealistic forest.

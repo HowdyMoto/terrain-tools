@@ -1,3 +1,4 @@
+import { registerSharedGeometry } from './shared-geometry';
 import * as THREE from 'three';
 import type { FoliageFlexibility } from '../core/types';
 
@@ -121,6 +122,7 @@ export function foliageGeometryView(
   base: THREE.BufferGeometry,
   attributes: Record<string, THREE.InstancedBufferAttribute>,
 ) {
+  registerSharedGeometry(base);
   const geometry = new THREE.BufferGeometry();
   geometry.index = base.index;
   for (const [name, attribute] of Object.entries(base.attributes))

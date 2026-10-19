@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { TerrainRenderer } from '../render/renderer';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import type { MaterialLayer } from '../core/types';
 import type { WorldAssets } from './world-assets';
@@ -37,7 +38,7 @@ export class RuntimeMaterialLibrary {
   private fingerprints: string[];
   private key: string;
   constructor(
-    renderer: THREE.WebGLRenderer,
+    renderer: TerrainRenderer,
     manifest: MaterialLibraryManifest,
     readonly baseURL: string,
     transcoderPath = '/basis/',
@@ -172,7 +173,9 @@ export class RuntimeMaterialLibrary {
             (sum, texture) =>
               sum +
               Math.max(
-                'data' in texture.image ? texture.image.data.byteLength : 0,
+                'data' in texture.image
+                  ? (texture.image.data?.byteLength ?? 0)
+                  : 0,
                 texture.mipmaps.reduce(
                   (n, m) => n + ('data' in m ? m.data.byteLength : 0),
                   0,

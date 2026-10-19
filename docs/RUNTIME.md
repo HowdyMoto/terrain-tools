@@ -2,14 +2,18 @@
 
 Build with `npm run build:runtime`. To use the toolkit from another local project, run `npm pack` in this repository and install the generated tarball there. The package is private and this command does not publish it. It includes JavaScript, TypeScript declarations, and documentation. Reference-scene art and native packages belong to the editor build in `dist/examples/`; the reusable library build does not copy `public/` assets.
 
-Three.js r180 is a peer dependency so the host and toolkit use the same Three instance. Rapier is optional: consumers can omit optional dependencies when using another physics engine. Importing the core or Three entry does not initialize or load the physics engine.
+Three.js ^0.186.1 is a peer dependency so the host and toolkit use the same Three instance. Rapier is optional: consumers can omit optional dependencies when using another physics engine. Importing the core or Three entry does not initialize or load the physics engine.
 
-For strict TypeScript checks of the Three.js entry point with `skipLibCheck: false`, include `"@webgpu/types"` in your compiler's `types` array alongside any other required global types. The installed r180 Three.js declarations reference `GPUTexture`; those WebGPU declarations are required even when the application renders with WebGL. The package compatibility check uses `module` and `moduleResolution` set to `NodeNext`, `target: "ES2022"`, and the `ES2022`/`DOM` libraries.
+For strict TypeScript checks of the Three.js entry point with `skipLibCheck: false`, include `"@webgpu/types"` in your compiler's `types` array alongside any other required global types. The installed r186 Three.js declarations reference `GPUTexture`; those WebGPU declarations are required even when the application renders with WebGL. The package compatibility check uses `module` and `moduleResolution` set to `NodeNext`, `target: "ES2022"`, and the `ES2022`/`DOM` libraries.
 
 ## Load an authored scene
 
 ```ts
-import { loadTerrain } from 'terrain-tools/three';
+import { createTerrainRenderer, loadTerrain } from 'terrain-tools/three';
+
+const renderer = await createTerrainRenderer(); // Native WebGPU; rejects unavailable devices
+renderer.setSize(innerWidth, innerHeight);
+document.body.append(renderer.domElement);
 
 const response = await fetch('/assets/my-world.glb');
 if (!response.ok) throw new Error('Terrain request failed');
@@ -26,7 +30,7 @@ scene.remove(terrain);
 terrain.dispose();
 ```
 
-Pass a `.terrain` package ArrayBuffer or legacy JSON text to load a saved project directly; ArrayBuffer inputs are detected by signature. Browser hosts can pass a File or Blob directly for bounded reads. `loadTerrain` validates and decodes assets before returning. The host supplies the renderer, camera, render loop, and game objects. It can provide its own lighting or restore authored lighting with `TerrainEnvironment`; see [lighting integration](ENVIRONMENT.md). Set renderer shadows to use the runtime's wind-deformed foliage shadows. The standalone `/runtime.html` example uses these package exports, not the editor's UI classes.
+Pass a `.terrain` package ArrayBuffer or legacy JSON text to load a saved project directly; ArrayBuffer inputs are detected by signature. Browser hosts can pass a File or Blob directly for bounded reads. `loadTerrain` validates and decodes assets before returning. The host owns the initialized renderer, camera, render loop, and game objects. `createTerrainRenderer()` initializes native WebGPU and installs the terrain lighting contract. Dispose it after the scene resources. Host-created `WebGPURenderer` instances must be initialized before KTX2 decoding; `TerrainEnvironment` installs the lighting contract on these too. The reusable library retains explicit WebGLRenderer compatibility for existing hosts, while shipped interactive entry points require WebGPU. See [backend integration](WEBGPU.md). It can provide its own lighting or restore authored lighting with `TerrainEnvironment`; see [lighting integration](ENVIRONMENT.md). Set renderer shadows to use the runtime's wind-deformed foliage shadows. The standalone `/runtime.html` example uses these package exports, not the editor's UI classes.
 
 With authored environment rendering, call `lighting.tick(deltaSeconds)` and `lighting.render(camera)` after `terrain.update()`, replacing the direct renderer call above. This applies optional camera-following sun cascades, contact occlusion and temporal stabilization. `lighting.updateCamera(camera)` provides cascades alone for hosts supplying their own screen compositor. Request `powerPreference: 'high-performance'` when constructing a desktop renderer, and record the actual selected GPU when profiling; browsers may override the preference. See the environment guide for full-viewport and material ownership constraints.
 
@@ -147,7 +151,7 @@ A material can set `reduceTiling: true` to blend offset texture patches consiste
 
 Unchanged model payloads and surface arrays are shared through retained references. Replacements and removals release geometry, materials, textures, and owned image bitmaps when the last owner releases them. Embedded GLB dependencies use isolated URLs so cleanup does not close images in a host application's Three.js cache. Missing embedded textures fail preparation; external model dependencies are rejected.
 
-These guarantees cover recoverable exceptions during decoding and CPU geometry/collider construction. They do not recover a terminated browser, WebGL context loss or GPU upload failure, or exceptions thrown by host event listeners/lighting code during commit. Preparation temporarily retains both old and replacement buffers. Cancellation stops pending requests and later channel allocations; synchronous decoding or geometry work already executing cannot be interrupted. The `materials = false` option intentionally retains the current terrain surface maps and is appropriate only when those maps are unchanged.
+These guarantees cover recoverable exceptions during decoding and CPU geometry/collider construction. They do not recover a terminated browser or lost graphics device, or exceptions thrown by host event listeners/lighting code during commit. The editor additionally validates native shader/texture preparations before committing project loads, surface edits and structural water edits. Standalone `TerrainScene` preparation remains independent of a renderer; a host must stage its own GPU work before committing if it needs the same guarantee. Preparation temporarily retains both old and replacement buffers. Cancellation stops pending requests and later channel allocations; synchronous decoding or geometry work already executing cannot be interrupted. The `materials = false` option intentionally retains the current terrain surface maps and is appropriate only when those maps are unchanged.
 
 ## Undo and redo
 

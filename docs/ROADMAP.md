@@ -4,6 +4,8 @@ The goal remains a comprehensive Three.js terrain creation tool for stylized gam
 
 ## Resume checkpoint
 
+The active priority is the **native WebGPU port**, ahead of additional performance work. Editor, asset previews and runtime/world examples now initialize WebGPU; layered surfaces, foliage deformation/transmission, sky probes, cascaded shadows, water optics, screen effects and PBR export have native node implementations. Project formats remain unchanged and WebGL library compatibility remains explicit. Integration validation and device limits are recorded in [WEBGPU.md](WEBGPU.md). The older timing/visual reports below describe the WebGL baseline; they do not establish WebGPU performance. web-ocean remains the subsequent integration in #13.
+
 The six P1 audit items now have integrated implementations: streamed terrain/foliage/collision, shared asset leases and memory reservations, deferred water topology during sculpt previews, terrain LOD, prepared Meshopt/KTX2 assets and automated correctness/performance workflows. `/world.html` demonstrates a 2 × 2 km runtime world; the editor continues to author one terrain at a time. Build, lint, 313 unit tests and 14 targeted RTX 5060 Chrome browser scenarios pass. The sustained world run stays within its residency limits and releases all tracked resources on teardown, but its 50.1 ms frame-time p95 fails the steady 30 FPS target. See [runtime contracts](RUNTIME.md#world-tile-loading-foundation) and [measured performance and limits](PERFORMANCE.md). Multi-tile authoring, global water connectivity and an upload scheduler remain outside this implementation. Full water finalization still runs synchronously once per stroke.
 
 | Priority | Issue                                                                                                         |
@@ -15,7 +17,7 @@ The six P1 audit items now have integrated implementations: streamed terrain/fol
 | P1       | [#8 Asset preparation and GPU-compressed textures](https://github.com/HowdyMoto/terrain-tools/issues/8)       |
 | P1       | [#10 CI and sustained performance acceptance](https://github.com/HowdyMoto/terrain-tools/issues/10)           |
 | P2       | [#5 Editor controllers and commands](https://github.com/HowdyMoto/terrain-tools/issues/5)                     |
-| P2       | [#6 Rendering contracts and WebGPU evaluation](https://github.com/HowdyMoto/terrain-tools/issues/6)           |
+| P1       | [#6 Native WebGPU port and rendering contracts](https://github.com/HowdyMoto/terrain-tools/issues/6)          |
 | P2       | [#7 Vegetation motion vectors and temporal stability](https://github.com/HowdyMoto/terrain-tools/issues/7)    |
 | P2       | [#9 Distant forest representations](https://github.com/HowdyMoto/terrain-tools/issues/9)                      |
 | P2       | [#11 Indirect lighting and calibrated reference scenes](https://github.com/HowdyMoto/terrain-tools/issues/11) |

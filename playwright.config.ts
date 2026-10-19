@@ -12,7 +12,12 @@ export default defineConfig({
         process.platform === 'win32'
           ? 'C:/Program Files/Google/Chrome/Application/chrome.exe'
           : undefined,
-      args: ['--enable-unsafe-swiftshader', ...chromeGPUArgs()],
+      args: [
+        '--enable-unsafe-swiftshader',
+        ...(process.env.CI && process.platform === 'linux'
+          ? ['--enable-unsafe-webgpu', '--use-webgpu-adapter=swiftshader']
+          : chromeGPUArgs()),
+      ],
     },
     screenshot: 'only-on-failure',
   },

@@ -147,7 +147,7 @@ describe('foliage distance detail', () => {
     });
     for (const mesh of scene.foliage.children as THREE.InstancedMesh[]) {
       expect(mesh.customDepthMaterial!.customProgramCacheKey()).toMatch(
-        /-1.2$/,
+        /-1.2(?:\||$)/,
       );
       const matrix = new THREE.Matrix4();
       mesh.userData.instanceIds.forEach((id: number, slot: number) => {

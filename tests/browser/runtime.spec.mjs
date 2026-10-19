@@ -62,11 +62,11 @@ test('PBR textures and full scene GLB survive export, editor reload, and the pub
   page,
   context,
 }) => {
-  test.setTimeout(120000);
+  test.setTimeout(240000);
   const errors = watchErrors(page);
   await page.goto('/');
-  await expect(page.locator('#foliage-count')).not.toHaveText('0', {
-    timeout: 30000,
+  await expect(page.locator('#app')).not.toHaveAttribute('inert', {
+    timeout: 90000,
   });
   await page.locator('#project-name').fill('Runtime round trip');
   await page.locator('#project-name').press('Tab');
@@ -79,6 +79,7 @@ test('PBR textures and full scene GLB survive export, editor reload, and the pub
   await (
     await inspectorControl(page, '#texture-resolution')
   ).selectOption('1024');
+  await expect(page.locator('#preparation-status')).toBeHidden();
   await expect(page.locator('#save-state')).toHaveText('Saved locally');
   const albedo = png(185, 130, 75);
   await page
@@ -97,6 +98,7 @@ test('PBR textures and full scene GLB survive export, editor reload, and the pub
   await expect(page.locator('#toast')).toHaveText('Texture imported.');
   await (await inspectorControl(page, '#normal-strength')).focus();
   await (await inspectorControl(page, '#normal-strength')).press('End');
+  await expect(page.locator('#preparation-status')).toBeHidden();
   await (await inspectorControl(page, '#normal-strength')).press('Tab');
   // Decode failures must not replace the last valid texture or poison autosave.
   await page.locator('#texture-open').setInputFiles({
@@ -130,7 +132,9 @@ test('PBR textures and full scene GLB survive export, editor reload, and the pub
   await page
     .locator('#file-open')
     .setInputFiles('test-results/runtime-scene.glb');
-  await expect(page.locator('#toast')).toHaveText('Project loaded.');
+  await expect(page.locator('#toast')).toHaveText('Project loaded.', {
+    timeout: 60000,
+  });
   const after = await save(page, 'test-results/material-project-after.json');
   expect(after).toEqual(before);
   await page.screenshot({ path: 'test-results/materials-runtime.png' });

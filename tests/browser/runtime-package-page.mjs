@@ -10,7 +10,7 @@ export async function runtimePackagePage(page) {
     if (path === 'index.html')
       return route.fulfill({
         contentType: 'text/html',
-        body: '<!doctype html><title>Foliage deformation verification</title><script type="importmap">{"imports":{"three":"/__runtime_test/three/build/three.module.js","three/":"/__runtime_test/three/","three/addons/":"/__runtime_test/three/examples/jsm/"}}</script>',
+        body: '<!doctype html><title>Foliage deformation verification</title><script type="importmap">{"imports":{"three":"/__runtime_test/three/build/three.module.js","three/webgpu":"/__runtime_test/three/build/three.webgpu.js","three/tsl":"/__runtime_test/three/build/three.tsl.js","three/":"/__runtime_test/three/","three/addons/":"/__runtime_test/three/examples/jsm/"}}</script>',
       });
     const local = path.startsWith('lib/')
       ? resolve(root, path)

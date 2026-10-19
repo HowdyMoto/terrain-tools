@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { FramePacing, viewportPixelRatio } from '../src/render/frame-pacing';
+import {
+  FramePacing,
+  WebGPUFramePacing,
+  viewportPixelRatio,
+} from '../src/render/frame-pacing';
 
 function setup() {
   const gl = {
@@ -20,6 +24,35 @@ function setup() {
 }
 
 describe('interactive frame pacing', () => {
+  it('bounds WebGPU submissions and ignores stale completions after reset', async () => {
+    const pending: { resolve(): void; reject(error: Error): void }[] = [];
+    const queue = {
+      onSubmittedWorkDone: vi.fn(
+        () =>
+          new Promise<void>((resolve, reject) =>
+            pending.push({ resolve, reject }),
+          ),
+      ),
+    };
+    const pacing = new WebGPUFramePacing(queue);
+    expect(pacing.ready()).toBe(true);
+    pacing.submitted();
+    pacing.submitted();
+    expect(queue.onSubmittedWorkDone).toHaveBeenCalledTimes(1);
+    expect(pacing.ready()).toBe(false);
+    pacing.reset();
+    pacing.submitted();
+    pending[0].resolve();
+    await Promise.resolve();
+    expect(pacing.ready()).toBe(false);
+    pending[1].reject(new Error('Device lost'));
+    await Promise.resolve();
+    expect(pacing.ready()).toBe(true);
+    pacing.submitted();
+    pending[2].resolve();
+    await Promise.resolve();
+    expect(pacing.ready()).toBe(true);
+  });
   it('admits the first frame, yields while busy and resumes without blocking', () => {
     const { gl, pacing } = setup();
     expect(pacing.ready()).toBe(true);

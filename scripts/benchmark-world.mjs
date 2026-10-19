@@ -57,7 +57,8 @@ try {
       process.platform === 'win32'
         ? 'C:/Program Files/Google/Chrome/Application/chrome.exe'
         : undefined,
-    args: chromeGPUArgs(),
+    // Expose the native adapter description in this temporary benchmark profile.
+    args: [...chromeGPUArgs(), '--enable-webgpu-developer-features'],
   });
   const page = await browser.newPage({
       viewport: { width: 1920, height: 1080 },

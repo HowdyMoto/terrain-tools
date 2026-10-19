@@ -1,3 +1,4 @@
+import { nodeGraphKey } from './node-uniforms';
 import * as THREE from 'three';
 import { noise } from '../core/math';
 import type { TerrainProject, MaterialLayer } from '../core/types';
@@ -12,6 +13,7 @@ import { shoreDeclarations } from '../runtime/water-shore';
 import type { WorldAssets } from '../runtime/world-assets';
 import { assetHash } from '../core/asset-registry';
 import type { SurfaceArray } from '../runtime/material-library';
+import { configureTerrainNodes } from './surface-nodes';
 const keys = ['albedo', 'normal', 'orm', 'height'] as const;
 type MapKey = (typeof keys)[number];
 interface SurfaceTextures {
@@ -99,7 +101,7 @@ export class TerrainMaterial {
       );
     };
     this.material.customProgramCacheKey = () =>
-      'terrain-pbr-triplanar-v5-shore';
+      'terrain-pbr-triplanar-v5-shore|' + nodeGraphKey(this.material);
   }
   private procedural(key: MapKey, layer: number) {
     const size = 256,
@@ -338,6 +340,25 @@ export class TerrainMaterial {
     if (this.disposed) throw new Error('Terrain material has been disposed.');
     prepared.assert(this);
   }
+  /** Detached native shader candidate; borrows the prepared textures. */
+  preparedNodeMaterial(prepared: PreparedMaterial) {
+    this.assertPrepared(prepared);
+    const state = prepared.value;
+    const material = new THREE.MeshStandardMaterial({
+      roughness: 1,
+      metalness: 1,
+      flatShading: state.lowPoly,
+      wireframe: state.wireframe,
+    });
+    configureTerrainNodes(
+      material,
+      Object.fromEntries(state.uniforms),
+      this.shoreUniforms,
+    );
+    material.customProgramCacheKey = () =>
+      'terrain-prepared-surface|' + nodeGraphKey(material);
+    return material;
+  }
   apply(prepared: PreparedMaterial) {
     this.assertPrepared(prepared);
     this.updating?.abort();
@@ -353,6 +374,7 @@ export class TerrainMaterial {
       this.material.needsUpdate = true;
     }
     this.material.wireframe = state.wireframe;
+    configureTerrainNodes(this.material, this.uniforms, this.shoreUniforms);
     previous?.release();
   }
   /** Latest update wins; failed or cancelled preparation leaves the current material untouched. */

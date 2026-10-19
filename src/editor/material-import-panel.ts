@@ -393,9 +393,8 @@ export function showMaterialImport(
       for (const role of ['albedo', 'normal', 'orm', 'height'] as const) {
         const url = next.textures[role];
         if (!url) continue;
-        const texture = await new THREE.TextureLoader()
-          .loadAsync(url)
-          .catch(() => {
+        const texture: THREE.Texture<HTMLImageElement | HTMLCanvasElement> =
+          await new THREE.TextureLoader().loadAsync(url).catch(() => {
             throw new Error(
               `Could not decode the ${mapLabels[role].toLowerCase()} map. Remove it and choose a valid ${textureFormats} image.`,
             );
@@ -411,7 +410,7 @@ export function showMaterialImport(
         canvas
           .getContext('2d')!
           .drawImage(source, 0, 0, canvas.width, canvas.height);
-        texture.image = canvas;
+        texture.source.data = canvas;
         texture.needsUpdate = true;
         texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
         if (role === 'albedo') {
@@ -426,7 +425,8 @@ export function showMaterialImport(
               texture;
       }
       current();
-      preview ??= new ImportPreview(q('#material-preview'));
+      preview ??= await ImportPreview.create(q('#material-preview'), ui.signal);
+      current();
       preview.surface(material, 4 / size);
       release();
       resources = local.splice(0);

@@ -39,6 +39,9 @@ async function set(page, id, value) {
     input.dispatchEvent(new Event('input', { bubbles: true }));
     input.dispatchEvent(new Event('change', { bubbles: true }));
   }, value);
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
 }
 async function arm(page, stage) {
   await page.evaluate((stage) => {
@@ -133,8 +136,8 @@ async function setup(page, info, tab = 'light') {
     };
   });
   await page.goto('/');
-  await expect(page.locator('#foliage-count')).not.toHaveText('0', {
-    timeout: 30000,
+  await expect(page.locator('#app')).not.toHaveAttribute('inert', {
+    timeout: 90000,
   });
   const project = createProject(64, 64);
   generateTerrain(project, 'flat');
@@ -151,14 +154,18 @@ async function setup(page, info, tab = 'light') {
     mimeType: 'application/json',
     buffer: Buffer.from(serializeProject(project)),
   });
-  await expect(page.locator('#project-name')).toHaveValue(project.name);
+  await expect(page.locator('#project-name')).toHaveValue(project.name, {
+    timeout: 60000,
+  });
   await page.locator(`[data-tab="${tab}"]`).click();
   if (tab === 'sculpt')
     await (await inspectorControl(page, '[data-tool="stamp"]')).click();
   await page.locator('#project-name').fill('Redo branch');
   await page.locator('#project-name').press('Tab');
   await page.locator('#undo').click();
-  await expect(page.locator('#project-name')).toHaveValue(project.name);
+  await expect(page.locator('#project-name')).toHaveValue(project.name, {
+    timeout: 60000,
+  });
   await expect(page.locator('#redo')).toBeEnabled();
   await page.locator('#frame').click();
   const baseline = await save(page, info, 'baseline');

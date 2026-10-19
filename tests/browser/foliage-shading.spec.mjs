@@ -23,186 +23,205 @@ function track(page) {
   return errors;
 }
 
-test('transmits backlight through leaves while respecting shadows, thickness, bark and cutout silhouettes', async ({
-  page,
-}, info) => {
-  const errors = track(page);
-  await runtimePackagePage(page);
-  const result = await page.evaluate(async () => {
-    const THREE = await import('three');
-    const { configureFoliageSubsurface } =
-      await import('/__runtime_test/lib/runtime.js');
-    const { defaultFoliageSubsurface } =
-      await import('/__runtime_test/lib/core.js');
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0);
-    const camera = new THREE.OrthographicCamera(-1.3, 1.3, 1.3, -1.3, 0.1, 20);
-    camera.position.set(0, 0, 5);
-    camera.lookAt(0, 0, 0);
-    const bytes = new Uint8Array(32 * 32 * 4);
-    for (let y = 0; y < 32; y++)
-      for (let x = 0; x < 32; x++) {
-        const i = (y * 32 + x) * 4;
-        bytes.set(
-          [
-            80,
-            180,
-            40,
-            ((x - 15.5) / 13) ** 2 + ((y - 15.5) / 15) ** 2 < 1 ? 255 : 0,
-          ],
-          i,
-        );
-      }
-    const texture = new THREE.DataTexture(bytes, 32, 32);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.needsUpdate = true;
-    const geometry = new THREE.PlaneGeometry(2, 2);
-    const source = new THREE.MeshStandardMaterial({
-      map: texture,
-      alphaTest: 0.5,
-      side: THREE.DoubleSide,
-      roughness: 1,
+for (const backend of ['webgl', 'webgpu'])
+  test(`${backend}: transmits backlight through leaves while respecting shadows, thickness, bark and cutout silhouettes`, async ({
+    page,
+  }, info) => {
+    const errors = track(page);
+    await runtimePackagePage(page);
+    const result = await page.evaluate(async (backend) => {
+      const THREE = await import('three');
+      const {
+        configureFoliageSubsurface,
+        createTerrainRenderer,
+        rendererDescription,
+      } = await import('/__runtime_test/lib/runtime.js');
+      const { defaultFoliageSubsurface } =
+        await import('/__runtime_test/lib/core.js');
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0);
+      const camera = new THREE.OrthographicCamera(
+        -1.3,
+        1.3,
+        1.3,
+        -1.3,
+        0.1,
+        20,
+      );
+      camera.position.set(0, 0, 5);
+      camera.lookAt(0, 0, 0);
+      const bytes = new Uint8Array(32 * 32 * 4);
+      for (let y = 0; y < 32; y++)
+        for (let x = 0; x < 32; x++) {
+          const i = (y * 32 + x) * 4;
+          bytes.set(
+            [
+              80,
+              180,
+              40,
+              ((x - 15.5) / 13) ** 2 + ((y - 15.5) / 15) ** 2 < 1 ? 255 : 0,
+            ],
+            i,
+          );
+        }
+      const texture = new THREE.DataTexture(bytes, 32, 32);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.needsUpdate = true;
+      const geometry = new THREE.PlaneGeometry(2, 2);
+      const source = new THREE.MeshStandardMaterial({
+        map: texture,
+        alphaTest: 0.5,
+        side: THREE.DoubleSide,
+        roughness: 1,
+      });
+      const leaf = new THREE.Mesh(geometry, source);
+      leaf.receiveShadow = true;
+      scene.add(leaf);
+      const sun = new THREE.DirectionalLight(0xffffff, 5);
+      sun.position.set(0, 0, -5);
+      sun.castShadow = true;
+      sun.shadow.mapSize.set(512, 512);
+      Object.assign(sun.shadow.camera, {
+        left: -2,
+        right: 2,
+        top: 2,
+        bottom: -2,
+        near: 0.1,
+        far: 15,
+      });
+      sun.shadow.camera.updateProjectionMatrix();
+      sun.shadow.bias = -0.0001;
+      scene.add(sun, sun.target);
+      const blocker = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.7, 0.7),
+        new THREE.MeshStandardMaterial({ color: 0, side: THREE.DoubleSide }),
+      );
+      blocker.position.z = -1;
+      blocker.castShadow = true;
+      blocker.visible = false;
+      scene.add(blocker);
+      const native = backend === 'webgpu';
+      const renderer = native
+        ? await createTerrainRenderer()
+        : new THREE.WebGLRenderer({
+            antialias: true,
+            preserveDrawingBuffer: true,
+          });
+      renderer.setSize(256, 256);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFShadowMap;
+      const target = new THREE.WebGLRenderTarget(256, 256);
+      const render = async () => {
+        if (native) await new Promise(requestAnimationFrame);
+        renderer.setRenderTarget(target);
+        renderer.render(scene, camera);
+        const pixels = new Uint8Array(256 * 256 * 4);
+        if (native)
+          pixels.set(
+            await renderer.readRenderTargetPixelsAsync(target, 0, 0, 256, 256),
+          );
+        else renderer.readRenderTargetPixels(target, 0, 0, 256, 256, pixels);
+        return pixels;
+      };
+      const center = (pixels) => {
+        let sum = 0;
+        for (let y = 115; y < 141; y++)
+          for (let x = 115; x < 141; x++) sum += pixels[(y * 256 + x) * 4 + 1];
+        return sum / (26 * 26);
+      };
+      const show = (label) => {
+        renderer.setRenderTarget(null);
+        renderer.render(scene, camera);
+        const figure = document.createElement('figure');
+        const caption = document.createElement('figcaption');
+        caption.textContent = label;
+        const image = document.createElement('img');
+        image.src = renderer.domElement.toDataURL();
+        figure.append(caption, image);
+        document.body.append(figure);
+      };
+      document.body.style.cssText =
+        'margin:0;background:#171e20;color:white;font:16px system-ui;display:flex;flex-wrap:wrap';
+      const off = center(await render());
+      show('Standard PBR · backlit');
+      const material = source.clone();
+      configureFoliageSubsurface(material, {
+        ...defaultFoliageSubsurface(),
+        smoothEdges: false,
+      });
+      leaf.material = material;
+      const onPixels = await render(),
+        on = center(onPixels);
+      show('Thin-leaf transmission');
+      blocker.visible = true;
+      const shadow = center(await render());
+      show('Same leaf · cast shadow');
+      blocker.visible = false;
+      const thick = source.clone();
+      configureFoliageSubsurface(thick, {
+        ...defaultFoliageSubsurface(),
+        thickness: 4,
+        smoothEdges: false,
+      });
+      leaf.material = thick;
+      const absorbed = center(await render());
+      show('Thicker / absorbing leaf');
+      const bark = new THREE.MeshStandardMaterial({
+        color: '#805430',
+        roughness: 1,
+        side: THREE.DoubleSide,
+      });
+      configureFoliageSubsurface(bark, defaultFoliageSubsurface());
+      leaf.material = bark;
+      const opaqueBark = center(await render());
+      sun.position.z = 5;
+      leaf.material = source;
+      const frontOff = await render();
+      leaf.material = material;
+      const frontOn = await render();
+      const frontDifference = frontOn.reduce(
+        (sum, v, i) => sum + Math.abs(v - frontOff[i]),
+        0,
+      );
+      const hole = onPixels[(30 * 256 + 30) * 4 + 1];
+      const result = {
+        off,
+        on,
+        shadow,
+        absorbed,
+        opaqueBark,
+        frontDifference,
+        hole,
+        renderer: native
+          ? rendererDescription(renderer)
+          : renderer.getContext().getParameter(renderer.getContext().RENDERER),
+      };
+      for (const m of [source, material, thick, bark, blocker.material])
+        m.dispose();
+      geometry.dispose();
+      blocker.geometry.dispose();
+      texture.dispose();
+      sun.shadow.dispose();
+      target.dispose();
+      renderer.dispose();
+      return result;
+    }, backend);
+    expect(result.on).toBeGreaterThan(result.off + 30);
+    expect(result.shadow).toBeLessThan(result.on * 0.15);
+    expect(result.absorbed).toBeLessThan(result.on * 0.15);
+    expect(result.opaqueBark).toBe(0);
+    expect(result.frontDifference).toBe(0);
+    expect(result.hole).toBe(0);
+    expect(errors).toEqual([]);
+    await page.screenshot({
+      path: info.outputPath('leaf-lighting-comparison.png'),
+      fullPage: true,
     });
-    const leaf = new THREE.Mesh(geometry, source);
-    leaf.receiveShadow = true;
-    scene.add(leaf);
-    const sun = new THREE.DirectionalLight(0xffffff, 5);
-    sun.position.set(0, 0, -5);
-    sun.castShadow = true;
-    sun.shadow.mapSize.set(512, 512);
-    Object.assign(sun.shadow.camera, {
-      left: -2,
-      right: 2,
-      top: 2,
-      bottom: -2,
-      near: 0.1,
-      far: 15,
-    });
-    sun.shadow.camera.updateProjectionMatrix();
-    sun.shadow.bias = -0.0001;
-    scene.add(sun, sun.target);
-    const blocker = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.7, 0.7),
-      new THREE.MeshStandardMaterial({ color: 0, side: THREE.DoubleSide }),
+    await writeFile(
+      info.outputPath('leaf-lighting-metrics.json'),
+      JSON.stringify(result, null, 2),
     );
-    blocker.position.z = -1;
-    blocker.castShadow = true;
-    blocker.visible = false;
-    scene.add(blocker);
-    const renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      preserveDrawingBuffer: true,
-    });
-    renderer.setSize(256, 256);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    const target = new THREE.WebGLRenderTarget(256, 256);
-    const render = () => {
-      renderer.setRenderTarget(target);
-      renderer.render(scene, camera);
-      const pixels = new Uint8Array(256 * 256 * 4);
-      renderer.readRenderTargetPixels(target, 0, 0, 256, 256, pixels);
-      return pixels;
-    };
-    const center = (pixels) => {
-      let sum = 0;
-      for (let y = 115; y < 141; y++)
-        for (let x = 115; x < 141; x++) sum += pixels[(y * 256 + x) * 4 + 1];
-      return sum / (26 * 26);
-    };
-    const show = (label) => {
-      renderer.setRenderTarget(null);
-      renderer.render(scene, camera);
-      const figure = document.createElement('figure');
-      const caption = document.createElement('figcaption');
-      caption.textContent = label;
-      const image = document.createElement('img');
-      image.src = renderer.domElement.toDataURL();
-      figure.append(caption, image);
-      document.body.append(figure);
-    };
-    document.body.style.cssText =
-      'margin:0;background:#171e20;color:white;font:16px system-ui;display:flex;flex-wrap:wrap';
-    const off = center(render());
-    show('Standard PBR · backlit');
-    const material = source.clone();
-    configureFoliageSubsurface(material, {
-      ...defaultFoliageSubsurface(),
-      smoothEdges: false,
-    });
-    leaf.material = material;
-    const onPixels = render(),
-      on = center(onPixels);
-    show('Thin-leaf transmission');
-    blocker.visible = true;
-    const shadow = center(render());
-    show('Same leaf · cast shadow');
-    blocker.visible = false;
-    const thick = source.clone();
-    configureFoliageSubsurface(thick, {
-      ...defaultFoliageSubsurface(),
-      thickness: 4,
-      smoothEdges: false,
-    });
-    leaf.material = thick;
-    const absorbed = center(render());
-    show('Thicker / absorbing leaf');
-    const bark = new THREE.MeshStandardMaterial({
-      color: '#805430',
-      roughness: 1,
-      side: THREE.DoubleSide,
-    });
-    configureFoliageSubsurface(bark, defaultFoliageSubsurface());
-    leaf.material = bark;
-    const opaqueBark = center(render());
-    sun.position.z = 5;
-    leaf.material = source;
-    const frontOff = render();
-    leaf.material = material;
-    const frontOn = render();
-    const frontDifference = frontOn.reduce(
-      (sum, v, i) => sum + Math.abs(v - frontOff[i]),
-      0,
-    );
-    const hole = onPixels[(30 * 256 + 30) * 4 + 1];
-    const result = {
-      off,
-      on,
-      shadow,
-      absorbed,
-      opaqueBark,
-      frontDifference,
-      hole,
-      renderer: renderer
-        .getContext()
-        .getParameter(renderer.getContext().RENDERER),
-    };
-    for (const m of [source, material, thick, bark, blocker.material])
-      m.dispose();
-    geometry.dispose();
-    blocker.geometry.dispose();
-    texture.dispose();
-    sun.shadow.dispose();
-    target.dispose();
-    renderer.dispose();
-    return result;
   });
-  expect(result.on).toBeGreaterThan(result.off + 30);
-  expect(result.shadow).toBeLessThan(result.on * 0.15);
-  expect(result.absorbed).toBeLessThan(result.on * 0.15);
-  expect(result.opaqueBark).toBe(0);
-  expect(result.frontDifference).toBe(0);
-  expect(result.hole).toBe(0);
-  expect(errors).toEqual([]);
-  await page.screenshot({
-    path: info.outputPath('leaf-lighting-comparison.png'),
-    fullPage: true,
-  });
-  await writeFile(
-    info.outputPath('leaf-lighting-metrics.json'),
-    JSON.stringify(result, null, 2),
-  );
-});
 
 test('authors leaf lighting and natural sunlight with failed preparation recovery, undo and portable saves', async ({
   page,

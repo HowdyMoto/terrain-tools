@@ -8,15 +8,16 @@ import {
   serializeProject,
   heightAt,
 } from 'terrain-tools';
-import { loadTerrain, TerrainEnvironment } from 'terrain-tools/three';
+import {
+  loadTerrain,
+  TerrainEnvironment,
+  createTerrainRenderer,
+} from 'terrain-tools/three';
 
-const renderer = new THREE.WebGLRenderer({
-  antialias: true,
-  powerPreference: 'high-performance',
-});
+const renderer = await createTerrainRenderer();
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.15;
 const container = document.querySelector('#stage');
@@ -27,7 +28,7 @@ const lighting = new TerrainEnvironment(scene, renderer);
 const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 3000);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-const clock = new THREE.Clock();
+const clock = new THREE.Timer();
 let terrain, physics;
 let bodies = [];
 let pulses = [];
@@ -281,6 +282,7 @@ new ResizeObserver(() => {
   camera.updateProjectionMatrix();
 }).observe(container);
 renderer.setAnimationLoop(() => {
+  clock.update();
   const dt = Math.min(clock.getDelta(), 0.1);
   controls.update();
   const contacts = pulses;

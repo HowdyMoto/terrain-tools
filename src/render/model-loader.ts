@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { TerrainRenderer } from './renderer';
 import { validateFlexibilityAttribute } from './foliage-flexibility';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
@@ -79,7 +80,7 @@ function dataBytes(data: string) {
 
 /** Own one per renderer. Disposal rejects late results and drains active workers. */
 export function createModelDecoder(
-  renderer: THREE.WebGLRenderer,
+  renderer: TerrainRenderer,
   transcoderPath = '/basis/',
 ) {
   const textures = new KTX2Loader()

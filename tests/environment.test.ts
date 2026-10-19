@@ -106,9 +106,13 @@ describe('authored environment', () => {
           btoa(String.fromCharCode(...new Uint8Array(hdr(true)))),
       },
     });
-    expect(flat.texture!.image.data).toEqual(rle.texture!.image.data);
+    expect((flat.texture as THREE.DataTexture).image.data).toEqual(
+      (rle.texture as THREE.DataTexture).image.data,
+    );
     expect(
-      THREE.DataUtils.fromHalfFloat(flat.texture!.image.data[0]),
+      THREE.DataUtils.fromHalfFloat(
+        (flat.texture as THREE.DataTexture).image.data![0],
+      ),
     ).toBeGreaterThan(1);
     expect(flat.texture!.colorSpace).toBe(THREE.LinearSRGBColorSpace);
     expect(flat.texture!.mapping).toBe(THREE.EquirectangularReflectionMapping);

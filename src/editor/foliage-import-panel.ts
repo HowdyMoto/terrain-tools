@@ -122,14 +122,17 @@ export function showFoliageImport(
     }
     ui.status('Loading model preview…');
     try {
-      preview ??= new ImportPreview(q('#foliage-preview'));
+      preview ??= await ImportPreview.create(q('#foliage-preview'), ui.signal);
       const next = await preview.decodeModel(model.data, ui.signal);
       if (ui.signal.aborted || token !== previewEpoch) {
         next.dispose();
         return;
       }
       try {
-        preview ??= new ImportPreview(q('#foliage-preview'));
+        preview ??= await ImportPreview.create(
+          q('#foliage-preview'),
+          ui.signal,
+        );
         preview.model(next, scale(), ground());
       } catch (error) {
         next.dispose();
@@ -197,7 +200,10 @@ export function showFoliageImport(
         const document = await bundleModel(file, files, ui.signal);
         const buffer = writeModelDocument(document),
           data = modelDataURL(buffer);
-        preview ??= new ImportPreview(q('#foliage-preview'));
+        preview ??= await ImportPreview.create(
+          q('#foliage-preview'),
+          ui.signal,
+        );
         const parsed = await preview.decodeModel(data, ui.signal);
         try {
           checkSignal(ui.signal);

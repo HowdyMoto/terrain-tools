@@ -6,10 +6,13 @@ import {
   surfaceEvaluation,
 } from '../render/surface-shader';
 import { checkSignal } from '../render/resources';
+import { isWebGPU } from '../render/renderer';
+import type { TerrainRenderer } from '../render/renderer';
+import { bakeWebGPUSurface } from './webgpu-bake';
 
 export type TerrainBakeResolution = 256 | 512 | 1024 | 2048 | 4096;
 export interface TerrainBakeOptions {
-  renderer: THREE.WebGLRenderer;
+  renderer: TerrainRenderer;
   resolution?: TerrainBakeResolution;
   signal?: AbortSignal;
   onProgress?: (message: string) => void;
@@ -86,6 +89,8 @@ export async function bakeTerrainSurface(
     resolution = options.resolution ?? 2048;
   if (![256, 512, 1024, 2048, 4096].includes(resolution))
     throw new Error('Unsupported surface bake resolution.');
+  if (isWebGPU(renderer))
+    return bakeWebGPUSurface(scene, { ...options, renderer });
   if (baking.has(renderer))
     throw new Error('This renderer is already baking a surface.');
   checkSignal(signal);

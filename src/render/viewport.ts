@@ -1,6 +1,13 @@
 import { PropTools } from './prop-tools';
 import type { TerrainWalker } from './first-person';
-import { FramePacing, viewportPixelRatio } from './frame-pacing';
+import { WebGPUFramePacing, viewportPixelRatio } from './frame-pacing';
+import {
+  createTerrainRenderer,
+  gpuDevice,
+  rendererDescription,
+  validateGPU,
+} from './renderer';
+import type { WebGPURenderer } from 'three/webgpu';
 import { WalkPlacement } from './walk-placement';
 import type { WalkPlacementResult } from './walk-placement';
 import { EditTransaction } from './edit-transaction';
@@ -48,7 +55,7 @@ import { createModelDecoder } from './model-loader';
 import type { TerrainRegion } from '../runtime/terrain-scene';
 import type { RigidBody } from '@dimforge/rapier3d-compat';
 export class Viewport {
-  renderer: THREE.WebGLRenderer;
+  renderer: WebGPURenderer;
   readonly gpuRenderer: string;
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(45, 1, 0.1, 3000);
@@ -102,11 +109,11 @@ export class Viewport {
   private activePointer: number | null = null;
   private strokeEnd?: (event?: Event) => void;
   private spheres: { mesh: THREE.Mesh; body: RigidBody; radius: number }[] = [];
-  private clock = new THREE.Clock();
+  private clock = new THREE.Timer();
   private elapsed = 0;
   private frames = 0;
   private statsAt = 0;
-  private readonly framePacing: FramePacing;
+  private readonly framePacing: WebGPUFramePacing;
   private walkingResolution = false;
   private readonly resize: () => void;
   get project() {
@@ -137,7 +144,20 @@ export class Viewport {
     this.waterGuide.geometry.setDrawRange(0, Math.min(129, points.length));
     this.waterGuide.visible = points.length > 1 && !this.navigationActive;
   }
-  constructor(container: HTMLElement, project: TerrainProject) {
+  static async create(container: HTMLElement, project: TerrainProject) {
+    const renderer = await createTerrainRenderer();
+    try {
+      return new Viewport(container, project, renderer);
+    } catch (error) {
+      renderer.dispose();
+      throw error;
+    }
+  }
+  private constructor(
+    container: HTMLElement,
+    project: TerrainProject,
+    renderer: WebGPURenderer,
+  ) {
     this.waterGuide.geometry.setAttribute(
       'position',
       new THREE.BufferAttribute(new Float32Array(129 * 3), 3),
@@ -147,26 +167,28 @@ export class Viewport {
     this.waterGuide.renderOrder = 10000;
     this.waterGuide.userData.waterOverlay = true;
     this.scene.add(this.waterGuide);
-    this.renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      preserveDrawingBuffer: true,
-      powerPreference: 'high-performance',
-    });
+    this.renderer = renderer;
     const decoder = createModelDecoder(
       this.renderer,
       import.meta.env.BASE_URL + 'basis/',
     );
     this.content = new TerrainScene(project, { decoder: decoder.decode });
-    const gl = this.renderer.getContext();
-    this.framePacing = new FramePacing(gl as WebGL2RenderingContext);
-    const debugRenderer = gl.getExtension('WEBGL_debug_renderer_info');
-    this.gpuRenderer = String(
-      gl.getParameter(debugRenderer?.UNMASKED_RENDERER_WEBGL ?? gl.RENDERER),
-    );
+    this.framePacing = new WebGPUFramePacing(gpuDevice(this.renderer).queue);
+    this.gpuRenderer = rendererDescription(this.renderer);
+    this.renderer.onDeviceLost = (info) => {
+      this.framePacing.reset();
+      this.renderer.setAnimationLoop(null);
+      container.dispatchEvent(
+        new CustomEvent('terrain-renderer-lost', {
+          detail: info.message,
+          bubbles: true,
+        }),
+      );
+    };
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     this.renderer.setClearColor('#aebbb6');
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.15;
     container.append(this.renderer.domElement);
@@ -321,9 +343,15 @@ export class Viewport {
       environment = await this.lighting.prepare(p.environment);
       checkSignal(signal);
       terrain = await this.content.prepareLoad(p, materials, signal);
+      await this.preflightSurface(
+        terrain.value.geometry.value.meshes,
+        terrain.value.material,
+        [terrain.value.foliage.value, terrain.value.props],
+      );
+      checkSignal(signal);
       if (p.water) {
         this.lighting.prepareWater();
-        this.content.waterSystem.prepareGPU(
+        await this.content.waterSystem.prepareGPU(
           terrain.value.water,
           this.renderer,
           this.camera,
@@ -435,6 +463,11 @@ export class Viewport {
         terrain = this.content.prepareTerrain(undefined, project);
         picking = this.preparePicking(terrain.value.meshes, true);
       }
+      await this.preflightSurface(
+        terrain?.value.meshes ??
+          (this.content.terrain.children as THREE.Mesh[]),
+        material,
+      );
       checkSignal(signal);
       return new PreparedResource(
         this,
@@ -456,6 +489,50 @@ export class Viewport {
     this.terrainMaterial.assertPrepared(state.material);
     if (state.terrain) this.content.assertTerrain(state.terrain);
     state.picking?.assert(this);
+  }
+  private async preflightSurface(
+    meshes: THREE.Mesh[],
+    prepared?: PreparedMaterial,
+    objects: THREE.Object3D[] = [],
+  ) {
+    const material = prepared
+      ? this.terrainMaterial.preparedNodeMaterial(prepared)
+      : undefined;
+    const group = new THREE.Group();
+    const parents = objects.map((object) => object.parent);
+    const culling: [THREE.Mesh, boolean][] = [];
+    for (const object of objects)
+      object.traverse((part) => {
+        if (part instanceof THREE.Mesh) {
+          culling.push([part, part.frustumCulled]);
+          part.frustumCulled = false;
+        }
+      });
+    try {
+      for (const mesh of meshes) {
+        const candidate = new THREE.Mesh(
+          mesh.geometry,
+          material ?? mesh.material,
+        );
+        candidate.frustumCulled = false;
+        candidate.castShadow = mesh.castShadow;
+        candidate.receiveShadow = mesh.receiveShadow;
+        group.add(candidate);
+      }
+      if (objects.length) group.add(...objects);
+      group.updateMatrixWorld(true);
+      await validateGPU(this.renderer, () =>
+        this.renderer.compileAsync(group, this.camera, this.scene),
+      );
+    } finally {
+      culling.forEach(([mesh, value]) => (mesh.frustumCulled = value));
+      objects.forEach((object, i) => {
+        object.removeFromParent();
+        parents[i]?.add(object);
+      });
+      group.clear();
+      material?.dispose();
+    }
   }
   applySurface(prepared: PreparedSurface) {
     this.assertSurface(prepared);
@@ -740,6 +817,7 @@ export class Viewport {
       this.walkingResolution = !!this.walker;
       this.resize();
     }
+    this.clock.update();
     const elapsed = this.clock.getDelta();
     const dt = Math.min(elapsed, 0.1);
     this.elapsed += elapsed;

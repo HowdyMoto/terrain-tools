@@ -1,4 +1,10 @@
 import * as THREE from 'three';
+import { installTerrainLighting } from '../render/node-lighting';
+import { isWebGPU, validateGPU } from '../render/renderer';
+import type { TerrainRenderer } from '../render/renderer';
+import { WebGPUDaylight } from './webgpu-daylight';
+import { WebGPUPipeline } from './webgpu-pipeline';
+import { CSMShadowNode } from 'three/addons/csm/CSMShadowNode.js';
 import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
 import { inspectEnvironmentEXR } from './environment-exr';
 import {
@@ -174,7 +180,7 @@ export class PreparedEnvironment {
   constructor(
     public settings: EnvironmentSettings,
     readonly texture: THREE.Texture | null,
-    readonly daylight?: DaylightSky,
+    readonly daylight?: DaylightSky | WebGPUDaylight,
     readonly cascades?: CascadedSun,
     readonly occlusion?: AmbientOcclusion,
     readonly temporal?: TemporalAA,
@@ -195,18 +201,18 @@ export class PreparedEnvironment {
 function preparedResources(
   settings: EnvironmentSettings,
   texture: THREE.Texture | null,
-  daylight?: DaylightSky,
-  renderer?: THREE.WebGLRenderer,
+  daylight?: DaylightSky | WebGPUDaylight,
+  renderer?: TerrainRenderer,
 ) {
   let cascades: CascadedSun | undefined;
   let occlusion: AmbientOcclusion | undefined;
   try {
     cascades =
       settings.shadows && settings.shadowCascades === 3
-        ? new CascadedSun(settings, renderer)
+        ? new CascadedSun(settings, isWebGPU(renderer) ? undefined : renderer)
         : undefined;
     occlusion =
-      settings.ambientOcclusion?.enabled && renderer
+      settings.ambientOcclusion?.enabled && renderer && !isWebGPU(renderer)
         ? new AmbientOcclusion(renderer)
         : undefined;
     return new PreparedEnvironment(
@@ -215,7 +221,9 @@ function preparedResources(
       daylight,
       cascades,
       occlusion,
-      settings.temporalAA && renderer ? new TemporalAA(renderer) : undefined,
+      settings.temporalAA && renderer && !isWebGPU(renderer)
+        ? new TemporalAA(renderer)
+        : undefined,
     );
   } catch (error) {
     if (daylight) daylight.dispose();
@@ -227,11 +235,13 @@ function preparedResources(
 }
 export async function prepareEnvironment(
   value = defaultEnvironmentSettings(),
-  renderer?: THREE.WebGLRenderer,
+  renderer?: TerrainRenderer,
 ): Promise<PreparedEnvironment> {
   const settings = parseEnvironmentSettings(value);
   if (settings.timeOfDay?.enabled) {
-    const daylight = new DaylightSky(settings, renderer);
+    const daylight = isWebGPU(renderer)
+      ? new WebGPUDaylight(settings, renderer)
+      : new DaylightSky(settings, renderer);
     return preparedResources(settings, daylight.texture, daylight, renderer);
   }
   if (settings.mode !== 'image')
@@ -256,6 +266,7 @@ export async function prepareEnvironment(
     const parsed = new EXRLoader()
       .setDataType(THREE.FloatType)
       .parse(inspected.buffer);
+    if (!parsed.data) throw new Error('Incomplete EXR pixels.');
     const data = new Uint16Array(parsed.data.length);
     for (let i = 0; i < parsed.data.length; i++) {
       const value = parsed.data[i];
@@ -272,7 +283,12 @@ export async function prepareEnvironment(
       .setDataType(THREE.HalfFloatType)
       .parse(bytes.buffer);
   }
-  if (decoded.data.length !== decoded.width * decoded.height * 4)
+  if (
+    !decoded.data ||
+    !decoded.width ||
+    !decoded.height ||
+    decoded.data.length !== decoded.width * decoded.height * 4
+  )
     throw new Error('Incomplete HDR/EXR pixels.');
   for (const value of decoded.data)
     if ((value & 0x7c00) === 0x7c00)
@@ -307,6 +323,16 @@ export class TerrainEnvironment {
   private revision = 0;
   private disposed = false;
   private waterPass?: WaterPass;
+  private gpuPipeline?: WebGPUPipeline;
+  private gpuCascades?: CSMShadowNode;
+  private cascadeProjection = '';
+  private releaseGPUCascades() {
+    this.gpuCascades?.lights.forEach((light) => light.dispose());
+    this.gpuCascades?.dispose();
+    this.gpuCascades = undefined;
+    this.cascadeProjection = '';
+    this.sun.shadow.shadowNode = undefined;
+  }
   private hour = 12;
   private shadowCenter = 0;
   private shadowRadius = 1;
@@ -332,14 +358,77 @@ export class TerrainEnvironment {
     return renderer?.isWebGLRenderer ? renderer : undefined;
   }
   /** Stage atmospheric GPU resources as well as static environment textures. */
-  prepare(value?: EnvironmentSettings) {
-    return prepareEnvironment(value, this.webGLRenderer);
+  async prepare(value?: EnvironmentSettings) {
+    const renderer = isWebGPU(this.renderer)
+      ? this.renderer
+      : this.webGLRenderer;
+    if (!isWebGPU(renderer)) return prepareEnvironment(value, renderer);
+    let prepared: PreparedEnvironment | undefined;
+    try {
+      return await validateGPU(renderer, async () => {
+        prepared = await prepareEnvironment(value, renderer);
+        this.preflightNative(prepared);
+        return prepared;
+      });
+    } catch (error) {
+      prepared?.dispose();
+      throw error;
+    }
+  }
+  /** Exercise native shadow and screen targets offscreen before a document
+   * transaction can adopt this look. The probe borrows the candidate texture;
+   * it never edits the live scene or presents a frame to the canvas. */
+  private preflightNative(prepared: PreparedEnvironment) {
+    const renderer = this.renderer;
+    if (!isWebGPU(renderer)) return;
+    const scene = new THREE.Scene();
+    const probe = new TerrainEnvironment(scene, renderer);
+    const geometry = new THREE.BoxGeometry(2, 2, 2);
+    const material = new THREE.MeshStandardMaterial();
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.castShadow = mesh.receiveShadow = true;
+    scene.add(mesh);
+    const size = renderer.getDrawingBufferSize(new THREE.Vector2());
+    const camera = new THREE.PerspectiveCamera(
+      50,
+      size.x / Math.max(1, size.y),
+      0.1,
+      100,
+    );
+    camera.position.set(5, 5, 5);
+    camera.lookAt(0, 0, 0);
+    camera.updateMatrixWorld();
+    const target = new THREE.RenderTarget(size.x, size.y);
+    const previousTarget = renderer.getRenderTarget(),
+      previousMRT = renderer.getMRT();
+    try {
+      probe.prepared = prepared;
+      probe.scene.environment = prepared.texture;
+      probe.update(prepared.settings, {
+        size: 16,
+        heights: new Float32Array([0]),
+      });
+      renderer.initRenderTarget(target);
+      renderer.setRenderTarget(target);
+      renderer.setMRT(null);
+      probe.render(camera);
+    } finally {
+      renderer.setRenderTarget(previousTarget);
+      renderer.setMRT(previousMRT);
+      probe.prepared = undefined;
+      probe.dispose();
+      geometry.dispose();
+      material.dispose();
+      mesh.dispose();
+      target.dispose();
+    }
   }
   private readonly previous;
   constructor(
     readonly scene: THREE.Scene,
     private renderer?: DisplayRenderer,
   ) {
+    if (isWebGPU(renderer)) installTerrainLighting(renderer);
     this.previous = {
       background: scene.background,
       environment: scene.environment,
@@ -367,6 +456,8 @@ export class TerrainEnvironment {
       throw new Error('Environment resources have been disposed.');
     this.revision++;
     const old = this.prepared;
+    this.releaseGPUCascades();
+    this.gpuPipeline?.reset();
     this.prepared = prepared;
     this.sun.visible = true;
     if (prepared.daylight) this.group.add(prepared.daylight.sky);
@@ -391,7 +482,9 @@ export class TerrainEnvironment {
       if (settings.mode === 'image')
         throw new Error('Prepare the HDR/EXR environment before applying it.');
       const daylight = settings.timeOfDay?.enabled
-        ? new DaylightSky(settings, this.webGLRenderer)
+        ? isWebGPU(this.renderer)
+          ? new WebGPUDaylight(settings, this.renderer)
+          : new DaylightSky(settings, this.webGLRenderer)
         : undefined;
       this.apply(
         preparedResources(
@@ -402,7 +495,7 @@ export class TerrainEnvironment {
               ? skyTexture(settings)
               : null,
           daylight,
-          this.webGLRenderer,
+          isWebGPU(this.renderer) ? this.renderer : this.webGLRenderer,
         ),
         project,
       );
@@ -510,6 +603,43 @@ export class TerrainEnvironment {
    */
   updateCamera(camera: THREE.PerspectiveCamera | THREE.OrthographicCamera) {
     const prepared = this.prepared;
+    if (isWebGPU(this.renderer) && prepared) {
+      this.sun.visible = true;
+      if (prepared.settings.shadows && prepared.settings.shadowCascades === 3) {
+        if (this.gpuCascades?.camera && this.gpuCascades.camera !== camera)
+          this.releaseGPUCascades();
+        if (!this.gpuCascades) {
+          this.gpuCascades = new CSMShadowNode(this.sun, {
+            cascades: 3,
+            maxFar: prepared.settings.shadowDistance ?? 160,
+            mode: 'practical',
+            lightMargin: this.shadowRadius * 2 + 10,
+          });
+          this.gpuCascades.fade = true;
+          this.sun.shadow.shadowNode = this.gpuCascades;
+        }
+        const cascades = this.gpuCascades;
+        cascades.maxFar = prepared.settings.shadowDistance ?? 160;
+        cascades.lightMargin = this.shadowRadius * 2 + 10;
+        const projection = JSON.stringify([
+          camera.projectionMatrix.elements,
+          camera.near,
+          camera.far,
+          cascades.maxFar,
+          cascades.lightMargin,
+        ]);
+        if (cascades.camera && projection !== this.cascadeProjection) {
+          cascades.updateFrustums();
+          this.cascadeProjection = projection;
+        }
+        cascades.lights.forEach((light, i) => {
+          if (!light.shadow) return;
+          light.shadow.bias = this.sun.shadow.bias * (i + 1);
+          light.shadow.normalBias = this.sun.shadow.normalBias;
+        });
+      }
+      return;
+    }
     if (this.disposed || !prepared?.cascades) return;
     this.sun.visible = false;
     if (!prepared.cascades.group.parent)
@@ -523,7 +653,7 @@ export class TerrainEnvironment {
     );
   }
   /** Render to the current full-size viewport with authored shadows and indirect
-   * occlusion. Call terrain.update() and tick() first. Requires a WebGLRenderer.
+   * occlusion. Call terrain.update() and tick() first. Accepts native WebGPU or WebGL.
    */
   prepareWater() {
     const renderer = this.webGLRenderer;
@@ -533,11 +663,27 @@ export class TerrainEnvironment {
   }
   invalidateHistory() {
     this.prepared?.temporal?.reset();
+    this.gpuPipeline?.reset();
   }
   render(camera: THREE.PerspectiveCamera | THREE.OrthographicCamera) {
+    if (isWebGPU(this.renderer)) {
+      this.updateCamera(camera);
+      this.gpuPipeline ??= new WebGPUPipeline(this.renderer);
+      const autoReset = this.renderer.info.autoReset;
+      if (autoReset) this.renderer.info.reset();
+      this.renderer.info.autoReset = false;
+      try {
+        this.gpuPipeline.render(this.scene, camera, this.prepared!.settings);
+      } finally {
+        this.renderer.info.autoReset = autoReset;
+      }
+      return;
+    }
     const renderer = this.webGLRenderer;
     if (!renderer)
-      throw new Error('Environment rendering requires a WebGLRenderer.');
+      throw new Error(
+        'Environment rendering requires an initialized terrain renderer.',
+      );
     this.updateCamera(camera);
     const prepared = this.prepared;
     const renderOpaque = () => {
@@ -675,6 +821,8 @@ export class TerrainEnvironment {
     this.scene.remove(this.group);
     this.sun.dispose();
     this.waterPass?.dispose();
+    this.gpuPipeline?.dispose();
+    this.releaseGPUCascades();
     this.prepared?.dispose();
   }
 }

@@ -17,7 +17,7 @@ Create directories only when needed. Keep `README.md` entry points and `docs/ROA
 
 ## Build, Test, and Development Commands
 
-Requires Node.js 22.12+ (Node 24 is used for development) and npm. Install locked dependencies with `npm ci`.
+Requires Node.js 22.12+ (Node 24 is used for development), npm, and native WebGPU in Chrome/Edge for the editor and interactive examples. Three 0.186.1, @types/three 0.186.0 and @webgpu/types 0.1.64 are pinned; see README.md for dependency upgrade commands. Install locked dependencies with `npm ci`.
 
 - `npm run dev`: start the local Vite editor; `/runtime.html` is the integration example.
 - `/world.html`: the streamed 2 × 2 km reference with shared compressed assets and optional Rapier integration.
@@ -31,6 +31,7 @@ Requires Node.js 22.12+ (Node 24 is used for development) and npm. Install locke
 - `npm run build:assets:foliage`: rebuild bundled CC0 GLBs from the local original collection and alpha masks; uses pinned meshoptimizer/sharp dev dependencies. Ordinary builds use the prepared assets. See `docs/FOLIAGE-ASSETS.md`.
 - `npm run test:browser`: Playwright against the production build (run `npm run build` first).
 - `npm run test:browser -- tests/browser/settings-recovery.spec.mjs`: one browser test file.
+- `npm run test:browser -- tests/browser/webgpu.spec.mjs tests/browser/webgpu-world.spec.mjs`: native shader, PBR export and prepared-world checks.
 - `npm run format` / `npm run format:check`: write/check Prettier formatting.
 
 Browser tests use installed Google Chrome on Windows and port 5175. `scripts/chrome-gpu.mjs` reads DXGI adapters through built-in PowerShell/.NET and selects the RTX 5060 when present for the temporary test profile; it does not change user graphics settings. See `playwright.config.ts` before running on another platform. Benchmark commands and their required builds are documented in `README.md`.

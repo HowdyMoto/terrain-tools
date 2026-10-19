@@ -47,6 +47,7 @@ async function setup(page) {
   });
   const project = createProject(32, 64);
   generateTerrain(project, 'flat');
+  project.name = 'Import fixture';
   project.view.textureResolution = 256;
   project.view.water = false;
   await page.locator('#file-open').setInputFiles({
@@ -54,10 +55,15 @@ async function setup(page) {
     mimeType: 'application/json',
     buffer: Buffer.from(serializeProject(project)),
   });
-  await expect(page.locator('#toast')).toHaveText('Project loaded.');
+  await expect(page.locator('#project-name')).toHaveValue('Import fixture', {
+    timeout: 60000,
+  });
   return errors;
 }
 async function save(page, info, name) {
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   const pending = page.waitForEvent('download');
   await page.locator('#save').click();
   const path = info.outputPath(name + '.terrain');
@@ -165,6 +171,9 @@ test('imports a complete PBR set with map review, numeric channel packing, retry
     original.materials,
   );
   await page.locator('#redo').click();
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   await expect(page.locator('#save-state')).toHaveText('Saved locally', {
     timeout: 10000,
   });
@@ -340,6 +349,9 @@ test('imports photoreal GLB variants into a new brush, checks scale, and undoes 
   await page.locator('#undo').click();
   expect(await save(page, info, 'foliage-undone')).toEqual(original);
   await page.locator('#redo').click();
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   await expect(page.locator('#save-state')).toHaveText('Saved locally', {
     timeout: 10000,
   });
