@@ -1,0 +1,180 @@
+{
+  "date": "2026-10-19",
+  "sourceCommit": "536ec1b",
+  "platform": "Windows / Chrome 155 / Node 24.18.1",
+  "deviceSelection": "Dedicated RTX 5060 Laptop GPU via scripts/chrome-gpu.mjs; WebGPU reports the privacy-limited vendor/architecture below",
+  "scope": "Native shader validation, PBR bake comparison, export, resize and repeated resource lifetimes; not a performance benchmark",
+  "resourceCycles": [
+    {
+      "attributes": 51,
+      "attributesSize": 508804,
+      "geometries": 17,
+      "indexAttributes": 7,
+      "indexAttributesSize": 422136,
+      "indirectStorageAttributes": 0,
+      "indirectStorageAttributesSize": 0,
+      "programs": 68,
+      "programsSize": 1492396,
+      "readbackBuffers": 0,
+      "readbackBuffersSize": 0,
+      "renderTargets": 15,
+      "storageAttributes": 0,
+      "storageAttributesSize": 0,
+      "textures": 45,
+      "texturesSize": 149320003,
+      "uniformBuffers": 152,
+      "uniformBuffersSize": 111920,
+      "total": 151855259
+    },
+    {
+      "attributes": 51,
+      "attributesSize": 508804,
+      "geometries": 17,
+      "indexAttributes": 7,
+      "indexAttributesSize": 422136,
+      "indirectStorageAttributes": 0,
+      "indirectStorageAttributesSize": 0,
+      "programs": 68,
+      "programsSize": 1492396,
+      "readbackBuffers": 0,
+      "readbackBuffersSize": 0,
+      "renderTargets": 15,
+      "storageAttributes": 0,
+      "storageAttributesSize": 0,
+      "textures": 45,
+      "texturesSize": 149320003,
+      "uniformBuffers": 152,
+      "uniformBuffersSize": 111920,
+      "total": 151855259
+    },
+    {
+      "attributes": 51,
+      "attributesSize": 508804,
+      "geometries": 17,
+      "indexAttributes": 7,
+      "indexAttributesSize": 422136,
+      "indirectStorageAttributes": 0,
+      "indirectStorageAttributesSize": 0,
+      "programs": 68,
+      "programsSize": 1492396,
+      "readbackBuffers": 0,
+      "readbackBuffersSize": 0,
+      "renderTargets": 15,
+      "storageAttributes": 0,
+      "storageAttributesSize": 0,
+      "textures": 45,
+      "texturesSize": 149320003,
+      "uniformBuffers": 152,
+      "uniformBuffersSize": 111920,
+      "total": 151855259
+    }
+  ],
+  "bakeDifferences": [
+    {
+      "p99": 0,
+      "variation": false,
+      "tileSize": 64,
+      "map": "map",
+      "max": 0,
+      "mean": 0
+    },
+    {
+      "p99": 0,
+      "variation": false,
+      "tileSize": 64,
+      "map": "roughnessMap",
+      "max": 0,
+      "mean": 0
+    },
+    {
+      "p99": 0,
+      "variation": false,
+      "tileSize": 64,
+      "map": "normalMap",
+      "max": 0,
+      "mean": 0
+    },
+    {
+      "p99": 0,
+      "variation": true,
+      "tileSize": 64,
+      "map": "map",
+      "max": 1,
+      "mean": 0.001468658447265625
+    },
+    {
+      "p99": 0,
+      "variation": true,
+      "tileSize": 64,
+      "map": "roughnessMap",
+      "max": 1,
+      "mean": 0.000644683837890625
+    },
+    {
+      "p99": 0,
+      "variation": true,
+      "tileSize": 64,
+      "map": "normalMap",
+      "max": 1,
+      "mean": 0.000431060791015625
+    },
+    {
+      "p99": 0,
+      "variation": false,
+      "tileSize": 4,
+      "map": "map",
+      "max": 1,
+      "mean": 0.00006103515625
+    },
+    {
+      "p99": 0,
+      "variation": false,
+      "tileSize": 4,
+      "map": "roughnessMap",
+      "max": 0,
+      "mean": 0
+    },
+    {
+      "p99": 0,
+      "variation": false,
+      "tileSize": 4,
+      "map": "normalMap",
+      "max": 0,
+      "mean": 0
+    },
+    {
+      "p99": 6,
+      "variation": true,
+      "tileSize": 4,
+      "map": "map",
+      "max": 27,
+      "mean": 0.33141326904296875
+    },
+    {
+      "p99": 3,
+      "variation": true,
+      "tileSize": 4,
+      "map": "roughnessMap",
+      "max": 14,
+      "mean": 0.11165618896484375
+    },
+    {
+      "p99": 2,
+      "variation": true,
+      "tileSize": 4,
+      "map": "normalMap",
+      "max": 9,
+      "mean": 0.06933212280273438
+    }
+  ],
+  "adapter": "WebGPU · nvidia blackwell",
+  "backend": true,
+  "validation": [],
+  "projectionRestored": true,
+  "changedAfterResize": true,
+  "min": 80,
+  "max": 170,
+  "normal": [124, 119, 255],
+  "magic": 1179937895,
+  "bytes": 1034788
+}
