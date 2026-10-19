@@ -1,4 +1,5 @@
 import { PropTools } from './prop-tools';
+import { captureNativePNG } from './capture';
 import type { TerrainWalker } from './first-person';
 import { WebGPUFramePacing, viewportPixelRatio } from './frame-pacing';
 import {
@@ -806,15 +807,10 @@ export class Viewport {
     });
   }
   /** Capture the display-converted frame before presentation retires its texture. */
-  async capturePNG(): Promise<Blob> {
-    await gpuDevice(this.renderer).queue.onSubmittedWorkDone();
-    this.lighting.render(this.camera);
-    this.framePacing.submitted();
-    return new Promise((resolve, reject) => {
-      this.renderer.domElement.toBlob((blob) => {
-        if (blob) resolve(blob);
-        else reject(new Error('Could not capture the viewport.'));
-      }, 'image/png');
+  capturePNG(): Promise<Blob> {
+    return captureNativePNG(this.renderer, () => {
+      this.lighting.render(this.camera);
+      this.framePacing.submitted();
     });
   }
   private emitStroke(point: THREE.Vector3 | null) {

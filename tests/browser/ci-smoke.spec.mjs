@@ -10,7 +10,7 @@ test.use({ viewport: { width: 960, height: 640 } });
 
 test('clean build opens a saved fixture, imports a terrain, and restores an authored change', async ({
   page,
-}) => {
+}, info) => {
   test.setTimeout(process.env.CI ? 420000 : 180000);
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
@@ -43,8 +43,14 @@ test('clean build opens a saved fixture, imports a terrain, and restores an auth
   await page.locator('#screenshot').click();
   const png = await pending;
   expect(png.suggestedFilename()).toBe('terrain-studio.png');
-  const captured = sharp(await readFile(await png.path()));
+  const path = info.outputPath('viewport.png');
+  await png.saveAs(path);
+  const captured = sharp(await readFile(path));
   const stats = await captured.stats();
+  await info.attach('viewport-pixels', {
+    body: JSON.stringify(stats, null, 2),
+    contentType: 'application/json',
+  });
   expect((await captured.metadata()).format).toBe('png');
   expect(stats.isOpaque).toBe(true);
   expect(stats.channels.slice(0, 3).some((c) => c.stdev > 5)).toBe(true);
