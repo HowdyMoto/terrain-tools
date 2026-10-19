@@ -5,7 +5,7 @@ precision highp int;
 varying vec4 vWeights; varying vec3 vTerrain; varying vec3 vTerrainNormal;
 uniform mat3 normalMatrix;
 uniform sampler2DArray terrainAlbedo; uniform sampler2DArray terrainNormal; uniform sampler2DArray terrainOrm; uniform sampler2DArray terrainHeight;
-uniform vec4 layerVariation;
+uniform vec4 layerVariation; uniform vec4 layerIndices;
 uniform vec3 layerColors[4]; uniform vec4 layerRoughness; uniform vec4 layerMetalness; uniform vec4 layerScale; uniform vec4 layerBlend; uniform vec4 layerNormalStrength; uniform vec4 layerNormalY;
 struct TerrainProjection { vec2 uv; vec2 dx; vec2 dy; };
 TerrainProjection terrainFrames[3];
@@ -80,8 +80,8 @@ export const surfaceEvaluation = `
     // Zero-coverage layers cannot contribute to the final height blend. Most
     // forest-floor fragments use one layer; avoid sampling all sixteen maps.
     if(vWeights[i]<0.00001){tc[i]=vec4(0.0);orm[i]=vec4(0.0);th[i]=0.0;tn[i]=terrainN;continue;}
-    tc[i]=triSample(terrainAlbedo,terrainN,float(i),layerVariation[i]);orm[i]=triSample(terrainOrm,terrainN,float(i),layerVariation[i]);
-    th[i]=triSample(terrainHeight,terrainN,float(i),layerVariation[i]).r*layerBlend[i];tn[i]=triNormal(terrainN,float(i),layerNormalStrength[i],layerNormalY[i],layerVariation[i]);
+    tc[i]=triSample(terrainAlbedo,terrainN,layerIndices[i],layerVariation[i]);orm[i]=triSample(terrainOrm,terrainN,layerIndices[i],layerVariation[i]);
+    th[i]=triSample(terrainHeight,terrainN,layerIndices[i],layerVariation[i]).r*layerBlend[i];tn[i]=triNormal(terrainN,layerIndices[i],layerNormalStrength[i],layerNormalY[i],layerVariation[i]);
   }
   vec4 h=vWeights+th;
   // A layer with no coverage must never suppress an active layer.

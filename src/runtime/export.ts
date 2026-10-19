@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+import { decompress } from 'three/addons/utils/WebGLTextureUtils.js';
 import { serializeProjectPackage } from '../core/project-package';
 import { embedProjectPackage } from '../core/glb-project';
 import { checkSignal } from '../render/resources';
@@ -39,6 +40,8 @@ export async function exportTerrainGLB(
   const geometries = new Set<THREE.BufferGeometry>(),
     materials = new Set<THREE.Material>();
   let foliage: THREE.Group | undefined, baked: BakedTerrainSurface | undefined;
+  let textureRenderer: THREE.WebGLRenderer | undefined;
+  const readableTextures = new Map<THREE.Texture, THREE.Texture>();
   try {
     if (options.surface === 'pbr')
       baked = await bakeTerrainSurface(scene, {
@@ -97,7 +100,25 @@ export async function exportTerrainGLB(
     }
     checkSignal(signal);
     onProgress?.('Encoding GLB…');
-    const presentation = (await new GLTFExporter().parseAsync(group, {
+    const exporter = new GLTFExporter();
+    exporter.setTextureUtils({
+      decompress(texture, maxSize) {
+        checkSignal(signal);
+        let readable = readableTextures.get(texture);
+        if (!readable) {
+          // Three's decompressor resizes and clears its canvas. Give it an owned
+          // renderer so exporting cannot change the live viewport or its state.
+          textureRenderer ??= new THREE.WebGLRenderer({
+            antialias: false,
+            powerPreference: 'high-performance',
+          });
+          readable = decompress(texture, maxSize, textureRenderer);
+          readableTextures.set(texture, readable);
+        }
+        return readable;
+      },
+    });
+    const presentation = (await exporter.parseAsync(group, {
       binary: true,
       includeCustomExtensions: true,
     })) as ArrayBuffer;
@@ -106,6 +127,9 @@ export async function exportTerrainGLB(
     checkSignal(signal);
     return embedProjectPackage(presentation, bytes);
   } finally {
+    readableTextures.forEach((texture) => texture.dispose());
+    textureRenderer?.dispose();
+    textureRenderer?.forceContextLoss();
     foliage?.children.forEach((object) => {
       const mesh = object as THREE.InstancedMesh;
       geometries.add(mesh.geometry);

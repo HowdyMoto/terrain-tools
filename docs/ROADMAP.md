@@ -4,6 +4,27 @@ The goal remains a comprehensive Three.js terrain creation tool for stylized gam
 
 ## Resume checkpoint
 
+The six P1 audit items now have integrated implementations: streamed terrain/foliage/collision, shared asset leases and memory reservations, deferred water topology during sculpt previews, terrain LOD, prepared Meshopt/KTX2 assets and automated correctness/performance workflows. `/world.html` demonstrates a 2 × 2 km runtime world; the editor continues to author one terrain at a time. Build, lint, 313 unit tests and 14 targeted RTX 5060 Chrome browser scenarios pass. The sustained world run stays within its residency limits and releases all tracked resources on teardown, but its 50.1 ms frame-time p95 fails the steady 30 FPS target. See [runtime contracts](RUNTIME.md#world-tile-loading-foundation) and [measured performance and limits](PERFORMANCE.md). Multi-tile authoring, global water connectivity and an upload scheduler remain outside this implementation. Full water finalization still runs synchronously once per stroke.
+
+| Priority | Issue                                                                                                         |
+| -------- | ------------------------------------------------------------------------------------------------------------- |
+| P1       | [#1 Streamed world tiles and bounded residency](https://github.com/HowdyMoto/terrain-tools/issues/1)          |
+| P1       | [#2 Shared assets and memory budgets](https://github.com/HowdyMoto/terrain-tools/issues/2)                    |
+| P1       | [#3 Regional water edit performance](https://github.com/HowdyMoto/terrain-tools/issues/3)                     |
+| P1       | [#4 Terrain LOD and stable seams](https://github.com/HowdyMoto/terrain-tools/issues/4)                        |
+| P1       | [#8 Asset preparation and GPU-compressed textures](https://github.com/HowdyMoto/terrain-tools/issues/8)       |
+| P1       | [#10 CI and sustained performance acceptance](https://github.com/HowdyMoto/terrain-tools/issues/10)           |
+| P2       | [#5 Editor controllers and commands](https://github.com/HowdyMoto/terrain-tools/issues/5)                     |
+| P2       | [#6 Rendering contracts and WebGPU evaluation](https://github.com/HowdyMoto/terrain-tools/issues/6)           |
+| P2       | [#7 Vegetation motion vectors and temporal stability](https://github.com/HowdyMoto/terrain-tools/issues/7)    |
+| P2       | [#9 Distant forest representations](https://github.com/HowdyMoto/terrain-tools/issues/9)                      |
+| P2       | [#11 Indirect lighting and calibrated reference scenes](https://github.com/HowdyMoto/terrain-tools/issues/11) |
+| P2       | [#13 web-ocean integration after WebGPU](https://github.com/HowdyMoto/terrain-tools/issues/13)                |
+
+Initial validation: build, lint, all 299 unit tests and six targeted Chrome recovery/water scenarios pass, with the RTX 5060 Laptop GPU confirmed by the rendering check. On the CPU-only 512²-cell, 1 km ocean fixture, a 16 m regional rebuild falls from 22.52 ms median with immediate water preparation to 1.76 ms during a deferred preview. Complete water finalization still costs 20.83 ms median once per stroke. These are same-build path comparisons, not FPS or a sustained-world performance claim. The full browser suite was not rerun. See [reproducible measurements and scope](benchmarks/water-edit-preview-2026-10-18.json), `npm run benchmark:water-preview`, and [runtime contracts](RUNTIME.md#world-tile-loading-foundation).
+
+A repeated initial Chrome run hit an existing foliage-erasure cancellation image comparison: one green-channel level in one pixel (828 × 866 canvas). Recovery checks now wait for a static image to settle, then permit at most one RGB code value in one pixel; alpha, documents, history and CPU buffers remain exact. The final water/failure/cancellation run passed all three scenarios. This tolerance is a browser rendering allowance, not a relaxation of transaction recovery.
+
 Ocean reference research is complete for MIT `web-ocean` and `GodotOceanWaves`. The recommended next experiment is a shared spectral wave provider, retaining current water authoring/optics and a lightweight mode. Both need a backend port; neither is integrated. The pinned web-ocean demo ran at 1080p/60 FPS on the workstation's NVIDIA Blackwell adapter, with 7.40–8.56 ms reported GPU work across two isolated views. This excludes terrain/foliage and does not validate the integrated water budget. See the [assessment, credits and proposed artist controls](WATER-DESIGN.md#ocean-reference-assessment--18-october-2026) and [reference measurements](benchmarks/ocean-reference-2026-10-18.json).
 
 Shore foam now replaces the broad soft noise with mipmapped 1024² pore/froth detail, two drifting layers, patch breakup and light-responsive surface relief. Detail stays independent of terrain grid resolution and survives temporal stabilization. The generated texture is shared across a water state's bodies, stages before commit, and recovers from an injected allocation failure. Build, lint, all 284 unit tests and five water/rendering Chrome scenarios pass. The RTX 5060 Tropical Grove coastal check recorded 53–56 FPS at 1080p with water enabled; this is a short local view, not a whole-scene performance guarantee or a claim of photorealistic breaking surf. See [foam evidence and limits](benchmarks/water-foam-2026-10-18.json).

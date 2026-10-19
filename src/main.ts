@@ -620,7 +620,7 @@ function flushBrush() {
   try {
     viewport.project = project;
     if (pendingRegion) {
-      viewport.rebuildTerrain(pendingRegion);
+      viewport.rebuildTerrain(pendingRegion, !!activeStroke);
       viewport.content.reanchorFoliage(pendingRegion);
       strokeProps =
         viewport.content.reanchorProps(pendingRegion) || strokeProps;
@@ -651,6 +651,9 @@ function finishBrushStroke() {
         strokeProps ? viewport.content.collisionMeshes(true, false) : undefined,
       );
     if (colliders) viewport.physics!.assertPrepared(colliders);
+    // Connectivity can change beyond the brush. Resolve it once before committing;
+    // a spill/allocation/history failure still rolls back the complete live preview.
+    if (strokeRegion) viewport.content.finalizeWaterPreview();
     history.checkpoint(stroke.original);
     if (colliders) viewport.physics!.apply(colliders);
     stroke.view.commit();

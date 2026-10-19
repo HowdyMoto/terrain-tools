@@ -36,6 +36,82 @@ All authored positions use local metres, XZ ground, and Y up. `terrain.update(dt
 
 Passing a camera as the third argument enables authored foliage LOD, density thinning, and far culling. Camera positions are converted to terrain-local space, including parent transforms. Omitting the camera leaves the current selection unchanged; a newly loaded scene starts at full primary detail. Use `terrain.foliage.updateView(camera)` separately when needed, or `terrain.foliage.resetView()` for a full-detail comparison. `terrain.foliage.viewStats` reports selected instances, culled instances, selected batch meshes, triangle count, and counts per LOD before frustum culling. With a positive per-model `lodFadeDuration`, `transitioning` counts plants in a timed fade and `drawnInstances` counts their submitted representations across all LODs. The sum of `levels` can exceed the unique `instances` during overlap. Keep calling `terrain.update(dt, contacts)` to advance existing fades, even when the camera is stationary or selection is handled separately with `updateView(camera)`. Time uses the supplied delta in seconds. Initial selection and `resetView()` are immediate. Call `rebuildFoliage()` after changing LOD or flexibility-mask settings. Per-model `flexibility` selects height, a vertex-color channel, or an imported scalar mask; see [plant flexibility](FOLIAGE.md#shape-plant-response). Masked instances retain their anchor transform; sparse contact updates write a scalar per drawn instance. Each batch shares prepared vertex storage while owning its optional contact and cross-fade buffers.
 
+## World tile loading foundation
+
+The core entry exports `TerrainWorld`, `WorldTile`, `validateTerrainWorld`, `WorldTileIndex` and `WorldStreamer<T>`. The Three entry adds `TerrainWorldScene`, `WorldAssets`, `TerrainLod` and `RuntimeMaterialLibrary`. Existing `.terrain` documents remain valid; a host supplies independently authored tile projects. The editor still edits one tile at a time. `/world.html` demonstrates bounded terrain, foliage, compressed material and collider residency over a deterministic 2 × 2 km landscape.
+
+A manifest has `{ kind: 'terrain-world', version: 1, tileSize, tiles: [{ x, z, source }] }`. `source` is an opaque locator interpreted by the host. Validation returns an immutable copy, rejects duplicate cells, and limits metadata to 65,536 tiles with integer coordinates in ±1,000,000 and tile widths of 1–10,000 metres. Tile `(0, 0)` covers `[0, tileSize)` on X and Z. `TerrainWorldScene` validates tile dimensions and places centered tile origins at `((x + 0.5) * tileSize, 0, (z + 0.5) * tileSize)`. Adjacent tiles require matching height-grid resolution and shared-edge heights within 0.1 mm; incompatible candidates fail admission.
+
+`WorldTileIndex.select(position, radius, maximum)` searches nearby grid cells, sorts by horizontal distance to the closest point on each cell, and returns a bounded nearest selection. Ties sort by Z then X. Radius zero selects the containing half-open cell; positive radii include tangencies. Requests spanning more than 65,536 grid cells are rejected instead of scanning an unbounded area.
+
+```ts
+import { WorldStreamer, validateTerrainWorld } from 'terrain-tools';
+import type { WorldTileSource } from 'terrain-tools';
+
+// Host-defined prepared resource type and loader, including cleanup/accounting:
+declare const source: WorldTileSource<MyPreparedTile>;
+const world = validateTerrainWorld(manifest);
+const streaming = new WorldStreamer(world, source, {
+  radius: 1500, // metres in the manifest's XZ space
+  maxResidentTiles: 16,
+  maxConcurrentLoads: 2,
+  cpuByteLimit: 256 * 1024 * 1024,
+  gpuByteLimit: 512 * 1024 * 1024,
+});
+streaming.update({ x: camera.position.x, z: camera.position.z });
+// Repeat update as the view moves; use residentKeys/get(key) for borrowed values.
+// At shutdown: streaming.dispose(); await streaming.whenIdle();
+```
+
+The host source returns `{ value, cpuBytes, gpuBytes, dispose() }`. It must clean up partial failures, honor `AbortSignal` promptly and provide a non-throwing disposer. Loaded resources transfer ownership to the streamer; values returned by `get()` are borrowed and must not outlive residency. Loading starts nearest-first. Completed resources are admitted in completion order, so tighter budgets can reject another desired tile even if it is nearer. Rejected and failed tiles appear in `errors` and wait for `retry(key)` or `retry()`; unchanged view updates do not retry them automatically. Cells leaving the selection are evicted. Cancellation holds its concurrency slot until the source settles, and late results are disposed. `whenIdle()` waits for active/cancelled loads to settle; failures are reported through `errors`, not promise rejection.
+
+Byte budgets bound **reported retained resource bytes**, not total process/GPU memory or renderer overhead. Load concurrency is separately bounded. There is no prefetch hysteresis yet. `stats` exposes resident/loading/queued/failed tile counts and admitted CPU/GPU bytes.
+
+```ts
+import {
+  TerrainWorldScene,
+  WorldAssets,
+  createModelDecoder,
+} from 'terrain-tools/three';
+const decoder = createModelDecoder(renderer, '/basis/');
+const assets = new WorldAssets(undefined, decoder.decode);
+const worldScene = new TerrainWorldScene(manifest, {
+  assets,
+  radius: 340,
+  maxResidentTiles: 12,
+  maxConcurrentLoads: 2,
+  cpuByteLimit: 768 * 1024 ** 2,
+  gpuByteLimit: 768 * 1024 ** 2,
+  lod: { pixelError: 2, transitionSeconds: 0.2 },
+  load: async (tile, signal) => readAuthoredTile(tile.source, signal),
+  // collision: createWorldCollisionSource(initializedRapierWorld),
+});
+scene.add(worldScene);
+// Each frame, before environment/render/physics work:
+worldScene.update(camera, deltaSeconds, drawingBufferHeight);
+// At shutdown, before freeing an optional host Rapier world:
+worldScene.dispose();
+await worldScene.whenIdle();
+assets.dispose();
+decoder.dispose();
+```
+
+`heightAt(x,z)` returns the authoritative resident height in manifest coordinates, or `undefined` for an unloaded cell. Rendering LOD shares full-resolution positions, normals and weights and changes index topology; it retains every chunk boundary vertex, morphs interior heights and leaves chunks containing holes at full detail. Its metric is maximum **sampled** vertical error projected to drawing-buffer pixels, with 20% hysteresis. It is not a rigorous bound at every triangle intersection. Edge normals sample neighboring resident tiles. Collision always uses the original topology. Material palettes/paint must themselves be authored continuously across boundaries.
+
+Tiles are immutable while resident; unload/reload after edits. Hosts can translate the world group for a floating render origin, while height queries and the Rapier adapter retain manifest coordinates. Hosts must coordinate physics-origin shifts themselves. The optional adapter creates disabled colliders, activates them at tile admission and removes them on eviction/cancellation. It does not provide a world editor, actor streaming or floating-origin physics.
+
+`WorldAssets` leases share decoded models, immutable transformed foliage geometry and GPU textures. Per-batch instance attributes and per-tile effect uniforms remain independent. The content cache reserves candidate CPU/GPU/scratch estimates before decoding; active leases cannot be evicted. Unleased assets evict oldest-first under pressure, and `trim()` releases all unleased entries. Default model reservations are 128 MiB CPU and GPU each, configurable by the host; oversized decoded results are rejected and disposed. These are accounting limits, not an OS allocator guard. Hashing, host input documents, worker/WASM heaps and driver/program overhead are not completely measured. Per-tile counters conservatively count some shared buffers again; do not add them to unique cache counters as if they were exact process memory. Both steady and peak staging estimates are exposed.
+
+Streamed oceans use finite per-cell patches with a shared world wave phase/time and no internal boundary walls. The current ocean-connectivity flood remains tile-local: author coast tiles accordingly. Arbitrary connected basins spanning multiple tiles need a world-wide hydrology/preparation layer; this example does not establish that capability.
+
+## Prepared runtime assets
+
+`npm run build:assets:runtime` creates `public/runtime-assets` from checked-in CC0 pine/fern derivatives and the separately credited generated Upland ground images. It preserves source hashes, authors/license references, bounds, existing mesh LODs and low-detail collision-input references in `manifest.json`. Meshopt compresses geometry; KTX2 uses UASTC quality 3, mipmaps and no RDO, with sRGB color and linear normal/ORM/height settings. It is deliberately quality-oriented: these sample GLBs download **larger** than the PNG originals, while GPU texture storage falls substantially. The original material/mesh derivatives remain in their existing source locations. Encoded output and wall-clock preparation timing are separate so the manifest can reproduce byte-for-byte.
+
+The reusable library does not copy browser support files. Hosts using compressed models must serve the version-matched `public/basis` transcoder and its Apache-2.0 notice, then pass `createModelDecoder(renderer, path).decode` through `TerrainScene`, `loadTerrain`, or `WorldAssets`. The editor and import preview configure this automatically. Model decoding supports Meshopt and KTX2; disposal drains active workers and rejects late results. Static GLB limits remain unchanged.
+
+`RuntimeMaterialLibrary(renderer, manifest.materials, baseURL, transcoderPath)` owns the array decoder. Set `assets.materials = library`, then assign `project.materials = library.palette([0,1,2,3])` (any four valid indices), and set the matching `project.view.textureResolution`. The eight-layer sample shares four compressed array textures across different active palettes. Inputs, dimensions, declared byte lengths and SHA-256 hashes are checked before activation. Map/scalar editing is still a single-tile authoring workflow; rebuild a prepared library after changing its source maps. Dispose tiles and assets, await their pending work, then dispose the library. See `src/examples/world.ts` for complete ownership and optional physics wiring.
+
 ## Prepare, cancel, and replace a scene
 
 For a new scene, pass an optional signal to `loadTerrain(input, { signal })`; cancellation rejects with an `AbortError` and disposes the unfinished scene. Pass the same signal to your own `fetch` if the download should also stop.
@@ -193,6 +269,8 @@ try {
 
 Keep the original project unchanged and use independent mutable buffers/instance arrays in the candidate. Assets and material resources must stay unchanged during this geometry-only preview; finish it before loading another project or replacing models/maps. Nested scene edits are rejected. The primitive manages rendering resources, while the host coordinates history and physics as above. The editor additionally retains its picking meshes, pauses publication of candidate data to autosave, and ends the current stroke before save/export or tool changes.
 
+For repeated water-enabled dabs, opt into `terrain.prepareTerrain(region, candidate, { waterPreview: true })`, apply the prepared geometry, and dispose the preparation handle. This requires an active `beginEdit()`. Only affected height rows are copied into the water height field; connectivity, wet banks and caustic fields retain their previous state during the stroke. Three.js still uploads the whole height texture. Keep terrain dimensions and water settings unchanged. **Call `terrain.finalizeWaterPreview()` before checkpointing history and committing the edit.** It computes complete water connectivity and shoreline fields once, checks basin spills, and may throw; `edit.rollback()` restores the retained water fields without repeating the failed preparation. Ordinary `rebuildTerrain()` and preparation without the option retain immediate water updates. Finalization remains synchronous.
+
 Preparation clones the foliage draw state once per stroke and retains both states temporarily. This adds measurable startup latency and memory; large-population optimization remains open. See [preview measurements](PERFORMANCE.md#reversible-edit-preview).
 
 ## Prop cutouts
@@ -222,6 +300,8 @@ The core exports `propFootprint(prop)` for transformed bounds, point containment
 Footprints persist in native packages, legacy JSON, and embedded GLB authoring data. They remove complete terrain cells, preserve painted holes, and do not cut the prop mesh itself. Fitted bounds are an editable snapshot: fit again after changing a source model. Footprints support circles and rectangles. Model fitting approximates concave silhouettes with projected bounds.
 
 ## Interchange guarantees
+
+GPU-compressed foliage imports retain their original GLB payload in the editable document. Presentation export decompresses their maps to ordinary image textures using an owned temporary renderer, so standard glTF viewers do not need the runtime's KTX2 loader. The temporary renderer and textures are disposed on success, failure or cancellation; the live viewport and borrowed source textures remain unchanged.
 
 `exportTerrainGLB(terrain)` writes a standard static presentation and an optional `TERRAIN_tools_project` extension. Version 2 of the extension references a binary `.terrain` package in a GLB buffer view. It retains schema-version-1 project data, embedded image/GLB assets, all foliage and prop instances, rules, hole masks, lighting/HDRI, wind, and response settings. Readers also accept the older version-1 inline extension. See [project files and encoding APIs](PROJECT-FILES.md). `projectFromGLB` validates this document without decoding the presentation meshes. Ordinary GLB viewers ignore the extension and see the static geometry. Default exports use baked terrain colors; `exportTerrainGLB(terrain, { surface: 'pbr', renderer, resolution: 2048 })` adds standard base-color, ORM, and normal atlases. Full procedural appearance and animation require this runtime. See [PBR export](EXPORT.md) for ownership, cancellation, and sampling limits.
 

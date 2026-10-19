@@ -70,7 +70,12 @@ function noise(period: number, seed: number) {
  * Four metres per tile gives ~4 mm texels, centimetre pores and microfroth.
  * Mips average coverage, avoiding an aliased threshold on distant bubbles.
  */
-export function createWaterFoamTexture() {
+export function createWaterFoamTexture(prepared?: Uint8Array) {
+  if (prepared) {
+    if (prepared.length !== resolution * resolution * 4)
+      throw new Error('Invalid prepared water foam.');
+    pixels = prepared;
+  }
   if (!pixels) {
     const data = new Uint8Array(resolution * resolution * 4);
     const pores = cells(64, 17),

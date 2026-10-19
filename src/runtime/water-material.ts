@@ -8,6 +8,7 @@ uniform float waterSize;
 uniform float waterCells;
 uniform float waterLevel;
 uniform float waterOcean;
+uniform float waterBounded;
 uniform vec2 waterCenter;
 uniform vec2 waterGridScale;
 uniform vec4 waterEllipse;
@@ -29,7 +30,7 @@ float waterGround(vec2 p) {
 float waterInside(vec2 p) {
   vec2 uv = p / waterSize + 0.5;
   bool outside = any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)));
-  if (waterOcean > 0.5) return outside ? 1.0 : texture2D(waterMask, uv).r;
+  if (waterOcean > 0.5) return outside ? 1.0-waterBounded : texture2D(waterMask, uv).r;
   if (waterKind < 0.5) {
     vec2 d = p - waterEllipse.xy;
     d = mat2(cos(waterRotation), -sin(waterRotation), sin(waterRotation), cos(waterRotation)) * d;
@@ -52,7 +53,9 @@ uniform float waterTime;
 uniform vec4 waterWaves;
 uniform float waterDirection;
 uniform float waterRipple;
+uniform vec2 waterPhaseOrigin;
 vec3 waterWave(vec2 p, float detail) {
+  p += waterPhaseOrigin;
   vec3 result = vec3(0.0);
   for (int i = 0; i < 6; i++) {
     float f = float(i), swell = 1.0 - step(3.0, f);
@@ -146,6 +149,8 @@ export function createWaterMaterial(
     waterCells: { value: cells },
     waterLevel: { value: elevation },
     waterOcean: { value: extent ? 0 : 1 },
+    waterBounded: { value: 0 },
+    waterPhaseOrigin: { value: new THREE.Vector2() },
     waterCenter: { value: new THREE.Vector2() },
     waterGridScale: { value: new THREE.Vector2(1, 1) },
     waterNormalWorld: { value: new THREE.Matrix3() },
@@ -250,7 +255,7 @@ export function createWaterMaterial(
         // Physical-sized, mip-filtered pores and fine froth stay independent
         // of terrain cell size. Two slowly drifting layers break up repetition.
         vec2 foamDrift = vec2(cos(waterDirection),sin(waterDirection))*waterTime*.035;
-        vec2 foamUv = (vWaterLocal.xz-foamDrift)*.25;
+        vec2 foamUv = (vWaterLocal.xz+waterPhaseOrigin-foamDrift)*.25;
         vec3 foamA = texture2D(waterFoamDetail,foamUv).rgb;
         vec3 foamB = texture2D(waterFoamDetail,mat2(.8,.6,-.6,.8)*foamUv*1.37+vec2(.31,.73)+waterTime*.004).rgb;
         float foamRafts = foamA.b*.8+foamB.b*.2;

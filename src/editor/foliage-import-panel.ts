@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import type { TerrainProject } from '../core/types';
-import { decodeModel } from '../render/model-loader';
 import type { DecodedModel } from '../render/model-loader';
 import { checkSignal } from '../render/resources';
 import { ImportPreview } from './import-preview';
@@ -123,7 +122,8 @@ export function showFoliageImport(
     }
     ui.status('Loading model preview…');
     try {
-      const next = await decodeModel(model.data, ui.signal);
+      preview ??= new ImportPreview(q('#foliage-preview'));
+      const next = await preview.decodeModel(model.data, ui.signal);
       if (ui.signal.aborted || token !== previewEpoch) {
         next.dispose();
         return;
@@ -197,7 +197,8 @@ export function showFoliageImport(
         const document = await bundleModel(file, files, ui.signal);
         const buffer = writeModelDocument(document),
           data = modelDataURL(buffer);
-        const parsed = await decodeModel(data, ui.signal);
+        preview ??= new ImportPreview(q('#foliage-preview'));
+        const parsed = await preview.decodeModel(data, ui.signal);
         try {
           checkSignal(ui.signal);
           const bounds = new THREE.Box3();

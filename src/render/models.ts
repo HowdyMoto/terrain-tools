@@ -17,13 +17,41 @@ export interface ModelPart {
 }
 type ModelAsset = SharedResource<{ data: string; decoded: DecodedModel }>;
 export type PreparedModels = PreparedResource<Map<string, ModelAsset>>;
+// Parts shared by WorldAssets also share their immutable transformed/flexibility
+// buffers. The map retains no decoded asset after its final model lease expires.
+const geometryVariants = new WeakMap<
+  ModelPart,
+  Map<string, SharedResource<THREE.BufferGeometry>>
+>();
 export class ModelLibrary {
+  geometry(part: ModelPart, key: string, build: () => THREE.BufferGeometry) {
+    if (!this.sharedGeometry) {
+      const geometry = build();
+      return new SharedResource(geometry, () => geometry.dispose());
+    }
+    const variants =
+      geometryVariants.get(part) ??
+      new Map<string, SharedResource<THREE.BufferGeometry>>();
+    geometryVariants.set(part, variants);
+    const existing = variants.get(key);
+    if (existing) return existing.retain();
+    const geometry = build();
+    const resource = new SharedResource(geometry, () => {
+      variants.delete(key);
+      geometry.dispose();
+    });
+    variants.set(key, resource);
+    return resource;
+  }
   private models = new Map<string, ModelPart[]>();
   private imported = new Map<string, ModelAsset>();
   private requests = new Set<AbortController>();
   private loading?: AbortController;
   private disposed = false;
-  constructor(private decode: ModelDecoder = decodeModel) {
+  constructor(
+    private decode: ModelDecoder = decodeModel,
+    private sharedGeometry = false,
+  ) {
     const standard = (color: string) =>
       new THREE.MeshStandardMaterial({ color, roughness: 0.9 });
     const part = (

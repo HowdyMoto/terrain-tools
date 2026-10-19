@@ -2,6 +2,7 @@ import type { TerrainProject, TerrainRegion } from '../core/types';
 import { buildMeshData, effectiveHoles } from '../core/terrain';
 import RAPIER from '@dimforge/rapier3d-compat';
 import { PreparedResource } from '../render/resources';
+import type { WorldCollisionSource } from '../runtime/world-scene';
 interface ColliderReplacement {
   revision: number;
   terrain?: Map<string, RAPIER.Collider>;
@@ -201,4 +202,67 @@ export class TerrainPhysics {
     this.propColliders = [];
     this.world?.free();
   }
+}
+
+/** Optional streamed collider adapter for an already initialized host Rapier world.
+ * The host owns stepping and world disposal. Dispose streamed terrain first and
+ * await its idle promise before freeing the Rapier world.
+ */
+export function createWorldCollisionSource(
+  world: RAPIER.World,
+): WorldCollisionSource {
+  return {
+    async prepare(terrain, signal) {
+      const created: RAPIER.Collider[] = [];
+      let active = false,
+        disposed = false,
+        cpuBytes = 0;
+      const dispose = () => {
+        if (disposed) return;
+        disposed = true;
+        for (const collider of created) world.removeCollider(collider, true);
+      };
+      try {
+        for (const mesh of terrain.collisionMeshes()) {
+          if (signal.aborted)
+            throw new DOMException(
+              'Collider preparation cancelled.',
+              'AbortError',
+            );
+          const collider = world.createCollider(
+            RAPIER.ColliderDesc.trimesh(
+              mesh.positions,
+              mesh.indices,
+              RAPIER.TriMeshFlags.FIX_INTERNAL_EDGES,
+            )
+              .setFriction(0.85)
+              .setEnabled(false),
+          );
+          created.push(collider);
+          // Estimate mesh/BVH retained WASM storage separately from source buffers.
+          cpuBytes += (mesh.positions.byteLength + mesh.indices.byteLength) * 3;
+          await new Promise<void>((resolve) => setTimeout(resolve, 0));
+        }
+        if (signal.aborted)
+          throw new DOMException(
+            'Collider preparation cancelled.',
+            'AbortError',
+          );
+        return {
+          cpuBytes,
+          dispose,
+          activate() {
+            if (disposed)
+              throw new Error('Prepared world colliders are unavailable.');
+            if (active) return;
+            for (const collider of created) collider.setEnabled(true);
+            active = true;
+          },
+        };
+      } catch (error) {
+        dispose();
+        throw error;
+      }
+    },
+  };
 }

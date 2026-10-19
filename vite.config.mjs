@@ -10,6 +10,7 @@ export default defineConfig({
       input: {
         editor: 'index.html',
         runtime: 'runtime.html',
+        world: 'world.html',
         foliageBenchmark: 'foliage-benchmark.html',
         persistenceBenchmark: 'persistence-benchmark.html',
       },

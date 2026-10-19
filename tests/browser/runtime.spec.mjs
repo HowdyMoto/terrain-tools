@@ -104,7 +104,7 @@ test('PBR textures and full scene GLB survive export, editor reload, and the pub
     mimeType: 'image/png',
     buffer: Buffer.from('invalid image'),
   });
-  await expect(page.locator('#toast')).toContainText('Could not decode');
+  await expect(page.locator('#toast')).toContainText(/could not decode/i);
   const before = await save(page, 'test-results/material-project.json');
   expect(before.view.textureResolution).toBe(1024);
   expect(before.materials[0].normalStrength).toBe(4);

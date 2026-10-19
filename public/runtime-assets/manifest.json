@@ -1,0 +1,378 @@
+{
+  "version": 1,
+  "generator": "build-runtime-assets.mjs/1",
+  "toolchain": {
+    "gltfTransform": "4.5.1",
+    "ktx2Encoder": "0.6.0",
+    "meshoptimizer": "1.1.0",
+    "sharp": "0.35.5"
+  },
+  "encoding": {
+    "format": "UASTC",
+    "quality": 3,
+    "rdo": false,
+    "mipmaps": true
+  },
+  "sources": {
+    "fern_02": {
+      "source": "https://polyhaven.com/a/fern_02",
+      "credits": "Rico Cilliers (modeling); Rob Tuytel (scanning)",
+      "license": "CC0-1.0",
+      "gltfSha256": "50540d37531f93fd693d5340d5b3095c9d6d2834fa05c74bea797d54f290cb6a",
+      "binarySha256": "fe1abb762bcbbc7ad9e86925c8080437a62add257d9280e9142fdc85c226e64c",
+      "alpha": {
+        "asset": "fern_02",
+        "file": "fern_02_alpha_2k.png",
+        "size": 230089,
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fern_02/fern_02_alpha_2k.png",
+        "md5": "ff18f7e8e869c58eac8f9c7d7c519f4a",
+        "sha256": "f51eb9b8f9f4b25a882f8fe12d1ef53ba69448bac7e71396ec1f05b684e9ea75"
+      }
+    },
+    "shrub_sorrel_01": {
+      "source": "https://polyhaven.com/a/shrub_sorrel_01",
+      "credits": "Rico Cilliers (author)",
+      "license": "CC0-1.0",
+      "gltfSha256": "803e54269cd9cd787eef44a797b399e6d7c433e897013602dd3569bf45ceb164",
+      "binarySha256": "725f46bf6d330486bf22d4b897fa1d8ef01cdc77a72f1400a3939f86740b4e5d",
+      "alpha": {
+        "asset": "shrub_sorrel_01",
+        "file": "shrub_sorrel_01_alpha_2k.png",
+        "size": 152339,
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/shrub_sorrel_01/shrub_sorrel_01_alpha_2k.png",
+        "md5": "103c750f2bcac491ea47b4efea48477c",
+        "sha256": "41780f20a9721ad58ed30381a80845408c331c31c293d5987c7c782de618ac0f"
+      }
+    },
+    "grass_medium_01": {
+      "source": "https://polyhaven.com/a/grass_medium_01",
+      "credits": "Rico Cilliers (modeling); Rob Tuytel (photography)",
+      "license": "CC0-1.0",
+      "gltfSha256": "aed63929a83fb694e6884e3a5c0fdb962ab8cf9153830247c8201a482ff02664",
+      "binarySha256": "f4587cabdb96a2e96d8be644923dc954a248edfaaa717a0ff224cacb898bee1f",
+      "alpha": {
+        "asset": "grass_medium_01",
+        "file": "grass_medium_01_alpha_2k.png",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/grass_medium_01/grass_medium_01_alpha_2k.png",
+        "md5": "0810166131307c1094d37e73a8490542",
+        "size": 1580653,
+        "sha256": "4af2c3d5ebf167764ad3746f8c925dc4fbe28f0df023656599123cb593b793dd"
+      }
+    },
+    "pine_tree_01": {
+      "source": "https://polyhaven.com/a/pine_tree_01",
+      "credits": "Rico Cilliers (modeling); Rob Tuytel (photography)",
+      "license": "CC0-1.0",
+      "gltfSha256": "3ba564fda11ee173d43b1302908e51ef491f95453f2793b1b17c3bf74ed0ad0b",
+      "binarySha256": "9955ac7e2f8fe28dc6da8e4d478593ad830f8a23d44e39a2187ef7dffac2646b",
+      "alpha": {
+        "asset": "pine_tree_01",
+        "file": "pine_tree_01_twig_alpha_2k.png",
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/pine_tree_01/pine_tree_01_twig_alpha_2k.png",
+        "md5": "85f9f62d98dc35cce642895d75f79fa6",
+        "size": 814656,
+        "sha256": "1e5a1fe741f4cb731a3f537589db62a1cbcd380775e44d13f1b88b9e717df56b"
+      }
+    }
+  },
+  "models": {
+    "ph-pine-b": {
+      "file": "ph-pine-b.glb",
+      "bytes": 10951476,
+      "sha256": "e21e5ecf543b962683014a2c51cb0ea8cb96ec5f5bf083e8340e842a202196c9",
+      "sourceFile": "ph-pine-b.glb",
+      "sourceSha256": "ba01a1365e6e25b6d52a743562592f4064f7a169a5d160275949a194d21f0704",
+      "source": "pine_tree_01",
+      "triangles": 25630,
+      "bounds": {
+        "min": [
+          -3.684307813644409,
+          0,
+          -3.598942518234253
+        ],
+        "max": [
+          3.597666025161743,
+          14.550379753112793,
+          4.002177715301514
+        ]
+      },
+      "collisionInput": "ph-pine-b-low.glb",
+      "estimatedTextureGpuBytesBC7": 12583152
+    },
+    "ph-pine-b-mid": {
+      "file": "ph-pine-b-mid.glb",
+      "bytes": 2977016,
+      "sha256": "1f889ba34c38f2242a9f552d05ee2af26c92491e0e97029806c34a1fde2da2f3",
+      "sourceFile": "ph-pine-b-mid.glb",
+      "sourceSha256": "0dbe2431783587a87a23c12c9b98801cda1797136a18650b1d78cf66ec825fbb",
+      "source": "pine_tree_01",
+      "triangles": 10942,
+      "bounds": {
+        "min": [
+          -3.6610264778137207,
+          0,
+          -3.590500831604004
+        ],
+        "max": [
+          3.5694022178649902,
+          14.509845733642578,
+          3.9987690448760986
+        ]
+      },
+      "collisionInput": "ph-pine-b-low.glb",
+      "estimatedTextureGpuBytesBC7": 3145968
+    },
+    "ph-pine-b-low": {
+      "file": "ph-pine-b-low.glb",
+      "bytes": 2881732,
+      "sha256": "4f7995ea50c8e43f1728d84887b92807fc74d71c4f3184d065cd6ddf73b8ece4",
+      "sourceFile": "ph-pine-b-low.glb",
+      "sourceSha256": "007c9bf06a9022d8d13c365c4402cb42cea9ebcccc5294c5014ce9795eb6033b",
+      "source": "pine_tree_01",
+      "triangles": 4774,
+      "bounds": {
+        "min": [
+          -3.296483278274536,
+          0,
+          -3.6303935050964355
+        ],
+        "max": [
+          3.6148641109466553,
+          14.504691123962402,
+          4.060221195220947
+        ]
+      },
+      "collisionInput": "ph-pine-b-low.glb",
+      "estimatedTextureGpuBytesBC7": 3145968
+    },
+    "ph-fern-a": {
+      "file": "ph-fern-a.glb",
+      "bytes": 1758684,
+      "sha256": "5823fca2a98e296be6cec5df8ea000858283ed0a7da718a3bbd3c7741ab0d3f1",
+      "sourceFile": "ph-fern-a.glb",
+      "sourceSha256": "e206202ead63f1a712927cf1036ac190072324021c72243819bfa8be64365049",
+      "source": "fern_02",
+      "triangles": 784,
+      "bounds": {
+        "min": [
+          -0.2976571321487427,
+          0,
+          -0.31126806139945984
+        ],
+        "max": [
+          0.25428348779678345,
+          0.28680354356765747,
+          0.3021530210971832
+        ]
+      },
+      "collisionInput": "ph-fern-a-low.glb",
+      "estimatedTextureGpuBytesBC7": 4194384
+    },
+    "ph-fern-a-low": {
+      "file": "ph-fern-a-low.glb",
+      "bytes": 542688,
+      "sha256": "12847221437a66b572a17277d129863cd31f1595abd8bb21a1afe7a69da12fce",
+      "sourceFile": "ph-fern-a-low.glb",
+      "sourceSha256": "9ec7da96d2fef00ab9773930a9826538709d7743389dcf182b6769b3d7216ec7",
+      "source": "fern_02",
+      "triangles": 351,
+      "bounds": {
+        "min": [
+          -0.2976571321487427,
+          0,
+          -0.31126806139945984
+        ],
+        "max": [
+          0.25428348779678345,
+          0.286719411611557,
+          0.3021530210971832
+        ]
+      },
+      "collisionInput": "ph-fern-a-low.glb",
+      "estimatedTextureGpuBytesBC7": 1048656
+    }
+  },
+  "materials": {
+    "size": 512,
+    "layers": [
+      {
+        "id": "world-ground-0",
+        "name": "World ground 1",
+        "color": "#ffffff",
+        "roughness": 1,
+        "metalness": 0,
+        "minHeight": -1000,
+        "maxHeight": 1000,
+        "minSlope": 0,
+        "maxSlope": 90,
+        "feather": 1,
+        "tileSize": 8,
+        "blendHeight": 0.15,
+        "normalStrength": 1,
+        "normalConvention": "opengl",
+        "textures": {},
+        "proceduralVariant": 0
+      },
+      {
+        "id": "world-ground-1",
+        "name": "World ground 2",
+        "color": "#ffffff",
+        "roughness": 1,
+        "metalness": 0,
+        "minHeight": -1000,
+        "maxHeight": 1000,
+        "minSlope": 0,
+        "maxSlope": 90,
+        "feather": 1,
+        "tileSize": 8,
+        "blendHeight": 0.15,
+        "normalStrength": 1,
+        "normalConvention": "opengl",
+        "textures": {},
+        "proceduralVariant": 0
+      },
+      {
+        "id": "world-ground-2",
+        "name": "World ground 3",
+        "color": "#ffffff",
+        "roughness": 1,
+        "metalness": 0,
+        "minHeight": -1000,
+        "maxHeight": 1000,
+        "minSlope": 0,
+        "maxSlope": 90,
+        "feather": 1,
+        "tileSize": 8,
+        "blendHeight": 0.15,
+        "normalStrength": 1,
+        "normalConvention": "opengl",
+        "textures": {},
+        "proceduralVariant": 0
+      },
+      {
+        "id": "world-ground-3",
+        "name": "World ground 4",
+        "color": "#ffffff",
+        "roughness": 1,
+        "metalness": 0,
+        "minHeight": -1000,
+        "maxHeight": 1000,
+        "minSlope": 0,
+        "maxSlope": 90,
+        "feather": 1,
+        "tileSize": 8,
+        "blendHeight": 0.15,
+        "normalStrength": 1,
+        "normalConvention": "opengl",
+        "textures": {},
+        "proceduralVariant": 0
+      },
+      {
+        "id": "world-ground-4",
+        "name": "World ground 5",
+        "color": "#ffffff",
+        "roughness": 1,
+        "metalness": 0,
+        "minHeight": -1000,
+        "maxHeight": 1000,
+        "minSlope": 0,
+        "maxSlope": 90,
+        "feather": 1,
+        "tileSize": 8,
+        "blendHeight": 0.15,
+        "normalStrength": 1,
+        "normalConvention": "opengl",
+        "textures": {},
+        "proceduralVariant": 0
+      },
+      {
+        "id": "world-ground-5",
+        "name": "World ground 6",
+        "color": "#ffffff",
+        "roughness": 1,
+        "metalness": 0,
+        "minHeight": -1000,
+        "maxHeight": 1000,
+        "minSlope": 0,
+        "maxSlope": 90,
+        "feather": 1,
+        "tileSize": 8,
+        "blendHeight": 0.15,
+        "normalStrength": 1,
+        "normalConvention": "opengl",
+        "textures": {},
+        "proceduralVariant": 0
+      },
+      {
+        "id": "world-ground-6",
+        "name": "World ground 7",
+        "color": "#ffffff",
+        "roughness": 1,
+        "metalness": 0,
+        "minHeight": -1000,
+        "maxHeight": 1000,
+        "minSlope": 0,
+        "maxSlope": 90,
+        "feather": 1,
+        "tileSize": 8,
+        "blendHeight": 0.15,
+        "normalStrength": 1,
+        "normalConvention": "opengl",
+        "textures": {},
+        "proceduralVariant": 0
+      },
+      {
+        "id": "world-ground-7",
+        "name": "World ground 8",
+        "color": "#ffffff",
+        "roughness": 1,
+        "metalness": 0,
+        "minHeight": -1000,
+        "maxHeight": 1000,
+        "minSlope": 0,
+        "maxSlope": 90,
+        "feather": 1,
+        "tileSize": 8,
+        "blendHeight": 0.15,
+        "normalStrength": 1,
+        "normalConvention": "opengl",
+        "textures": {},
+        "proceduralVariant": 0
+      }
+    ],
+    "maps": {
+      "albedo": {
+        "file": "terrain-albedo.ktx2",
+        "bytes": 2683166,
+        "sha256": "046e09f771f068a824c2707cf6c9dc6c6ba547207e141c2816d8db5595bc3cfc"
+      },
+      "normal": {
+        "file": "terrain-normal.ktx2",
+        "bytes": 393480,
+        "sha256": "93ccf5fe97829937c2af2817d995796339f9022993e4d9bf56542657e9167b56"
+      },
+      "orm": {
+        "file": "terrain-orm.ktx2",
+        "bytes": 1413,
+        "sha256": "777d1a804037f255b6d84d2694d2a97432f946b17bc7f75bc0e8cda2fdda8455"
+      },
+      "height": {
+        "file": "terrain-height.ktx2",
+        "bytes": 475107,
+        "sha256": "1dd54f2305f1c4516e5c223449b999bb39639e3bdc4fcf7a627216446e9ddae6"
+      }
+    },
+    "sources": [
+      {
+        "file": "examples/upland/meadow-albedo.png",
+        "sha256": "3cfa35038592eacfc3d6f2b2845ea8057b0cabc72860cde5c92565425ffbe9d0",
+        "credits": "Terrain Studio Upland reference: AI-generated color texture; see public/examples/upland/README.md."
+      },
+      {
+        "file": "examples/upland/limestone-albedo.png",
+        "sha256": "2d2754c3f91aad2cc07db9bc4e906fe9419ab1b7b4949107083382acc8ada7e8",
+        "credits": "Terrain Studio Upland reference: AI-generated color texture; see public/examples/upland/README.md."
+      }
+    ]
+  }
+}

@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { validateFlexibilityAttribute } from './foliage-flexibility';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import type { ModelPart } from './models';
 import { checkSignal } from './resources';
 export interface DecodedModel {
@@ -75,7 +77,46 @@ function dataBytes(data: string) {
   return { bytes, mime: match[1].split(';')[0] || 'application/octet-stream' };
 }
 
-export const decodeModel: ModelDecoder = async (data, signal) => {
+/** Own one per renderer. Disposal rejects late results and drains active workers. */
+export function createModelDecoder(
+  renderer: THREE.WebGLRenderer,
+  transcoderPath = '/basis/',
+) {
+  const textures = new KTX2Loader()
+    .setTranscoderPath(transcoderPath)
+    .setWorkerLimit(2)
+    .detectSupport(renderer);
+  let closed = false,
+    active = 0;
+  return {
+    decode: (async (data, signal) => {
+      if (closed) throw new Error('Model decoder has been disposed.');
+      active++;
+      try {
+        const result = await parseModel(data, signal, textures);
+        if (closed) {
+          result.dispose();
+          throw new Error('Model decoder has been disposed.');
+        }
+        return result;
+      } finally {
+        if (--active === 0 && closed) textures.dispose();
+      }
+    }) as ModelDecoder,
+    dispose: () => {
+      if (closed) return;
+      closed = true;
+      if (!active) textures.dispose();
+    },
+  };
+}
+export const decodeModel: ModelDecoder = (data, signal) =>
+  parseModel(data, signal);
+async function parseModel(
+  data: string,
+  signal?: AbortSignal,
+  textures?: KTX2Loader,
+): Promise<DecodedModel> {
   checkSignal(signal);
   if (data.length > 120_000_000) throw new Error('GLB must be under 30 MB.');
   const { bytes } = dataBytes(data);
@@ -118,6 +159,8 @@ export const decodeModel: ModelDecoder = async (data, signal) => {
   const abort = () => manager.abort();
   signal?.addEventListener('abort', abort, { once: true });
   const loader = new GLTFLoader(manager);
+  loader.setMeshoptDecoder(MeshoptDecoder);
+  if (textures) loader.setKTX2Loader(textures);
   loader.register((parser) => {
     // Wrap public parser methods without bypassing its extension dispatch or caches.
     const dependency = parser.getDependency.bind(parser),
@@ -169,6 +212,25 @@ export const decodeModel: ModelDecoder = async (data, signal) => {
           'Use a static GLB mesh; skinned assets are not supported yet.',
         );
       if (object instanceof THREE.Mesh) {
+        // Meshopt/KHR_mesh_quantization positions may use normalized integers.
+        // Foliage bakes node transforms into geometry, which must not write world
+        // coordinates back into a normalized integer buffer (it clips/wraps).
+        const position = object.geometry.getAttribute('position');
+        if (
+          position &&
+          (position.normalized || !(position.array instanceof Float32Array))
+        ) {
+          const values = new Float32Array(position.count * 3);
+          for (let i = 0; i < position.count; i++)
+            values.set(
+              [position.getX(i), position.getY(i), position.getZ(i)],
+              i * 3,
+            );
+          object.geometry.setAttribute(
+            'position',
+            new THREE.BufferAttribute(values, 3),
+          );
+        }
         validateFlexibilityAttribute(object.geometry);
         parts.push({
           geometry: object.geometry,
@@ -188,4 +250,4 @@ export const decodeModel: ModelDecoder = async (data, signal) => {
     signal?.removeEventListener('abort', abort);
     cleanupURLs();
   }
-};
+}

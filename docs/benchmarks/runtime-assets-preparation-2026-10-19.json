@@ -1,0 +1,62 @@
+{
+  "models": {
+    "ph-pine-b": {
+      "sourceBytes": 5080776,
+      "downloadBytes": 10951476,
+      "sourceTextureRgbaBytes": 37748736,
+      "estimatedTextureGpuBytesBC7": 12583152,
+      "milliseconds": 163781
+    },
+    "ph-pine-b-mid": {
+      "sourceBytes": 1704836,
+      "downloadBytes": 2977016,
+      "sourceTextureRgbaBytes": 9437184,
+      "estimatedTextureGpuBytesBC7": 3145968,
+      "milliseconds": 42344
+    },
+    "ph-pine-b-low": {
+      "sourceBytes": 1324400,
+      "downloadBytes": 2881732,
+      "sourceTextureRgbaBytes": 9437184,
+      "estimatedTextureGpuBytesBC7": 3145968,
+      "milliseconds": 43653
+    },
+    "ph-fern-a": {
+      "sourceBytes": 1481956,
+      "downloadBytes": 1758684,
+      "sourceTextureRgbaBytes": 12582912,
+      "estimatedTextureGpuBytesBC7": 4194384,
+      "milliseconds": 30247
+    },
+    "ph-fern-a-low": {
+      "sourceBytes": 446208,
+      "downloadBytes": 542688,
+      "sourceTextureRgbaBytes": 3145728,
+      "estimatedTextureGpuBytesBC7": 1048656,
+      "milliseconds": 10088
+    }
+  },
+  "materials": {
+    "albedo": {
+      "downloadBytes": 2683166,
+      "sourceRgbaBytes": 8388608,
+      "milliseconds": 43690
+    },
+    "normal": {
+      "downloadBytes": 393480,
+      "sourceRgbaBytes": 8388608,
+      "milliseconds": 37118
+    },
+    "orm": {
+      "downloadBytes": 1413,
+      "sourceRgbaBytes": 8388608,
+      "milliseconds": 158
+    },
+    "height": {
+      "downloadBytes": 475107,
+      "sourceRgbaBytes": 8388608,
+      "milliseconds": 29588
+    }
+  },
+  "totalMilliseconds": 401880
+}

@@ -4,6 +4,8 @@ A Three.js terrain authoring toolkit and local browser editor for sculpting land
 
 **Status: active development.** The first implementation covers the authoring loop, but this is not yet a production-ready AA terrain pipeline. See [the implementation plan](docs/ROADMAP.md) for remaining work and verification gaps.
 
+The engine audit is tracked as [prioritized GitHub issues](https://github.com/HowdyMoto/terrain-tools/issues). The runtime now streams terrain tiles with shared assets, distance-dependent terrain detail and optional Rapier collision. Open `/world.html` for the 2 × 2 km forest/open-ground/coast example. The editor still authors one terrain at a time. See [world streaming contracts and limits](docs/RUNTIME.md#world-tile-loading-foundation).
+
 **Water:** open **Water**, enable **Show ocean**, and set **Water height (m)** for an ocean at sea level, independent ponds/lakes, adjustable swells, depth-dependent clarity, reflections and detailed shoreline foam. See the [water guide and current limits](docs/WATER.md) and [complete system design](docs/WATER-DESIGN.md).
 
 ## Run locally
@@ -27,6 +29,8 @@ npm run build         # Typed library in lib/ and editor/examples in dist/
 npm run build:runtime # Build only the reusable package
 npm run build:example:upland # Rebuild reference meshes/project from checked-in PNGs
 npm run build:assets:foliage # Rebuild the bundled CC0 plant GLBs from local sources
+npm run build:assets:runtime # Offline Meshopt/KTX2 sample pack from checked-in source derivatives
+npm run benchmark:world # Sustained 1080p traversal/teleports; build first; verifies RTX 5060
 npm run benchmark     # CPU geometry/collision/contact benchmarks (build first)
 npm run benchmark:erosion # CPU weathering at 128, 256 and 512 cells (build first)
 npm run benchmark:surfaces # GPU cost of optional texture variation (build runtime first)
@@ -34,6 +38,7 @@ npm run benchmark:foliage # Browser full-detail/LOD comparison (build first)
 npm run benchmark:foliage -- --count=50000 --shadows --fade=0.25 # Include cross-fades
 npm run benchmark:history # Retained CPU memory and undo/redo timings (build first)
 npm run benchmark:edit-preview -- --count=50000 # Stroke preview startup and retained buffers
+npm run benchmark:water-preview # CPU cost of immediate/deferred water updates (build first)
 npm run benchmark:persistence -- --assets=48 # Save responsiveness with 48 MiB of assets
 npm run test:browser  # Browser integration checks against the production build
 npm run format        # Format source, tests, and documentation
@@ -46,6 +51,10 @@ The editor requests a high-performance GPU. Hover over the FPS counter or green 
 Run the navigation checks with `npm run test:browser -- tests/browser/navigation.spec.mjs` after building. If the large unit-test fixtures exceed Vitest’s default five-second limit, use `npm test -- --testTimeout=15000`; see [verification scope](docs/ROADMAP.md#verified-evidence).
 
 ESLint checks `src/` using the recommended JavaScript and TypeScript rules; formatting stays with Prettier. Test/build-script lint coverage is separate remaining work. The pinned lint setup uses `npm install --save-dev --save-exact eslint@10.13.0 @eslint/js@10.0.1 typescript-eslint@8.71.2 globals@17.13.0`; ordinary setup remains `npm ci`. Configuration follows the [typescript-eslint flat-config guide](https://typescript-eslint.io/getting-started/).
+
+## Prepared runtime assets
+
+The compressed runtime pipeline uses pinned development tools: `npm install --save-dev --save-exact @gltf-transform/core@4.5.1 @gltf-transform/extensions@4.5.1 @gltf-transform/functions@4.5.1 ktx2-encoder@0.6.0 meshoptimizer@1.1.0 sharp@0.35.5`. Ordinary installation is `npm ci`; `npm run build` uses the checked-in `public/runtime-assets` pack and never runs the encoder. `npm run build:assets:runtime -- .qa/runtime-assets-repeat` builds an independent copy for hash comparison. It needs no native KTX tool or downloaded source archives. Run `npm run test:browser -- tests/browser/prepared-assets.spec.mjs` after building to verify compressed maps, geometry, recovery and editor imports. See [preparation and material palettes](docs/RUNTIME.md#prepared-runtime-assets).
 
 ## Editable reference landscape
 

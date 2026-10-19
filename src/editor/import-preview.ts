@@ -1,10 +1,15 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { DecodedModel } from '../render/model-loader';
+import { createModelDecoder } from '../render/model-loader';
 
 /** Neutral, isolated asset inspection. Caller owns model resources and surface textures. */
 export class ImportPreview {
   private renderer: THREE.WebGLRenderer;
+  private decoder: ReturnType<typeof createModelDecoder>;
+  decodeModel(data: string, signal?: AbortSignal) {
+    return this.decoder.decode(data, signal);
+  }
   private scene = new THREE.Scene();
   private camera = new THREE.PerspectiveCamera(38, 1, 0.01, 10000);
   private controls: OrbitControls;
@@ -13,6 +18,10 @@ export class ImportPreview {
   private owned: { dispose(): void }[] = [];
   constructor(private host: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    this.decoder = createModelDecoder(
+      this.renderer,
+      import.meta.env.BASE_URL + 'basis/',
+    );
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     this.renderer.setClearColor('#202b28');
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -115,6 +124,7 @@ export class ImportPreview {
     this.draw();
   }
   dispose() {
+    this.decoder.dispose();
     this.observer.disconnect();
     this.controls.dispose();
     this.reset();

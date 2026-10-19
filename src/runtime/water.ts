@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { TerrainProject } from '../core/types';
+import type { TerrainProject, TerrainRegion } from '../core/types';
 import { waterMasks, waterContains } from '../core/water';
 import { heightAt, materialWeights } from '../core/terrain';
 import type { WaterExtent } from '../core/water';
@@ -9,6 +9,7 @@ import { createWaterFoamTexture } from './water-foam';
 import type { WaterMaterial } from './water-material';
 import { prepareWaterShore } from './water-shore';
 import type { TerrainMaterial } from '../render/material';
+import type { AssetLease } from '../core/asset-registry';
 
 export function prepareWaterTerrain(project: TerrainProject) {
   if (!project.water) return undefined;
@@ -60,12 +61,17 @@ export function prepareWaterTerrain(project: TerrainProject) {
     bank: { positions, weights, indices },
   };
 }
-type WaterTerrain = ReturnType<typeof prepareWaterTerrain>;
+type WaterTerrain =
+  | (Omit<NonNullable<ReturnType<typeof prepareWaterTerrain>>, 'bodies'> & {
+      bodies: { id: string; mask: Uint8Array }[];
+    })
+  | undefined;
 interface Resources {
   project: TerrainProject;
   group: THREE.Group;
   height?: THREE.DataTexture;
   foam?: THREE.DataTexture;
+  foamLease?: AssetLease<THREE.DataTexture>;
   shore?: THREE.DataTexture;
   bank?: THREE.Mesh;
   entries: {
@@ -149,6 +155,36 @@ export class TerrainWater extends THREE.Group {
   }
   private state?: Resources;
   private time = 0;
+  private bounded = false;
+  /** A streamed cell owns a finite ocean patch; waves use manifest coordinates. */
+  setWorldTile(x: number, z: number) {
+    if (!Number.isFinite(x) || !Number.isFinite(z))
+      throw new Error('Invalid water tile origin.');
+    if (!this.state) return;
+    this.bounded = true;
+    if (this.state.bank) this.state.bank.visible = false;
+    for (const entry of this.state.entries) {
+      entry.shading.uniforms.waterPhaseOrigin.value.set(x, z);
+      entry.shading.uniforms.waterBounded.value = 1;
+      if (entry.id === 'ocean') {
+        const geometry = grid(
+          this.state.project.size,
+          this.state.project.size,
+          false,
+        );
+        entry.mesh.geometry.dispose();
+        entry.mesh.geometry = geometry;
+        entry.mesh.position.x = entry.mesh.position.z = 0;
+        entry.mesh.scale.set(1, 1, 1);
+      }
+    }
+  }
+  /** Synchronize late-loaded cells to the host simulation clock, in seconds. */
+  setTime(seconds: number) {
+    if (!Number.isFinite(seconds) || seconds < 0)
+      throw new Error('Invalid water clock.');
+    this.time = seconds;
+  }
   private readonly cameraPosition = new THREE.Vector3();
   private disposed = false;
   canUpdateSettings(project: TerrainProject) {
@@ -280,16 +316,27 @@ export class TerrainWater extends THREE.Group {
         );
     }
   }
-  prepare(project: TerrainProject): PreparedWater {
-    if (this.disposed) throw new Error('Water has been disposed.');
-    const state: Resources = { project, group: new THREE.Group(), entries: [] };
+  prepare(
+    project: TerrainProject,
+    foamLease?: AssetLease<THREE.DataTexture>,
+  ): PreparedWater {
+    if (this.disposed) {
+      foamLease?.release();
+      throw new Error('Water has been disposed.');
+    }
+    const state: Resources = {
+      project,
+      group: new THREE.Group(),
+      entries: [],
+      foamLease,
+    };
     const release = () => this.release(state);
     try {
       const settings = project.water,
         data = prepareWaterTerrain(project);
       if (settings && data) {
         state.height = heightTexture(data.heights, project.resolution + 1);
-        state.foam = createWaterFoamTexture();
+        state.foam = foamLease?.value ?? createWaterFoamTexture();
         state.shore = new THREE.DataTexture(
           data.shore,
           project.resolution + 1,
@@ -395,6 +442,53 @@ export class TerrainWater extends THREE.Group {
     }
     if (previous) this.release(previous);
   }
+  /** Retain the displayed fields for exact preview rollback without rerunning flooding. */
+  snapshotTerrain(): WaterTerrain {
+    const state = this.state;
+    if (!state?.height || !state.shore || !state.bank) return undefined;
+    const geometry = state.bank.geometry;
+    return {
+      heights: (state.height.image.data as Float32Array).slice(),
+      shore: (state.shore.image.data as Float32Array).slice(),
+      ocean:
+        (
+          state.entries.find((entry) => entry.id === 'ocean')?.mask.image
+            .data as Uint8Array | undefined
+        )?.slice() ?? new Uint8Array(),
+      bodies: state.entries
+        .filter((entry) => entry.id !== 'ocean')
+        .map((entry) => ({
+          id: entry.id,
+          mask: (entry.mask.image.data as Uint8Array).slice(),
+        })),
+      bank: {
+        positions: new Float32Array(geometry.getAttribute('position').array),
+        weights: new Float32Array(geometry.getAttribute('layerWeights').array),
+        indices: new Uint32Array(geometry.index!.array),
+      },
+    };
+  }
+  /** Cheap sculpt preview: retain connectivity/wet banks until validated at stroke end.
+   * Copies only touched height rows on the CPU; Three currently uploads the full height texture.
+   */
+  previewTerrainHeights(project: TerrainProject, region?: TerrainRegion) {
+    const state = this.state,
+      data = state?.height?.image.data as Float32Array | undefined;
+    if (!data || data.length !== project.heights.length) return;
+    const n = project.resolution,
+      side = n + 1,
+      cell = (value: number) => (value / project.size + 0.5) * n,
+      minX = region ? Math.max(0, Math.floor(cell(region.minX))) : 0,
+      maxX = region ? Math.min(n, Math.ceil(cell(region.maxX))) : n,
+      minZ = region ? Math.max(0, Math.floor(cell(region.minZ))) : 0,
+      maxZ = region ? Math.min(n, Math.ceil(cell(region.maxZ))) : n;
+    if (maxX < minX || maxZ < minZ) return;
+    for (let z = minZ; z <= maxZ; z++) {
+      const start = z * side + minX;
+      data.set(project.heights.subarray(start, z * side + maxX + 1), start);
+    }
+    state!.height!.needsUpdate = true;
+  }
   /** All arrays were allocated before the terrain commit. Updating storage is infallible. */
   applyTerrain(data: WaterTerrain) {
     const state = this.state;
@@ -463,7 +557,7 @@ export class TerrainWater extends THREE.Group {
       entry.shading.uniforms.waterReflections.value = settings.reflections
         ? 1
         : 0;
-      if (entry.id === 'ocean' && camera) {
+      if (entry.id === 'ocean' && camera && !this.bounded) {
         const p = this.worldToLocal(
           camera.getWorldPosition(this.cameraPosition),
         );
@@ -526,7 +620,7 @@ export class TerrainWater extends THREE.Group {
       if (!e.mesh.visible || p.y >= level || (best && best.level > level))
         continue;
       const inMask = outside
-        ? e.id === 'ocean'
+        ? e.id === 'ocean' && !this.bounded
         : (e.mask.image.data as Uint8Array)[z * n + x] > 0;
       const inside =
         body && body.extent.kind !== 'basin'
@@ -612,7 +706,8 @@ export class TerrainWater extends THREE.Group {
   }
   private release(state: Resources) {
     state.height?.dispose();
-    state.foam?.dispose();
+    if (state.foamLease) state.foamLease.release();
+    else state.foam?.dispose();
     state.shore?.dispose();
     state.bank?.geometry.dispose();
     for (const e of state.entries) {
