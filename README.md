@@ -4,6 +4,8 @@ A Three.js terrain authoring toolkit and local browser editor for sculpting land
 
 **Status: active development.** The first implementation covers the authoring loop, but this is not yet a production-ready AA terrain pipeline. See [the implementation plan](docs/ROADMAP.md) for remaining work and verification gaps.
 
+The engine audit is tracked as [prioritized GitHub issues](https://github.com/HowdyMoto/terrain-tools/issues). Initial work covers bounded tile loading in the core and cheaper water previews during sculpting. The editor still opens one terrain; the new world metadata/loading API does not yet provide a multi-tile renderer. See [world streaming contracts and limits](docs/RUNTIME.md#world-tile-loading-foundation).
+
 **Water:** open **Water**, enable **Show ocean**, and set **Water height (m)** for an ocean at sea level, independent ponds/lakes, adjustable swells, depth-dependent clarity, reflections and detailed shoreline foam. See the [water guide and current limits](docs/WATER.md) and [complete system design](docs/WATER-DESIGN.md).
 
 ## Run locally
@@ -34,6 +36,7 @@ npm run benchmark:foliage # Browser full-detail/LOD comparison (build first)
 npm run benchmark:foliage -- --count=50000 --shadows --fade=0.25 # Include cross-fades
 npm run benchmark:history # Retained CPU memory and undo/redo timings (build first)
 npm run benchmark:edit-preview -- --count=50000 # Stroke preview startup and retained buffers
+npm run benchmark:water-preview # CPU cost of immediate/deferred water updates (build first)
 npm run benchmark:persistence -- --assets=48 # Save responsiveness with 48 MiB of assets
 npm run test:browser  # Browser integration checks against the production build
 npm run format        # Format source, tests, and documentation

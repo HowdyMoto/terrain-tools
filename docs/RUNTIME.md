@@ -36,6 +36,37 @@ All authored positions use local metres, XZ ground, and Y up. `terrain.update(dt
 
 Passing a camera as the third argument enables authored foliage LOD, density thinning, and far culling. Camera positions are converted to terrain-local space, including parent transforms. Omitting the camera leaves the current selection unchanged; a newly loaded scene starts at full primary detail. Use `terrain.foliage.updateView(camera)` separately when needed, or `terrain.foliage.resetView()` for a full-detail comparison. `terrain.foliage.viewStats` reports selected instances, culled instances, selected batch meshes, triangle count, and counts per LOD before frustum culling. With a positive per-model `lodFadeDuration`, `transitioning` counts plants in a timed fade and `drawnInstances` counts their submitted representations across all LODs. The sum of `levels` can exceed the unique `instances` during overlap. Keep calling `terrain.update(dt, contacts)` to advance existing fades, even when the camera is stationary or selection is handled separately with `updateView(camera)`. Time uses the supplied delta in seconds. Initial selection and `resetView()` are immediate. Call `rebuildFoliage()` after changing LOD or flexibility-mask settings. Per-model `flexibility` selects height, a vertex-color channel, or an imported scalar mask; see [plant flexibility](FOLIAGE.md#shape-plant-response). Masked instances retain their anchor transform; sparse contact updates write a scalar per drawn instance. Each batch shares prepared vertex storage while owning its optional contact and cross-fade buffers.
 
+## World tile loading foundation
+
+The core entry exports `TerrainWorld`, `WorldTile`, `validateTerrainWorld`, `WorldTileIndex` and `WorldStreamer<T>`. These are renderer-independent metadata and resource-lifetime contracts, the first part of [issue #1](https://github.com/HowdyMoto/terrain-tools/issues/1). They do not change `.terrain` files or add world editing, a Three.js tile adapter, shared model/texture residency, terrain LOD, physics streaming or cross-tile seams.
+
+A manifest has `{ kind: 'terrain-world', version: 1, tileSize, tiles: [{ x, z, source }] }`. `source` is an opaque locator interpreted by the host. Validation returns an immutable copy, rejects duplicate cells, and limits metadata to 65,536 tiles with integer coordinates in ±1,000,000 and tile widths of 1–10,000 metres. Tile `(0, 0)` covers `[0, tileSize)` on X and Z. An eventual adapter for the centered `TerrainScene` must place its origin at `((x + 0.5) * tileSize, 0, (z + 0.5) * tileSize)` and validate matching dimensions. Large-coordinate rendering will also require origin rebasing.
+
+`WorldTileIndex.select(position, radius, maximum)` searches nearby grid cells, sorts by horizontal distance to the closest point on each cell, and returns a bounded nearest selection. Ties sort by Z then X. Radius zero selects the containing half-open cell; positive radii include tangencies. Requests spanning more than 65,536 grid cells are rejected instead of scanning an unbounded area.
+
+```ts
+import { WorldStreamer, validateTerrainWorld } from 'terrain-tools';
+import type { WorldTileSource } from 'terrain-tools';
+
+// Host-defined prepared resource type and loader, including cleanup/accounting:
+declare const source: WorldTileSource<MyPreparedTile>;
+const world = validateTerrainWorld(manifest);
+const streaming = new WorldStreamer(world, source, {
+  radius: 1500, // metres in the manifest's XZ space
+  maxResidentTiles: 16,
+  maxConcurrentLoads: 2,
+  cpuByteLimit: 256 * 1024 * 1024,
+  gpuByteLimit: 512 * 1024 * 1024,
+});
+streaming.update({ x: camera.position.x, z: camera.position.z });
+// Repeat update as the view moves; use residentKeys/get(key) for borrowed values.
+// At shutdown: streaming.dispose(); await streaming.whenIdle();
+```
+
+The host source returns `{ value, cpuBytes, gpuBytes, dispose() }`. It must clean up partial failures, honor `AbortSignal` promptly and provide a non-throwing disposer. Loaded resources transfer ownership to the streamer; values returned by `get()` are borrowed and must not outlive residency. Loading starts nearest-first. Completed resources are admitted in completion order, so tighter budgets can reject another desired tile even if it is nearer. Rejected and failed tiles appear in `errors` and wait for `retry(key)` or `retry()`; unchanged view updates do not retry them automatically. Cells leaving the selection are evicted. Cancellation holds its concurrency slot until the source settles, and late results are disposed. `whenIdle()` waits for active/cancelled loads to settle; failures are reported through `errors`, not promise rejection.
+
+Byte budgets bound **reported retained resource bytes**, not total process/GPU memory, source download/decode peaks, duplicated shared assets, or renderer overhead. Load concurrency is separately bounded. There is no prefetch hysteresis yet. `stats` exposes resident/loading/queued/failed tile counts and admitted CPU/GPU bytes; integration and sustained traversal measurements remain open in issues [#1](https://github.com/HowdyMoto/terrain-tools/issues/1), [#2](https://github.com/HowdyMoto/terrain-tools/issues/2) and [#10](https://github.com/HowdyMoto/terrain-tools/issues/10).
+
 ## Prepare, cancel, and replace a scene
 
 For a new scene, pass an optional signal to `loadTerrain(input, { signal })`; cancellation rejects with an `AbortError` and disposes the unfinished scene. Pass the same signal to your own `fetch` if the download should also stop.
@@ -192,6 +223,8 @@ try {
 ```
 
 Keep the original project unchanged and use independent mutable buffers/instance arrays in the candidate. Assets and material resources must stay unchanged during this geometry-only preview; finish it before loading another project or replacing models/maps. Nested scene edits are rejected. The primitive manages rendering resources, while the host coordinates history and physics as above. The editor additionally retains its picking meshes, pauses publication of candidate data to autosave, and ends the current stroke before save/export or tool changes.
+
+For repeated water-enabled dabs, opt into `terrain.prepareTerrain(region, candidate, { waterPreview: true })`, apply the prepared geometry, and dispose the preparation handle. This requires an active `beginEdit()`. Only affected height rows are copied into the water height field; connectivity, wet banks and caustic fields retain their previous state during the stroke. Three.js still uploads the whole height texture. Keep terrain dimensions and water settings unchanged. **Call `terrain.finalizeWaterPreview()` before checkpointing history and committing the edit.** It computes complete water connectivity and shoreline fields once, checks basin spills, and may throw; `edit.rollback()` restores the retained water fields without repeating the failed preparation. Ordinary `rebuildTerrain()` and preparation without the option retain immediate water updates. Finalization remains synchronous.
 
 Preparation clones the foliage draw state once per stroke and retains both states temporarily. This adds measurable startup latency and memory; large-population optimization remains open. See [preview measurements](PERFORMANCE.md#reversible-edit-preview).
 
