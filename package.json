@@ -32,7 +32,8 @@
     "build:example:upland": "node scripts/build-upland-example.mjs",
     "build:assets:foliage": "node scripts/build-photoreal-foliage.mjs",
     "benchmark:surfaces": "node scripts/benchmark-surfaces.mjs",
-    "benchmark:edit-preview": "node --expose-gc scripts/benchmark-edit-preview.mjs"
+    "benchmark:edit-preview": "node --expose-gc scripts/benchmark-edit-preview.mjs",
+    "benchmark:water-preview": "node scripts/benchmark-water-preview.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

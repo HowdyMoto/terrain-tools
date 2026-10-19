@@ -26,6 +26,8 @@ export interface CollisionMesh {
 }
 interface TerrainGeometry {
   water: ReturnType<typeof prepareWaterTerrain>;
+  waterPreview: boolean;
+  region?: TerrainRegion;
   project: TerrainProject;
   /** Detached candidate meshes, suitable for preparing picking/collision data. */
   meshes: THREE.Mesh[];
@@ -197,12 +199,20 @@ export class TerrainScene extends THREE.Group {
       unlink();
     }
   }
-  /** A two-sample halo covers normals and slope-dependent material rules. */
+  /** A two-sample halo covers normals and slope-dependent material rules.
+   * waterPreview requires beginEdit(); call finalizeWaterPreview() before history
+   * and commit, or roll back. Terrain dimensions and water settings must stay fixed.
+   */
   prepareTerrain(
     region?: TerrainRegion,
     p = this.project,
+    options: { waterPreview?: boolean } = {},
   ): PreparedTerrainGeometry {
     if (this.disposed) throw new Error('Terrain scene has been disposed.');
+    if (options.waterPreview && !this.edit)
+      throw new Error(
+        'Deferred water preparation requires an active geometry edit.',
+      );
     const holes = effectiveHoles(p),
       chunk = 32,
       spacing = p.size / p.resolution;
@@ -284,7 +294,9 @@ export class TerrainScene extends THREE.Group {
         this,
         {
           project: p,
-          water: prepareWaterTerrain(p),
+          water: options.waterPreview ? undefined : prepareWaterTerrain(p),
+          waterPreview: !!options.waterPreview,
+          region,
           meshes,
           chunks,
           changes,
@@ -321,8 +333,18 @@ export class TerrainScene extends THREE.Group {
     for (const geometry of state.retired)
       if (!this.retainedGeometry?.has(geometry)) geometry.dispose();
     this.updateTerrainView(p);
-    this.waterSystem.applyTerrain(state.water);
+    if (state.waterPreview)
+      this.waterSystem.previewTerrainHeights(p, state.region);
+    else this.waterSystem.applyTerrain(state.water);
     return state.changed;
+  }
+  /** Resolve deferred water topology before history/checkpoint and edit.commit().
+   * Can throw (for example, a basin spill); the active edit remains rollback-capable.
+   */
+  finalizeWaterPreview() {
+    if (!this.edit)
+      throw new Error('Water preview requires an active geometry edit.');
+    this.waterSystem.applyTerrain(prepareWaterTerrain(this.project));
   }
   /** Apply water and terrain shading flags after editing project.view; retain all scene geometry. */
   refreshView() {
@@ -347,7 +369,8 @@ export class TerrainScene extends THREE.Group {
     if (candidate === this.project)
       throw new Error('Use an independent project for a geometry edit.');
     const project = this.project,
-      waterBefore = prepareWaterTerrain(this.project),
+      waterBefore =
+        this.waterSystem.snapshotTerrain() ?? prepareWaterTerrain(this.project),
       chunks = this.chunks,
       geometries = new Map(
         [...chunks].map(([key, mesh]) => [key, mesh.geometry]),

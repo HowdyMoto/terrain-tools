@@ -3,6 +3,7 @@ import { test, expect } from '@playwright/test';
 import { readFile, writeFile } from 'node:fs/promises';
 import {
   createProject,
+  defaultWaterSettings,
   generateTerrain,
   serializeProject,
 } from 'terrain-tools';
@@ -15,16 +16,22 @@ async function save(page, info, name) {
   await (await pending).saveAs(path);
   return decodeDocument(await readFile(path));
 }
-async function setup(page, info) {
+async function setup(page, info, water = false) {
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.addInitScript(() => {
-    for (const name of ['Float32Array', 'Uint32Array', 'Uint8Array']) {
+    for (const name of [
+      'Float32Array',
+      'Uint32Array',
+      'Uint8Array',
+      'Int32Array',
+    ]) {
       const Original = window[name];
       window[name] = new Proxy(Original, {
         construct(target, args, constructor) {
           const n = args[0];
           let stage;
+          if (name === 'Int32Array' && n === 4096) stage = 'water';
           if (name === 'Float32Array' && n === 3267)
             stage = /\/assets\/rapier-[\w-]+\.js/.test(new Error().stack)
               ? 'collision'
@@ -71,6 +78,12 @@ async function setup(page, info) {
   p.view.textureResolution = 256;
   p.view.water = false;
   p.wind.enabled = false;
+  if (water) {
+    p.water = defaultWaterSettings(p);
+    p.water.ocean.enabled = true;
+    p.water.seaLevel = 0.2;
+    Object.assign(p.water.ocean.surface, { speed: 0, caustics: 0, wetness: 0 });
+  }
   p.foliage = [
     { id: 1, brushId: 'grass', x: 0, z: 0, scale: 1, rotation: 0 },
     { id: 2, brushId: 'grass', x: 2, z: 0, scale: 1, rotation: 0 },
@@ -149,6 +162,57 @@ async function capture(page) {
     return canvas.toDataURL();
   });
 }
+
+test('water flooding runs at stroke completion and failures restore rendered water, history and saved data', async ({
+  page,
+}, info) => {
+  test.setTimeout(120000);
+  const { baseline, errors } = await setup(page, info, true);
+  const originalPixels = await capture(page);
+  const undo = await page.locator('#undo').getAttribute('title');
+  const redo = await page.locator('#redo').getAttribute('title');
+  for (const stage of ['water', 'history']) {
+    await start(page);
+    await expect
+      .poll(() => page.evaluate(() => window.strokeProbe.terrain ?? 0))
+      .toBeGreaterThan(3);
+    expect(await page.evaluate(() => window.strokeProbe.water ?? 0)).toBe(0);
+    await arm(page, stage);
+    await page.mouse.up();
+    await expect(page.locator('#toast')).toContainText(
+      'The previous terrain was restored',
+    );
+    expect(await page.evaluate(() => window.lastStrokeFault.stage)).toBe(stage);
+    // Recovery must not repeat preparation, even while the fault remains armed.
+    expect(await capture(page)).toBe(originalPixels);
+    expect(await page.locator('#undo').getAttribute('title')).toBe(undo);
+    expect(await page.locator('#redo').getAttribute('title')).toBe(redo);
+    await page.evaluate(() => {
+      window.strokeFault = undefined;
+    });
+    expect(await save(page, info, stage + '-water-failed')).toEqual(baseline);
+  }
+  await start(page);
+  await page.keyboard.press('Escape');
+  await page.mouse.up();
+  expect(await capture(page)).toBe(originalPixels);
+  expect(await save(page, info, 'water-cancelled')).toEqual(baseline);
+  await start(page);
+  await page.mouse.up();
+  expect(await page.evaluate(() => window.strokeProbe.water)).toBe(1);
+  const after = await save(page, info, 'water-retry');
+  expect(after.heights.some((height) => height > 0)).toBe(true);
+  await expect(page.locator('#redo')).toBeDisabled();
+  await page.locator('#undo').click();
+  expect(await save(page, info, 'water-undone')).toEqual(baseline);
+  await page.locator('#redo').click();
+  expect(await save(page, info, 'water-redone')).toEqual(after);
+  await expect(page.locator('#save-state')).toHaveText('Saved locally');
+  await page.reload();
+  await expect(page.locator('#project-name')).toHaveValue(after.name);
+  expect(await save(page, info, 'water-reopened')).toEqual(after);
+  expect(errors).toEqual([]);
+});
 test('failed live previews and final collision preparation restore pixels, data, redo and editability', async ({
   page,
 }, info) => {

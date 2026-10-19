@@ -25,6 +25,10 @@ In **Shape**, **Place pond** creates an ellipse where you click terrain. Its ini
 
 Select a body to rename, hide, duplicate or delete it, set its independent elevation, and change its appearance. Adding water does not excavate the ground. Sculpt a depression first if needed; a drawn boundary over low terrain can have a visibly exposed edge. Higher overlapping water establishes depth first, preventing lower surfaces from showing through it.
 
+While sculpting, the terrain height used by water updates with the brush. Connected water coverage, wet banks and caustics finish updating when you release the stroke. This avoids repeating full-terrain flood and shoreline preparation on every dab. A failed final update restores the previous terrain and water and preserves undo/redo; Escape cancels the preview. Completion still performs synchronous work, and the height texture still uploads in full, so this is an initial responsiveness improvement rather than a complete large-world water solution. See [issue #3](https://github.com/HowdyMoto/terrain-tools/issues/3).
+
+`npm run build` then `npm run benchmark:water-preview` reproduces the CPU comparison at 128, 256 and 512 cells. The recorded 512-cell case improves from 22.52 to 1.76 ms median per regional preview, with 20.83 ms of water preparation still paid on release. This excludes GPU uploads and frame scheduling; it does not establish an interactive frame rate. See [raw results and targeted recovery validation](benchmarks/water-edit-preview-2026-10-18.json).
+
 Values commit on release/change as one undo step. Shape/level and shoreline-field changes prepare resources before committing. Color, roughness, wave shape, ripples and foam reuse existing meshes and textures. Visibility, clarity, wet-bank controls, caustics and animation speed also update the terrain's shoreline field and currently prepare a replacement. Failed preparation preserves the committed document, selection and redo branch, including a failed shoreline texture allocation. Water clicks do not paint terrain, and water editing is disabled in first person.
 
 ## Rendering behavior and limits

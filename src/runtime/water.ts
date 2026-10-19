@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { TerrainProject } from '../core/types';
+import type { TerrainProject, TerrainRegion } from '../core/types';
 import { waterMasks, waterContains } from '../core/water';
 import { heightAt, materialWeights } from '../core/terrain';
 import type { WaterExtent } from '../core/water';
@@ -60,7 +60,11 @@ export function prepareWaterTerrain(project: TerrainProject) {
     bank: { positions, weights, indices },
   };
 }
-type WaterTerrain = ReturnType<typeof prepareWaterTerrain>;
+type WaterTerrain =
+  | (Omit<NonNullable<ReturnType<typeof prepareWaterTerrain>>, 'bodies'> & {
+      bodies: { id: string; mask: Uint8Array }[];
+    })
+  | undefined;
 interface Resources {
   project: TerrainProject;
   group: THREE.Group;
@@ -394,6 +398,53 @@ export class TerrainWater extends THREE.Group {
       this.shoreUniforms.terrainShoreEnabled.value = state.shore ? 1 : 0;
     }
     if (previous) this.release(previous);
+  }
+  /** Retain the displayed fields for exact preview rollback without rerunning flooding. */
+  snapshotTerrain(): WaterTerrain {
+    const state = this.state;
+    if (!state?.height || !state.shore || !state.bank) return undefined;
+    const geometry = state.bank.geometry;
+    return {
+      heights: (state.height.image.data as Float32Array).slice(),
+      shore: (state.shore.image.data as Float32Array).slice(),
+      ocean:
+        (
+          state.entries.find((entry) => entry.id === 'ocean')?.mask.image
+            .data as Uint8Array | undefined
+        )?.slice() ?? new Uint8Array(),
+      bodies: state.entries
+        .filter((entry) => entry.id !== 'ocean')
+        .map((entry) => ({
+          id: entry.id,
+          mask: (entry.mask.image.data as Uint8Array).slice(),
+        })),
+      bank: {
+        positions: new Float32Array(geometry.getAttribute('position').array),
+        weights: new Float32Array(geometry.getAttribute('layerWeights').array),
+        indices: new Uint32Array(geometry.index!.array),
+      },
+    };
+  }
+  /** Cheap sculpt preview: retain connectivity/wet banks until validated at stroke end.
+   * Copies only touched height rows on the CPU; Three currently uploads the full height texture.
+   */
+  previewTerrainHeights(project: TerrainProject, region?: TerrainRegion) {
+    const state = this.state,
+      data = state?.height?.image.data as Float32Array | undefined;
+    if (!data || data.length !== project.heights.length) return;
+    const n = project.resolution,
+      side = n + 1,
+      cell = (value: number) => (value / project.size + 0.5) * n,
+      minX = region ? Math.max(0, Math.floor(cell(region.minX))) : 0,
+      maxX = region ? Math.min(n, Math.ceil(cell(region.maxX))) : n,
+      minZ = region ? Math.max(0, Math.floor(cell(region.minZ))) : 0,
+      maxZ = region ? Math.min(n, Math.ceil(cell(region.maxZ))) : n;
+    if (maxX < minX || maxZ < minZ) return;
+    for (let z = minZ; z <= maxZ; z++) {
+      const start = z * side + minX;
+      data.set(project.heights.subarray(start, z * side + maxX + 1), start);
+    }
+    state!.height!.needsUpdate = true;
   }
   /** All arrays were allocated before the terrain commit. Updating storage is infallible. */
   applyTerrain(data: WaterTerrain) {

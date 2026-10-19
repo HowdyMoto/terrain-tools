@@ -463,8 +463,10 @@ export class Viewport {
     this.project.paint = state.project.paint;
     this.project.view.textureResolution = state.project.view.textureResolution;
   }
-  rebuildTerrain(region?: TerrainRegion) {
-    const terrain = this.content.prepareTerrain(region);
+  rebuildTerrain(region?: TerrainRegion, waterPreview = false) {
+    const terrain = this.content.prepareTerrain(region, this.project, {
+      waterPreview,
+    });
     let picking: PreparedPicking | undefined;
     try {
       picking = this.preparePicking(terrain.value.meshes, !region);
