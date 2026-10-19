@@ -33,8 +33,9 @@ test('native WebGPU renders terrain, foliage, atmosphere and water; bakes PBR an
     const renderer = await createTerrainRenderer();
     const device = renderer.backend.device;
     const validation = [];
+    let phase = 'initialization';
     device.addEventListener('uncapturederror', (e) =>
-      validation.push(e.error.message),
+      validation.push(`${phase}: ${e.error.message}`),
     );
     renderer.setSize(512, 384);
     document.body.replaceChildren(renderer.domElement);
@@ -73,7 +74,13 @@ test('native WebGPU renders terrain, foliage, atmosphere and water; bakes PBR an
     };
     for (let i = 0; i < 12; i++) await render();
     const projectionRestored = projection.equals(camera.projectionMatrix);
+    phase = 'canvas capture';
+    // Capture in the same task as submission: presentation may retire the
+    // canvas texture while an asynchronous queue wait yields to the browser.
+    environment.render(camera);
     const before = renderer.domElement.toDataURL();
+    await device.queue.onSubmittedWorkDone();
+    phase = 'PBR baking';
     const baked = await bakeTerrainSurface(terrain, {
       renderer,
       resolution: 256,
@@ -139,12 +146,14 @@ test('native WebGPU renders terrain, foliage, atmosphere and water; bakes PBR an
     }
     legacyRenderer.dispose();
     legacyRenderer.forceContextLoss();
+    phase = 'GLB export';
     const exported = await exportTerrainGLB(terrain, {
       renderer,
       surface: 'pbr',
       resolution: 256,
     });
     const magic = new DataView(exported).getUint32(0, true);
+    phase = 'resize and resource cycles';
     renderer.setSize(640, 360);
     camera.aspect = 640 / 360;
     camera.updateProjectionMatrix();
@@ -182,7 +191,10 @@ test('native WebGPU renders terrain, foliage, atmosphere and water; bakes PBR an
       await render();
       resourceCycles.push({ ...renderer.info.memory });
     }
+    phase = 'resized canvas capture';
+    environment.render(camera);
     const changedAfterResize = before !== renderer.domElement.toDataURL();
+    await device.queue.onSubmittedWorkDone();
     const adapter = rendererDescription(renderer),
       backend = renderer.backend.isWebGPUBackend;
     window.webgpuTest = { renderer, environment, terrain };
@@ -212,6 +224,10 @@ test('native WebGPU renders terrain, foliage, atmosphere and water; bakes PBR an
     info.outputPath('webgpu-correctness.json'),
     JSON.stringify(result, null, 2),
   );
+  await info.attach('browser-errors', {
+    body: JSON.stringify(errors, null, 2),
+    contentType: 'application/json',
+  });
   expect(result.validation).toEqual([]);
   expect(errors).toEqual([]);
   for (const map of result.bakeDifferences) {

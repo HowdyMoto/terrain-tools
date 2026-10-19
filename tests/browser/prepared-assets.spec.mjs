@@ -3,6 +3,7 @@ import { runtimePackagePage } from './runtime-package-page.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { inspectorControl } from './inspector-controls.mjs';
 import { createProject, serializeProject } from 'terrain-tools';
+import { seedEditorProject } from './seed-editor-project.mjs';
 // CI uses software rendering. Assert persistent readiness with bounded waits;
 // its speed is independent of the dedicated-GPU quality/performance reports.
 const expect = baseExpect.configure({ timeout: 45000 });
@@ -293,6 +294,7 @@ test('editor previews, imports and restores a GPU-compressed foliage GLB', async
   test.setTimeout(process.env.CI ? 420000 : 180000);
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
+  await seedEditorProject(page);
   await page.goto('/');
   await expect(page.locator('#foliage-count')).not.toHaveText('0', {
     timeout: process.env.CI ? 180000 : 60000,
