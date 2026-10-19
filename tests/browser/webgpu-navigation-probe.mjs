@@ -7,6 +7,12 @@ export function installNavigationProbe() {
     data = new WeakMap(),
     passes = new WeakMap();
   window.navigationFrames = 0;
+  window.navigationSubmissions = 0;
+  const submit = GPUQueue.prototype.submit;
+  GPUQueue.prototype.submit = function (buffers) {
+    window.navigationSubmissions++;
+    return submit.call(this, buffers);
+  };
   const module = GPUDevice.prototype.createShaderModule;
   GPUDevice.prototype.createShaderModule = function (descriptor) {
     const result = module.call(this, descriptor),

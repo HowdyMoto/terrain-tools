@@ -385,6 +385,22 @@ test.describe('responsive first-person rendering', () => {
       };
     });
     const errors = await setup(page);
+    // Native queue completion must bound orbit frames as well: otherwise an
+    // editor startup/import can leave walking behind a backlog of old draws.
+    await page.evaluate(() => {
+      walkPacingProbe.blocked = true;
+    });
+    await page.waitForFunction(() => !!walkPacingProbe.release);
+    const orbitSubmissions = await page.evaluate(() => navigationSubmissions);
+    await page.waitForTimeout(150);
+    expect(await page.evaluate(() => navigationSubmissions)).toBe(
+      orbitSubmissions,
+    );
+    await page.evaluate(() => {
+      walkPacingProbe.blocked = false;
+      walkPacingProbe.release();
+      delete walkPacingProbe.release;
+    });
     await page.locator('#fullscreen').click();
     const canvas = page.locator('#viewport canvas');
     await expect.poll(() => canvas.evaluate((c) => c.width)).toBe(3840);

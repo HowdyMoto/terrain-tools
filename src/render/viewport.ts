@@ -825,7 +825,9 @@ export class Viewport {
   private frame() {
     // While the GPU is busy, return to the event loop so mouse input can update
     // the camera. The next submitted frame uses that latest pose, not a backlog.
-    if (this.walker && !this.framePacing.ready()) return;
+    // Orbit/startup frames also need this bound: their unfinished draws would
+    // otherwise accumulate ahead of imports and the first walking frame.
+    if (!this.framePacing.ready()) return;
     if (this.walkingResolution !== !!this.walker) {
       this.walkingResolution = !!this.walker;
       this.resize();
