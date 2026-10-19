@@ -1,4 +1,6 @@
 export * from './core/types';
+export * from './core/world';
+export * from './core/world-streamer';
 export * from './core/water';
 export * from './core/project-settings';
 export * from './core/math';
