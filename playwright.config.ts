@@ -20,6 +20,7 @@ export default defineConfig({
         ...(process.env.CI && process.platform === 'linux'
           ? [
               '--enable-unsafe-webgpu',
+              '--use-webgpu-adapter=swiftshader',
               '--enable-features=Vulkan',
               '--use-angle=vulkan',
               '--disable-vulkan-surface',

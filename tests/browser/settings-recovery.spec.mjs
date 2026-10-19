@@ -319,6 +319,9 @@ test('light, wind and water edits retain live physics and avoid spatial rebuilds
   expect(await save(page, info, 'redone')).toEqual(changed);
   await expect.poll(() => autosave(page)).toEqual(changed);
   await page.reload();
+  await expect(page.locator('#app')).not.toHaveAttribute('inert', {
+    timeout: 90000,
+  });
   await expect(page.locator('#project-name')).toHaveValue(changed.name);
   expect(await save(page, info, 'reloaded')).toEqual(changed);
   expect(state.errors).toEqual([]);

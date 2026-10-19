@@ -1,6 +1,6 @@
 /// <reference types="@webgpu/types" />
 import { WebGPURenderer, PCFShadowMap } from 'three/webgpu';
-import type { WebGLRenderer } from 'three';
+import type { WebGLRenderer, Texture } from 'three';
 import { installTerrainLighting } from './node-lighting';
 import { installSharedGeometryOwnership } from './shared-geometry';
 
@@ -69,7 +69,7 @@ export async function validateGPU<T>(
 ): Promise<T> {
   const device = gpuDevice(renderer);
   const previous = validationQueues.get(device) ?? Promise.resolve();
-  const operation = previous.then(() => validateDevice(device, prepare));
+  const operation = previous.then(() => validateDevice(renderer, prepare));
   // Error scopes form a device stack. Superseded preparations may still be
   // compiling, so serialize scopes even when a newer editor request has started.
   validationQueues.set(
@@ -83,9 +83,29 @@ export async function validateGPU<T>(
 }
 
 async function validateDevice<T>(
-  device: GPUDevice,
+  renderer: WebGPURenderer,
   prepare: () => Promise<T> | T,
 ): Promise<T> {
+  const device = gpuDevice(renderer);
+  // Three r186 catches synchronous texture allocation exceptions and installs a
+  // shared 1×1 placeholder. Such a candidate must not enter the authored scene.
+  const backend = renderer.backend as unknown as {
+    createTexture(texture: Texture, options?: object): void;
+    get(texture: Texture): { initialized?: boolean };
+    delete(texture: Texture): void;
+  };
+  const createTexture = backend.createTexture;
+  backend.createTexture = function (texture, options) {
+    createTexture.call(this, texture, options);
+    if (!this.get(texture).initialized) {
+      // The placeholder belongs to Three's format cache. Detach it so disposing
+      // a failed candidate cannot destroy a texture used by another material.
+      this.delete(texture);
+      throw new Error(
+        'GPU texture allocation failed: ' + (texture.name || 'unnamed texture'),
+      );
+    }
+  };
   device.pushErrorScope('out-of-memory');
   device.pushErrorScope('validation');
   let value: T | undefined,
@@ -96,6 +116,8 @@ async function validateDevice<T>(
   } catch (error) {
     failure = error;
     failed = true;
+  } finally {
+    backend.createTexture = createTexture;
   }
   const scopes = [device.popErrorScope(), device.popErrorScope()];
   const [validation, memory] = await Promise.all(scopes);

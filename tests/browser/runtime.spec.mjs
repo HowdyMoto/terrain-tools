@@ -151,7 +151,9 @@ test('PBR textures and full scene GLB survive export, editor reload, and the pub
   await runtime
     .locator('#open-project')
     .setInputFiles('test-results/runtime-scene.glb');
-  await expect(runtime.locator('#status')).toContainText('Runtime round trip');
+  await expect(runtime.locator('#status')).toContainText('Runtime round trip', {
+    timeout: 60000,
+  });
   await runtime.locator('#wind').click();
   await expect(runtime.locator('#wind')).toHaveText('Wind off');
   await runtime.locator('#contact').click();

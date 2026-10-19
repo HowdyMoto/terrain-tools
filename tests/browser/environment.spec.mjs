@@ -266,6 +266,7 @@ test('authors lighting and HDRI, recovers invalid imports, and restores the auth
     .setInputFiles('test-results/lighting-scene.glb');
   await expect(runtime.locator('#lighting')).toContainText(
     'HDRI · Neutral · exposure 1.10',
+    { timeout: 60000 },
   );
   await runtime.screenshot({ path: 'test-results/lighting-runtime.png' });
   expect(runtimeIssues).toEqual([]);

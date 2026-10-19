@@ -8,12 +8,12 @@ test.use({ viewport: { width: 960, height: 640 } });
 test('clean build opens, imports a terrain, and restores an authored change', async ({
   page,
 }) => {
-  test.setTimeout(180000);
+  test.setTimeout(process.env.CI ? 420000 : 180000);
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/');
   await expect(page.locator('#foliage-count')).not.toHaveText('0', {
-    timeout: 60000,
+    timeout: process.env.CI ? 180000 : 60000,
   });
   const p = createProject(32, 64);
   p.name = 'CI fixture';

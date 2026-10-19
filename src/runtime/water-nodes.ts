@@ -1,4 +1,4 @@
-import { DepthTexture } from 'three';
+import { DepthTexture, RenderTarget } from 'three';
 import type { IUniform } from 'three';
 import type { MeshPhysicalMaterial, Node } from 'three/webgpu';
 import {
@@ -60,7 +60,14 @@ export function configureWaterNodes(
     mask = nodeTexture(values.waterMask),
     foam = nodeTexture(values.waterFoamDetail);
   const emptyDepth = new DepthTexture(1, 1);
-  material.addEventListener('dispose', () => emptyDepth.dispose());
+  // Declare the eventual capture's single-sample layout before shader preflight.
+  // An unattached depth texture otherwise inherits the current MSAA setting,
+  // leaving cached shaders incompatible when the real capture is bound.
+  const emptyCapture = new RenderTarget(1, 1, { depthTexture: emptyDepth });
+  material.addEventListener('dispose', () => {
+    emptyDepth.dispose();
+    emptyCapture.dispose();
+  });
   const sceneColor = nodeTexture(values.waterSceneColor),
     sceneDepth = nodeTexture(values.waterSceneDepth, emptyDepth);
   const ground = Fn(([p]: [N2]) => {

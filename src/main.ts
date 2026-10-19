@@ -244,6 +244,7 @@ let activePreparation: AbortController | undefined;
 let assetLodIndex: number | null = null;
 let surfacePresetRules = false;
 let selectedWater = 'ocean';
+let pendingWater: WaterSettings | undefined;
 let waterPlacement: 'ellipse' | 'basin' | 'polygon' | null = null;
 let waterPoints: { x: number; y: number; z: number }[] = [];
 let waterDraftProject: TerrainProject | undefined;
@@ -509,6 +510,7 @@ function notify(message: string, error = false) {
   setTimeout(() => (toast.className = ''), 4500);
 }
 function cancelPreparation() {
+  pendingWater = undefined;
   viewport.propTools.cancel();
   activePreparation?.abort();
   activePreparation = undefined;
@@ -761,7 +763,7 @@ type WorldSettings = Pick<TerrainProject, 'wind' | 'interaction' | 'view'>;
 async function editWater(change: (water: WaterSettings) => void) {
   try {
     const water = structuredClone(
-      project.water ?? defaultWaterSettings(project),
+      pendingWater ?? project.water ?? defaultWaterSettings(project),
     );
     change(water);
     const candidate = {
@@ -773,7 +775,7 @@ async function editWater(change: (water: WaterSettings) => void) {
         waterLevel: water.seaLevel,
       },
     };
-    return await prepareAction(
+    const preparation = prepareAction(
       'Preparing water…',
       async (signal) => {
         let prepared: PreparedWater | undefined;
@@ -817,6 +819,14 @@ async function editWater(change: (water: WaterSettings) => void) {
         refreshed();
       },
     );
+    // Native GPU validation yields. Preserve earlier requested water edits when
+    // another control changes before the candidate is committed.
+    pendingWater = candidate.water;
+    try {
+      return await preparation;
+    } finally {
+      if (pendingWater === candidate.water) pendingWater = undefined;
+    }
   } catch (error) {
     renderInspector();
     updateHistory();
@@ -1970,7 +1980,7 @@ function renderInspector() {
       );
   if (tab === 'water')
     html = waterControls(
-      project.water ?? defaultWaterSettings(project),
+      pendingWater ?? project.water ?? defaultWaterSettings(project),
       selectedWater,
       waterPlacement,
       waterPoints.length,
@@ -2891,7 +2901,7 @@ function bindInspector() {
   }
   if (tab === 'water') {
     bindWaterControls(
-      project.water ?? defaultWaterSettings(project),
+      pendingWater ?? project.water ?? defaultWaterSettings(project),
       selectedWater,
       editWater,
       (id) => {

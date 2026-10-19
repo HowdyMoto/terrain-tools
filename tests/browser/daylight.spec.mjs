@@ -227,6 +227,9 @@ test('authors atmospheric times, plays without history churn, pauses, exports an
   );
   expect(await save(page, info, 'redone')).toEqual(paused);
   await page.reload();
+  await expect(page.locator('#app')).not.toHaveAttribute('inert', {
+    timeout: 90000,
+  });
   await expect(page.locator('#project-name')).toHaveValue(paused.name);
   await page.locator('[data-tab=light]').click();
   expect(await save(page, info, 'reloaded')).toEqual(paused);
@@ -249,7 +252,9 @@ test('authors atmospheric times, plays without history churn, pauses, exports an
       errors.push(message.text());
   });
   await runtime.goto('/runtime.html');
-  await expect(runtime.locator('#status')).toContainText('foliage instances');
+  await expect(runtime.locator('#status')).toContainText('foliage instances', {
+    timeout: 60000,
+  });
   await runtime.locator('#open-project').setInputFiles(path);
   await expect(runtime.locator('#status')).toContainText(
     'Daylight verification',

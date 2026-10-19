@@ -275,7 +275,7 @@ export class TerrainWater extends THREE.Group {
           ...(state.shore ? [state.shore] : []),
           ...state.entries.map((e) => e.mask),
         ])
-          await renderer.initTextureAsync(texture);
+          renderer.initTexture(texture);
         await renderer.compileAsync(state.group, camera, scene);
       });
     }

@@ -212,14 +212,26 @@ test('native WebGPU renders terrain, foliage, atmosphere and water; bakes PBR an
     info.outputPath('webgpu-correctness.json'),
     JSON.stringify(result, null, 2),
   );
+  expect(result.validation).toEqual([]);
+  expect(errors).toEqual([]);
   for (const map of result.bakeDifferences) {
     // Backend filtering differs most when stochastic offsets minify the maps.
     // Keep a tighter bound for ordinary, magnified and unvaried samples, and
     // constrain the stress case's average, 99th percentile and worst channel.
     const minifiedVariation = map.variation && map.tileSize === 4;
-    expect(map.mean, map.map).toBeLessThan(minifiedVariation ? 0.5 : 0.01);
-    expect(map.p99, map.map).toBeLessThanOrEqual(minifiedVariation ? 8 : 1);
-    expect(map.max, map.map).toBeLessThanOrEqual(minifiedVariation ? 32 : 2);
+    // Linux's two software APIs quantize filtering differently: measured
+    // magnified maps differ by at most one code, minified ordinary maps by three.
+    const software = result.adapter.includes('swiftshader');
+    const minified = map.tileSize === 4;
+    expect(map.mean, map.map).toBeLessThan(
+      software ? (minified ? 1 : 0.15) : minifiedVariation ? 0.5 : 0.01,
+    );
+    expect(map.p99, map.map).toBeLessThanOrEqual(
+      minifiedVariation ? 8 : software && minified ? 2 : 1,
+    );
+    expect(map.max, map.map).toBeLessThanOrEqual(
+      minifiedVariation ? 32 : software && minified ? 3 : 2,
+    );
   }
   for (const key of [
     'textures',
