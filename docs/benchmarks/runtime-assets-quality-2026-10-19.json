@@ -1,0 +1,59 @@
+{
+  "shared": true,
+  "channels": {
+    "albedo": {
+      "psnr": 45.409407654033124,
+      "max": 22,
+      "alphaCoverageDifference": 0
+    },
+    "normal": {
+      "psnr": 52.62400126682643,
+      "max": 2,
+      "alphaCoverageDifference": 0
+    },
+    "orm": {
+      "psnr": 100,
+      "max": 0,
+      "alphaCoverageDifference": 0
+    },
+    "height": {
+      "psnr": 59.8460499228774,
+      "max": 1,
+      "alphaCoverageDifference": 0
+    }
+  },
+  "leaves": [
+    {
+      "psnr": 52.971559199806876,
+      "max": 17,
+      "alphaCoverageDifference": 0.000370025634765625
+    }
+  ],
+  "boundsError": 0.00000813603401184082,
+  "bytes": {
+    "original": {
+      "cpuBytes": 12609728,
+      "gpuBytes": 16804034
+    },
+    "prepared": {
+      "cpuBytes": 4209968,
+      "gpuBytes": 4209968
+    },
+    "surfaces": {
+      "encodedBytes": 0,
+      "cpuBytes": 11185664,
+      "gpuBytes": 11185664,
+      "stagingBytes": 0,
+      "pending": 0,
+      "active": 1,
+      "cached": 0,
+      "peak": {
+        "cpuBytes": 48516105,
+        "gpuBytes": 44962939,
+        "stagingBytes": 97032210
+      },
+      "hashingBytes": 0,
+      "peakHashingBytes": 0
+    }
+  }
+}

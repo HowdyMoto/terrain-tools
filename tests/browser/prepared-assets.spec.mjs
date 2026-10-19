@@ -1,8 +1,12 @@
-import { test, expect } from '@playwright/test';
+import { test, expect as baseExpect } from '@playwright/test';
 import { runtimePackagePage } from './runtime-package-page.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { inspectorControl } from './inspector-controls.mjs';
 import { createProject, serializeProject } from 'terrain-tools';
+// CI uses software rendering. Assert persistent readiness with bounded waits;
+// its speed is independent of the dedicated-GPU quality/performance reports.
+const expect = baseExpect.configure({ timeout: 45000 });
+test.use({ viewport: { width: 960, height: 640 } });
 test('prepared models and texture arrays preserve geometry, leaf coverage and linear maps', async ({
   page,
 }, testInfo) => {
@@ -286,14 +290,15 @@ test('compressed model cancellation and failure preserve a live terrain and allo
 test('editor previews, imports and restores a GPU-compressed foliage GLB', async ({
   page,
 }) => {
-  test.setTimeout(90000);
+  test.setTimeout(180000);
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('/');
   await expect(page.locator('#foliage-count')).not.toHaveText('0', {
-    timeout: 30000,
+    timeout: 60000,
   });
   const p = createProject(32, 64);
+  p.name = 'Compressed import fixture';
   p.view.textureResolution = 256;
   p.view.water = false;
   await page.locator('#file-open').setInputFiles({
@@ -301,7 +306,7 @@ test('editor previews, imports and restores a GPU-compressed foliage GLB', async
     mimeType: 'application/json',
     buffer: Buffer.from(serializeProject(p)),
   });
-  await expect(page.locator('#toast')).toHaveText('Project loaded.');
+  await expect(page.locator('#project-name')).toHaveValue(p.name);
   await page.locator('[data-tab=foliage]').click();
   await (await inspectorControl(page, '#import-foliage')).click();
   await page
