@@ -45,11 +45,12 @@ for (const profile of ['', '?impostors&wide-clusters']) {
       await page.evaluate(() => window.worldInitializationError),
     ).toBeUndefined();
     const views = [];
-    for (const name of ['forest', 'open', 'coast']) {
+    for (const name of ['forest', 'open', 'coast', 'aerial']) {
       const result = await page.evaluate(async (name) => {
         const api = window.worldExample;
         const started = performance.now();
-        api.view(name);
+        if (name === 'aerial') api.move(415, 606, 69);
+        else api.view(name);
         await Promise.race([
           api.ready(),
           new Promise((_, reject) =>
@@ -68,6 +69,13 @@ for (const profile of ['', '?impostors&wide-clusters']) {
         ]);
         await new Promise(requestAnimationFrame);
         await new Promise(requestAnimationFrame);
+        if (name === 'aerial') {
+          for (let i = 0; i < 12; i++) {
+            api.move(415 + i * 0.8, 606 + i * 0.3, 69 + i * 0.2);
+            await new Promise(requestAnimationFrame);
+            await api.renderer.backend.device.queue.onSubmittedWorkDone();
+          }
+        }
         await Promise.race([
           api.renderer.backend.device.queue.onSubmittedWorkDone(),
           new Promise((_, reject) =>
@@ -89,6 +97,12 @@ for (const profile of ['', '?impostors&wide-clusters']) {
             String(e),
           ]),
           validation: window.gpuValidationErrors,
+          ground: api.world.tiles.map((tile) => ({
+            normals:
+              tile.terrainMaterial.uniforms.layerNormalStrength.value.toArray(),
+            heightBlend:
+              tile.terrainMaterial.uniforms.layerBlend.value.toArray(),
+          })),
         };
       }, name);
       console.log(
@@ -104,6 +118,11 @@ for (const profile of ['', '?impostors&wide-clusters']) {
       expect(result.validation).toEqual([]);
       expect(result.stats.residentTiles).toBeGreaterThan(0);
       expect(result.stats.residentTiles).toBeLessThanOrEqual(12);
+      expect(result.ground.length).toBeGreaterThan(0);
+      for (const ground of result.ground) {
+        expect(ground.normals).toEqual([0, 0, 0, 0]);
+        expect(ground.heightBlend).toEqual([0, 0, 0, 0]);
+      }
       views.push({ name, ...result });
       await page.screenshot({
         path: info.outputPath('webgpu-' + name + '.png'),

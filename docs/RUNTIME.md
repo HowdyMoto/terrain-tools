@@ -114,6 +114,8 @@ Streamed oceans use finite per-cell patches with a shared world wave phase/time 
 
 ## Prepared runtime assets
 
+The sample ground uses generated albedo images, not an authored PBR material set. Its analytic normal/height arrays are compression-test fixtures and have zero shading strength in the bundled palettes. Applying those periodic fixtures to the landscape creates a waffle pattern that becomes especially obvious from the air. Imported PBR materials retain their authored normal and height controls.
+
 `npm run build:assets:runtime` creates `public/runtime-assets` from checked-in CC0 pine/fern derivatives and the separately credited generated Upland ground images. It preserves source hashes, authors/license references, bounds, existing mesh LODs and low-detail collision-input references in `manifest.json`. Meshopt compresses geometry; KTX2 uses UASTC quality 3, mipmaps and no RDO, with sRGB color and linear normal/ORM/height settings. It is deliberately quality-oriented: these sample GLBs download **larger** than the PNG originals, while GPU texture storage falls substantially. The original material/mesh derivatives remain in their existing source locations. Encoded output and wall-clock preparation timing are separate so the manifest can reproduce byte-for-byte.
 
 The reusable library does not copy browser support files. Hosts using compressed models must serve the version-matched `public/basis` transcoder and its Apache-2.0 notice, then pass `createModelDecoder(renderer, path).decode` through `TerrainScene`, `loadTerrain`, or `WorldAssets`. The editor and import preview configure this automatically. Model decoding supports Meshopt and KTX2; disposal drains active workers and rejects late results. Static GLB limits remain unchanged.

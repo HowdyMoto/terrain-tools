@@ -41,6 +41,12 @@ test('prepared models and texture arrays preserve geometry, leaf coverage and li
       manifest.materials,
       new URL('/runtime-assets/', location.href).href,
     );
+    // Analytic maps remain useful compression fixtures, but must not turn the
+    // albedo-only reference ground into rows of invented bumps when viewed above.
+    const groundDefaults = library.manifest.layers.map((layer) => ({
+      normalStrength: layer.normalStrength,
+      blendHeight: layer.blendHeight,
+    }));
     const surfaces = await library.prepare(
       pool,
       library.palette([0, 1, 2, 3]),
@@ -160,7 +166,7 @@ test('prepared models and texture arrays preserve geometry, leaf coverage and li
     geometry.dispose();
     target.dispose();
     renderer.dispose();
-    return { shared, channels, leaves, boundsError, bytes };
+    return { shared, channels, leaves, boundsError, bytes, groundDefaults };
   });
   await testInfo.attach('compression-quality.json', {
     body: JSON.stringify(result, null, 2),
@@ -173,6 +179,9 @@ test('prepared models and texture arrays preserve geometry, leaf coverage and li
   );
   expect(errors).toEqual([]);
   expect(result.shared).toBe(true);
+  expect(result.groundDefaults).toHaveLength(8);
+  for (const defaults of result.groundDefaults)
+    expect(defaults).toEqual({ normalStrength: 0, blendHeight: 0 });
   expect(result.boundsError).toBeLessThan(0.002);
   for (const metrics of Object.values(result.channels))
     expect(metrics.psnr).toBeGreaterThan(35);

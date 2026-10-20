@@ -134,6 +134,8 @@ for (const id of [
 // Eight reusable terrain layers; four are selected by each tile. Ground color is
 // the separately credited Upland reference; analytic normal/height fixtures make
 // linear-channel correctness measurable without distributing another art pack.
+// They are not authored ground detail: keep their shading influence disabled in
+// the reference world, otherwise aerial views show a regular waffle pattern.
 const size = 512,
   layers = [],
   slices = { albedo: [], normal: [], orm: [], height: [] };
@@ -197,8 +199,8 @@ for (let i = 0; i < 8; i++) {
     maxSlope: 90,
     feather: 1,
     tileSize: 8,
-    blendHeight: 0.15,
-    normalStrength: 1,
+    blendHeight: 0,
+    normalStrength: 0,
     normalConvention: 'opengl',
     textures: {},
     proceduralVariant: 0,
