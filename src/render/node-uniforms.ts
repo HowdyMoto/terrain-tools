@@ -1,7 +1,33 @@
 import type { IUniform, Texture } from 'three';
 import type { Node } from 'three/webgpu';
 import { DataTexture } from 'three';
-import { reference, texture } from 'three/tsl';
+import { materialReference, reference, texture } from 'three/tsl';
+
+/** Per-draw material values let streamed tiles reuse one compiled node graph. */
+export function materialNodeUniforms(property: string) {
+  const references = new Map<string, Node>();
+  function get(name: string): Node<'float'>;
+  function get<const T extends string>(name: string, type: T): Node<T>;
+  function get(name: string, type = 'float'): Node {
+    const key = name + ':' + type;
+    let node = references.get(key);
+    if (!node) {
+      node = materialReference(`${property}.${name}.value`, type);
+      references.set(key, node);
+    }
+    return node;
+  }
+  return get;
+}
+
+export function materialNodeTexture(property: string, initial: Texture | null) {
+  return texture(initial ?? emptyTexture).onObjectUpdate(({ material }) => {
+    const value = (
+      material as unknown as Record<string, IUniform<Texture | null>>
+    )[property];
+    return value.value ?? emptyTexture;
+  });
+}
 
 /** Bind a node to the same stable, caller-owned values used by authoring. */
 export function nodeUniforms(values: Record<string, IUniform>) {

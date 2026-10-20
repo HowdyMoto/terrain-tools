@@ -2,6 +2,9 @@ import type { MeshStandardMaterial, Node, WebGPURenderer } from 'three/webgpu';
 import { NodeMaterial } from 'three/webgpu';
 import { property } from 'three/tsl';
 import { installSharedGeometryOwnership } from './shared-geometry';
+import { installNativeFoliage } from './native-foliage';
+import { installNativeTerrainLod } from './native-terrain-lod';
+import { installNativeShadows } from './native-shadows';
 
 export const terrainIndirect = property('vec3', 'terrainIndirect');
 export const terrainDirectSpecular = property('vec3', 'terrainDirectSpecular');
@@ -12,6 +15,11 @@ const installed = new WeakSet<WebGPURenderer>();
  * their debug names creates unrelated variables and silently loses illumination. */
 export function installTerrainLighting(renderer: WebGPURenderer) {
   installSharedGeometryOwnership(renderer);
+  // Shadow handling runs inside the geometry proxies so it sees their native
+  // attributes. Install it before wrapping foliage/terrain renderObject calls.
+  installNativeShadows(renderer);
+  installNativeFoliage(renderer);
+  installNativeTerrainLod(renderer);
   if (installed.has(renderer)) return;
   installed.add(renderer);
   const configured = new WeakSet<NodeMaterial>();

@@ -390,9 +390,15 @@ export class WebGPUPipeline {
     const projection = camera.projectionMatrix.clone(),
       inverse = camera.projectionMatrixInverse.clone();
     const view = camera.view ? { ...camera.view } : null;
+    const matrixWorldAutoUpdate = scene.matrixWorldAutoUpdate;
     try {
+      // Opaque capture, water and cascades render the same scene repeatedly.
+      // Update transforms once per composed frame, respecting host ownership.
+      if (matrixWorldAutoUpdate) scene.updateMatrixWorld();
+      scene.matrixWorldAutoUpdate = false;
       this.post.render();
     } finally {
+      scene.matrixWorldAutoUpdate = matrixWorldAutoUpdate;
       this.renderer.toneMapping = toneMapping;
       this.renderer.outputColorSpace = colorSpace;
       this.renderer.xr.enabled = xrEnabled;

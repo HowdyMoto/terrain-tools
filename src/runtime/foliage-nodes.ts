@@ -15,6 +15,7 @@ import {
   element,
   attribute,
   positionGeometry,
+  positionPrevious,
   normalGeometry,
   normalLocal,
   tangentGeometry,
@@ -48,6 +49,10 @@ import {
 import type { WindUniforms } from './wind';
 import type { FoliageSubsurface } from '../core/foliage-shading';
 import { nodeUniforms } from '../render/node-uniforms';
+import {
+  foliageMatrixAttribute,
+  foliagePreviousAttribute,
+} from '../render/native-foliage';
 
 type N = Node<'vec3'>;
 const matrix3 = (a: N, b: N, c: N) => mat3(a, b, c);
@@ -224,7 +229,30 @@ export function configureWindNodes(
   const matrices = new WeakMap<InstancedMesh, Node<'mat4'>>();
   const positionNode = Fn((builder: NodeBuilder) => {
     const mesh = builder.object as InstancedMesh;
-    let matrix = matrices.get(mesh);
+    const nativeBatch = builder.geometry.hasAttribute(
+      foliageMatrixAttribute + '0',
+    );
+    const attributeMatrix = (prefix: string) =>
+      matrix4(
+        attribute(prefix + '0', 'vec4'),
+        attribute(prefix + '1', 'vec4'),
+        attribute(prefix + '2', 'vec4'),
+        attribute(prefix + '3', 'vec4'),
+      );
+    let matrix = nativeBatch
+      ? attributeMatrix(foliageMatrixAttribute)
+      : matrices.get(mesh);
+    if (
+      nativeBatch &&
+      (
+        builder as NodeBuilder & { needsPreviousData(): boolean }
+      ).needsPreviousData()
+    ) {
+      positionPrevious.assign(
+        attributeMatrix(foliagePreviousAttribute).mul(vec4(positionGeometry, 1))
+          .xyz,
+      );
+    }
     if (!matrix) {
       const data = new InstancedInterleavedBuffer(
         mesh.instanceMatrix.array,

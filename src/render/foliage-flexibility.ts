@@ -120,10 +120,13 @@ export function prepareFlexibility(
 /** Separate per-batch instance attributes, sharing immutable model vertex/index storage. */
 export function foliageGeometryView(
   base: THREE.BufferGeometry,
-  attributes: Record<string, THREE.InstancedBufferAttribute>,
+  attributes: Record<
+    string,
+    THREE.BufferAttribute | THREE.InterleavedBufferAttribute
+  >,
 ) {
   registerSharedGeometry(base);
-  const geometry = new THREE.BufferGeometry();
+  const geometry = new THREE.InstancedBufferGeometry();
   geometry.index = base.index;
   for (const [name, attribute] of Object.entries(base.attributes))
     geometry.setAttribute(name, attribute);

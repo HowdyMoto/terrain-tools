@@ -3,6 +3,10 @@ import { spawn } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromeGPUArgs } from './chrome-gpu.mjs';
 const quick = process.argv.includes('--quick');
+const captures = !process.argv.includes('--no-captures');
+const output =
+  process.argv.find((a) => a.startsWith('--output='))?.slice(9) ??
+  'test-results/world-benchmark.json';
 const url =
   process.argv.find((a) => a.startsWith('--url='))?.slice(6) ??
   'http://127.0.0.1:5175';
@@ -68,13 +72,18 @@ try {
   page.on('console', (m) => {
     if (m.type() === 'error') errors.push(m.text());
   });
+  const loadStarted = performance.now();
+  console.log('Loading the production world.');
   await page.goto(
     url +
       '/world.html' +
       (process.argv.includes('--full-detail') ? '?full-detail' : ''),
   );
-  await page.waitForFunction(() => window.worldExample, { timeout: 180000 });
+  await page.waitForFunction(() => window.worldExample, undefined, {
+    timeout: 180000,
+  });
   await page.evaluate(() => window.worldExample.ready());
+  const initialReadyMs = performance.now() - loadStarted;
   const initial = await page.evaluate(() => ({
     adapter: window.worldExample.adapter,
     stats: window.worldExample.world.stats,
@@ -90,11 +99,18 @@ try {
   )
     throw new Error('Benchmark requires RTX 5060; detected ' + initial.adapter);
   await mkdir('test-results', { recursive: true });
-  await page.screenshot({ path: 'test-results/world-forest.png' });
+  if (captures)
+    await page.screenshot({
+      path: 'test-results/world-forest.png',
+      timeout: 180000,
+    });
   if (initial.stats.failedTiles)
     throw new Error('World has failed tiles: ' + JSON.stringify(initial));
   await page.waitForTimeout(quick ? 1000 : 5000);
-  await page.evaluate(() => window.worldExample.start());
+  const measurementStarted = await page.evaluate(() => {
+    window.worldExample.start();
+    return performance.now();
+  });
   const laps = quick ? 1 : 3,
     seconds = quick ? 3 : 12;
   console.log('Measuring ' + laps + ' laps, ' + seconds + ' seconds per view.');
@@ -102,16 +118,25 @@ try {
     ([laps, seconds]) => window.worldExample.traverse(laps, seconds),
     [laps, seconds],
   );
+  console.log('Traversal complete; waiting for final tile loads.');
   await page.evaluate(() => window.worldExample.ready());
-  const raw = await page.evaluate(() => window.worldExample.stop());
+  const raw = await page.evaluate(() => ({
+    ...window.worldExample.stop(),
+    measurementEnded: performance.now(),
+  }));
+  const measurementWallMs = raw.measurementEnded - measurementStarted;
+  console.log(`Recorded ${raw.frames.length} frames; releasing resources.`);
   // Capture outside the timing interval: screenshot readback stalls are instrumentation.
-  for (const name of ['forest', 'open', 'coast']) {
+  for (const name of captures ? ['forest', 'open', 'coast'] : []) {
     await page.evaluate(async (name) => {
       window.worldExample.view(name);
       await window.worldExample.ready();
     }, name);
     await page.waitForTimeout(750);
-    await page.screenshot({ path: `test-results/world-${name}.png` });
+    await page.screenshot({
+      path: `test-results/world-${name}.png`,
+      timeout: 180000,
+    });
   }
   const cleanup = await page.evaluate(async () => {
     const api = window.worldExample;
@@ -134,11 +159,17 @@ try {
       proceduralTileSource: true,
       collision: true,
       quick,
+      captures,
     },
+    initialReadyMs,
+    measurementWallMs,
+    averageFPS: raw.cpu.length / (measurementWallMs / 1000),
+    frameTimeNote:
+      'Frame interval percentiles exclude the first sample, which begins before recording. Average FPS counts submitted frames over the browser-clock recording window, including final tile loading. This is not display scanout or GPU completion rate.',
     ...raw,
     cleanup,
     summary: {
-      frameMs: summarize(raw.frames),
+      frameMs: summarize(raw.frames.slice(1)),
       cpuMs: summarize(raw.cpu),
       gpuMs: summarize(raw.gpu),
       loadMs: summarize(raw.loadMilliseconds),
@@ -153,13 +184,12 @@ try {
     result.summary.frameMs.p95 <= 33.5 &&
     !raw.stats.failedTiles &&
     !errors.length;
-  await writeFile(
-    'test-results/world-benchmark.json',
-    JSON.stringify(result, null, 2) + '\n',
-  );
+  await writeFile(output, JSON.stringify(result, null, 2) + '\n');
   console.log(
     JSON.stringify(
       {
+        averageFPS: result.averageFPS,
+        measurementWallMs,
         summary: result.summary,
         meets30FPS: result.meets30FPS,
         stats: result.stats,

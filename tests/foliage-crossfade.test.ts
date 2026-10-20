@@ -168,9 +168,10 @@ describe('foliage cross-fades', () => {
     expect(primary().count).toBe(0);
     expect(distant().count).toBe(1);
     expect(scene.foliage.viewStats.transitioning).toBe(0);
-    expect(
-      (primary().material as THREE.Material).customProgramCacheKey(),
-    ).not.toContain('lod-fade');
+    const material = primary().material as THREE.Material;
+    const key = material.customProgramCacheKey();
+    const materialVersion = material.version;
+    expect(key).toContain('lod-fade');
     move(0);
     expect(
       (primary().material as THREE.Material).customProgramCacheKey(),
@@ -195,12 +196,12 @@ describe('foliage cross-fades', () => {
     scene.update(0.75);
     expect(primary().count).toBe(1);
     expect(distant().count).toBe(0);
-    expect(
-      (primary().material as THREE.Material).customProgramCacheKey(),
-    ).not.toContain('lod-fade');
-    expect(
-      primary().customDepthMaterial!.customProgramCacheKey(),
-    ).not.toContain('lod-fade');
+    expect(primary().material).toBe(material);
+    expect(material.customProgramCacheKey()).toBe(key);
+    expect(material.version).toBe(materialVersion);
+    expect(primary().customDepthMaterial!.customProgramCacheKey()).toContain(
+      'lod-fade',
+    );
     expect(scene.foliage.viewStats).toMatchObject({
       instances: 1,
       drawnInstances: 1,

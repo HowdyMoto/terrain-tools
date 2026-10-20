@@ -1,12 +1,13 @@
 import { Vector3 } from 'three';
-import type { IUniform, Color } from 'three';
-import type { MeshStandardMaterial, Node } from 'three/webgpu';
+import type { IUniform, Color, Texture } from 'three';
+import type { MeshStandardMaterial, Node, NodeBuilder } from 'three/webgpu';
 import {
   Fn,
   If,
   attribute,
   varying,
   positionLocal,
+  positionGeometry,
   normalLocal,
   modelNormalMatrix,
   vec2,
@@ -34,8 +35,14 @@ import {
   sin,
   fwidth,
   uniformArray,
+  uniform,
 } from 'three/tsl';
-import { nodeTexture, nodeUniforms } from './node-uniforms';
+import { terrainLodTarget } from './native-terrain-lod';
+import {
+  materialNodeTexture,
+  materialNodeUniforms,
+  nodeUniforms,
+} from './node-uniforms';
 
 type N2 = Node<'vec2'>;
 type N3 = Node<'vec3'>;
@@ -68,8 +75,11 @@ export function surfaceNodes(
   sourceNormal: N3,
   weights: N4,
   flat = false,
+  perMaterial = false,
 ) {
-  const u = nodeUniforms(values);
+  const u = perMaterial
+    ? materialNodeUniforms('terrainSurfaceUniforms')
+    : nodeUniforms(values);
   const maps = [
     'terrainAlbedo',
     'terrainNormal',
@@ -82,6 +92,12 @@ export function surfaceNodes(
     ),
     'vec3',
   ).setName('terrainLayerColors');
+  if (perMaterial)
+    colors.onObjectUpdate(function ({ material }) {
+      this.array = (
+        material as MeshStandardMaterial & { terrainLayerColors: Vector3[] }
+      ).terrainLayerColors;
+    });
   const resultColor = vec3().toVar('terrainColor');
   const resultNormal = vec3().toVar('terrainNormal');
   const resultOrm = vec3().toVar('terrainOrm');
@@ -333,10 +349,10 @@ export function surfaceNodes(
   };
 }
 
-export function configureTerrainNodes(
-  material: MeshStandardMaterial,
+function terrainGraph(
   values: Record<string, IUniform>,
   shoreValues: Record<string, IUniform>,
+  flat: boolean,
 ) {
   const p = varying(positionLocal),
     n = varying(normalLocal);
@@ -345,10 +361,14 @@ export function configureTerrainNodes(
     p,
     n,
     varying(attribute('layerWeights', 'vec4')),
-    material.flatShading,
+    flat,
+    true,
   );
-  const u = nodeUniforms(shoreValues),
-    map = nodeTexture(shoreValues.terrainShore);
+  const u = materialNodeUniforms('terrainShoreUniforms'),
+    map = materialNodeTexture(
+      'terrainShoreTexture',
+      shoreValues.terrainShore.value,
+    );
   const shore = Fn(() => {
     const uv = p.xz.div(u('terrainShoreSize')).add(0.5);
     const result = vec4().toVar();
@@ -392,8 +412,25 @@ export function configureTerrainNodes(
       .mul(shore.g)
       .mul(max(n.y, 0));
   })();
-  Object.assign(material, {
-    colorNode: surface.color.mul(float(1).sub(shore.r.mul(0.45))),
+  const morph = uniform(0).onObjectUpdate(
+    ({ object }) =>
+      (object as { morphTargetInfluences?: number[] })
+        .morphTargetInfluences?.[0] ?? 0,
+  );
+  return {
+    positionNode: Fn((builder: NodeBuilder) =>
+      builder.geometry.hasAttribute(terrainLodTarget)
+        ? mix(positionGeometry, attribute(terrainLodTarget, 'vec3'), morph)
+        : positionLocal,
+    )(),
+    // Native shadows ask colorNode for alpha, even for opaque vec3 surfaces.
+    // Do not build the entire triplanar PBR graph just to obtain constant 1.
+    colorNode: Fn((builder: NodeBuilder) =>
+      (builder.material as { isShadowPassMaterial?: boolean })
+        .isShadowPassMaterial
+        ? vec3(1)
+        : surface.color.mul(float(1).sub(shore.r.mul(0.45))),
+    )(),
     roughnessNode: mix(surface.orm.g, min(surface.orm.g, 0.22), shore.r).clamp(
       0.04,
       1,
@@ -403,6 +440,49 @@ export function configureTerrainNodes(
     aoNode: surface.orm.r,
     // Caustic visibility is supplied by the connected-water field.
     terrainCausticNode: max(0, caustic.add(1)),
+  };
+}
+
+// Texture identity includes array layout, sampling and color-space semantics.
+// Weak ownership lets retired world libraries and their graphs be collected.
+const terrainGraphs = new WeakMap<
+  Texture,
+  {
+    maps: Texture[];
+    variants: Map<boolean, ReturnType<typeof terrainGraph>>;
+  }
+>();
+
+export function configureTerrainNodes(
+  material: MeshStandardMaterial,
+  values: Record<string, IUniform>,
+  shoreValues: Record<string, IUniform>,
+) {
+  const maps = [
+    'terrainAlbedo',
+    'terrainNormal',
+    'terrainOrm',
+    'terrainHeight',
+  ].map((name) => values[name].value as Texture);
+  let cached = terrainGraphs.get(maps[0]);
+  if (!cached || maps.some((map, i) => map !== cached!.maps[i])) {
+    cached = { maps, variants: new Map() };
+    terrainGraphs.set(maps[0], cached);
+  }
+  let graph = cached.variants.get(material.flatShading);
+  if (!graph) {
+    graph = terrainGraph(values, shoreValues, material.flatShading);
+    cached.variants.set(material.flatShading, graph);
+  }
+  // Own properties are copied by the native material adapter. Keep runtime
+  // bindings out of userData, which is serialized by GLTFExporter.
+  Object.assign(material, graph, {
+    terrainSurfaceUniforms: values,
+    terrainShoreUniforms: shoreValues,
+    terrainShoreTexture: shoreValues.terrainShore,
+    terrainLayerColors: (values.layerColors.value as Color[]).map(
+      (c) => new Vector3(c.r, c.g, c.b),
+    ),
   });
   material.needsUpdate = true;
 }

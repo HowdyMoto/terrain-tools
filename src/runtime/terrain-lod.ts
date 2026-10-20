@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { buildTerrainLods } from '../core/terrain-lod';
 import type { TerrainScene } from './terrain-scene';
+import { registerTerrainLod } from '../render/native-terrain-lod';
+import { registerSharedGeometry } from '../render/shared-geometry';
 
 export interface TerrainLodOptions {
   /** Maximum sampled projected height error, in drawing-buffer pixels. */
@@ -45,6 +47,7 @@ export class TerrainLod extends THREE.Group {
     this.previousVisible = source.terrain.visible;
     try {
       for (const original of source.terrain.children as THREE.Mesh[]) {
+        registerSharedGeometry(original.geometry);
         const { cellsX, cellsZ } = original.userData;
         const levels = buildTerrainLods(
           original.geometry.getAttribute('position').array as Float32Array,
@@ -68,6 +71,7 @@ export class TerrainLod extends THREE.Group {
           return geometry;
         });
         const mesh = new THREE.Mesh(geometries[0], original.material);
+        registerTerrainLod(mesh);
         mesh.castShadow = mesh.receiveShadow = true;
         const bounds = geometries[0].boundingSphere!;
         this.chunks.push({

@@ -17,7 +17,8 @@ import type {
   TerrainProject,
   TerrainRegion,
 } from '../core/types';
-import type { ModelLibrary, PreparedModels } from '../render/models';
+import type { ModelLibrary, ModelPart, PreparedModels } from '../render/models';
+import { registerFoliageBatch } from '../render/native-foliage';
 import { PreparedResource } from '../render/resources';
 export type PreparedFoliage = PreparedResource<TerrainFoliage>;
 import { configureWind, windUniforms, shadowMaterials } from './wind';
@@ -28,6 +29,11 @@ import {
   FLEXIBILITY_SHADER_ATTRIBUTE,
 } from '../render/foliage-flexibility';
 
+interface BatchMaterials {
+  color: THREE.Material | THREE.Material[];
+  depth: THREE.MeshDepthMaterial;
+  distance: THREE.MeshDistanceMaterial;
+}
 interface Batch {
   baseGeometry: THREE.BufferGeometry;
   contact?: THREE.InstancedBufferAttribute;
@@ -49,7 +55,6 @@ interface Tile {
   drawn: Int8Array;
   transitions?: FoliageLodTransitions;
   visibleCount: number;
-  fadeVariant: boolean;
   batches: Batch[];
   counts: number[];
   camera: THREE.Vector3;
@@ -237,6 +242,56 @@ export class TerrainFoliage extends THREE.Group {
     );
     const holes = effectiveHoles(project),
       prepared = new Map<object, Map<string, THREE.BufferGeometry>>();
+    // Spatial batches have independent transforms/contact/fade attributes, but
+    // share material inputs. Fade coverage is data, so transitions never require
+    // new material variants or shader compilation.
+    const materialCache = new Map<
+      FoliageModel,
+      Map<number, Map<ModelPart, BatchMaterials>>
+    >();
+    const materialsFor = (
+      model: FoliageModel,
+      part: ModelPart,
+      level: number,
+      root: number | undefined,
+      hasFade: boolean,
+    ): BatchMaterials => {
+      let levels = materialCache.get(model);
+      if (!levels) materialCache.set(model, (levels = new Map()));
+      let parts = levels.get(level);
+      if (!parts) levels.set(level, (parts = new Map()));
+      const cached = parts.get(part);
+      if (cached) return cached;
+      const sources = Array.isArray(part.material)
+        ? part.material
+        : [part.material];
+      const colors = sources.map((source) => {
+        const material = this.own(source.clone());
+        if (material instanceof THREE.MeshStandardMaterial)
+          material.color.lerp(new THREE.Color(model.color), 0.3);
+        configureWind(material, model.wind, this.uniforms, root);
+        configureFoliageSubsurface(material, model.subsurface);
+        if (hasFade) configureFoliageFade(material);
+        return material;
+      });
+      const shadows = shadowMaterials(
+        sources[0],
+        model.wind,
+        this.uniforms,
+        root,
+        (resource) => this.own(resource),
+      );
+      if (hasFade) {
+        configureFoliageFade(shadows.depth);
+        configureFoliageFade(shadows.distance);
+      }
+      const result = {
+        color: Array.isArray(part.material) ? colors : colors[0],
+        ...shadows,
+      };
+      parts.set(part, result);
+      return result;
+    };
     for (const brush of project.brushes) {
       const groups = new Map<string, FoliageInstance[]>(),
         tileSize = 32;
@@ -290,7 +345,6 @@ export class TerrainFoliage extends THREE.Group {
           drawn: transitions?.targets ?? new Int8Array(count),
           transitions,
           visibleCount: count,
-          fadeVariant: false,
           batches: [],
           counts: [count, 0, 0, 0],
           camera: new THREE.Vector3(),
@@ -302,20 +356,13 @@ export class TerrainFoliage extends THREE.Group {
         ];
         levels.forEach((asset, level) => {
           for (const part of this.library.get(asset, models)) {
-            const uniforms = this.uniforms;
-            const sources = Array.isArray(part.material)
-              ? part.material
-              : [part.material];
-            const materials = sources.map((source) => {
-              const material = this.own(source.clone());
-              if (material instanceof THREE.MeshStandardMaterial)
-                material.color.lerp(new THREE.Color(model.color), 0.3);
-              configureWind(material, model.wind, uniforms, root);
-              configureFoliageSubsurface(material, model.subsurface);
-              if (transitions)
-                configureFoliageFade(material, () => tile.fadeVariant);
-              return material;
-            });
+            const normal = materialsFor(
+              model,
+              part,
+              level,
+              root,
+              !!transitions,
+            );
             const variants =
               prepared.get(part) ?? new Map<string, THREE.BufferGeometry>();
             prepared.set(part, variants);
@@ -351,14 +398,15 @@ export class TerrainFoliage extends THREE.Group {
                   3,
                 ).setUsage(THREE.DynamicDrawUsage)
               : undefined;
-            const attributes: Record<string, THREE.InstancedBufferAttribute> =
-              {};
+            const attributes: Record<
+              string,
+              THREE.BufferAttribute | THREE.InterleavedBufferAttribute
+            > = {};
             if (contact) attributes[CONTACT_SHADER_ATTRIBUTE] = contact;
             if (fade) attributes[FOLIAGE_FADE_ATTRIBUTE] = fade;
-            const geometry =
-              contact || fade
-                ? this.own(foliageGeometryView(baseGeometry, attributes))
-                : baseGeometry;
+            const geometry = this.own(
+              foliageGeometryView(baseGeometry, attributes),
+            );
             const box = baseGeometry.boundingBox!,
               pivot = root ?? 0;
             const radius = Math.hypot(
@@ -370,26 +418,12 @@ export class TerrainFoliage extends THREE.Group {
               Math.max(Math.abs(box.min.z), Math.abs(box.max.z)),
             );
             const mesh = this.own(
-              new THREE.InstancedMesh(
-                geometry,
-                Array.isArray(part.material) ? materials : materials[0],
-                count,
-              ),
+              new THREE.InstancedMesh(geometry, normal.color, count),
             );
             mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-            const shadows = shadowMaterials(
-              sources[0],
-              model.wind,
-              uniforms,
-              root,
-              (resource) => this.own(resource),
-            );
-            if (transitions) {
-              configureFoliageFade(shadows.depth, () => tile.fadeVariant);
-              configureFoliageFade(shadows.distance, () => tile.fadeVariant);
-            }
-            mesh.customDepthMaterial = shadows.depth;
-            mesh.customDistanceMaterial = shadows.distance;
+            registerFoliageBatch(mesh, attributes);
+            mesh.customDepthMaterial = normal.depth;
+            mesh.customDistanceMaterial = normal.distance;
             mesh.castShadow = mesh.receiveShadow = true;
             mesh.frustumCulled = true;
             mesh.count = level === 0 ? count : 0;
@@ -709,18 +743,6 @@ export class TerrainFoliage extends THREE.Group {
     if (changed) this.refreshStats();
   }
   private pack(tile: Tile) {
-    const fading = !!tile.transitions?.activeCount;
-    if (fading !== tile.fadeVariant) {
-      tile.fadeVariant = fading;
-      for (const { mesh } of tile.batches) {
-        for (const material of Array.isArray(mesh.material)
-          ? mesh.material
-          : [mesh.material])
-          material.needsUpdate = true;
-        mesh.customDepthMaterial!.needsUpdate = true;
-        mesh.customDistanceMaterial!.needsUpdate = true;
-      }
-    }
     const groups: number[][] = Array.from(
       { length: (tile.model.lods?.length ?? 0) + 1 },
       () => [],

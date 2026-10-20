@@ -290,6 +290,7 @@ test('editor explains unavailable WebGPU and keeps local-save recovery available
   await expect(page.locator('#renderer-unavailable')).toContainText(
     'WebGPU could not start',
   );
+  await expect(page.locator('#startup-loading')).toHaveCount(0);
   await expect(
     page.getByRole('button', { name: 'Download locally saved project' }),
   ).toBeEnabled();

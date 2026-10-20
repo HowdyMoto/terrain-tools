@@ -156,7 +156,9 @@ describe('rebuild failure recovery', () => {
     );
     expect(cloned).toHaveLength(1);
     disposals.forEach((fn) => expect(fn).toHaveBeenCalledTimes(1));
-    expect(materialsDisposed).toHaveBeenCalledTimes(7);
+    // Three parts stage a color/depth/distance material before geometry work.
+    expect(materialsDisposed).toHaveBeenCalledTimes(9);
+    expect(new Set(materialsDisposed.mock.contexts).size).toBe(9);
     expect(meshesDisposed).toHaveBeenCalledTimes(2);
     materialsDisposed.mockRestore();
     meshesDisposed.mockRestore();

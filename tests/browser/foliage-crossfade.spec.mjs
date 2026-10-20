@@ -125,6 +125,33 @@ test('cross-fades complementary pixels and alpha-cutout shadows through reversal
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.BasicShadowMap;
       const target = new THREE.WebGLRenderTarget(400, 400);
+      // Three r186 stores basic shadows in depth textures (point lights use a
+      // cube). Copy depth into RGBA before readback, including all six faces.
+      const depthTarget = new THREE.WebGLRenderTarget(256, 256);
+      const depthScene = new THREE.Scene();
+      const depthCamera = new THREE.Camera();
+      const depthGeometry = new THREE.PlaneGeometry(2, 2);
+      const depthMaterials = [false, true].map(
+        (cube) =>
+          new THREE.ShaderMaterial({
+            uniforms: { map: { value: null }, face: { value: 0 } },
+            vertexShader:
+              'varying vec2 vUv; void main(){vUv=uv;gl_Position=vec4(position.xy,0.0,1.0);}',
+            fragmentShader: `#include <packing>
+          varying vec2 vUv; uniform ${cube ? 'samplerCube' : 'sampler2D'} map; uniform int face;
+          void main(){
+            vec2 q=vUv*2.0-1.0;
+            vec3 direction=face==0?vec3(1.0,q):face==1?vec3(-1.0,q):face==2?vec3(q.x,1.0,q.y):face==3?vec3(q.x,-1.0,q.y):face==4?vec3(q,1.0):vec3(q,-1.0);
+            float depth=${cube ? 'textureCube(map,direction)' : 'texture2D(map,vUv)'}.r;
+            gl_FragColor=packDepthToRGBA(depth);
+          }`,
+            depthTest: false,
+            depthWrite: false,
+          }),
+      );
+      const depthQuad = new THREE.Mesh(depthGeometry, depthMaterials[0]);
+      depthQuad.frustumCulled = false;
+      depthScene.add(depthQuad);
       document.body.style.cssText =
         'margin:0;background:#101820;color:white;font:16px system-ui;display:flex;flex-wrap:wrap';
       const read = () => {
@@ -134,15 +161,25 @@ test('cross-fades complementary pixels and alpha-cutout shadows through reversal
         renderer.readRenderTargetPixels(target, 0, 0, 400, 400, pixels);
         const shadows = [sun, point].map((light) => {
           const map = light.shadow.map,
-            data = new Uint8Array(map.width * map.height * 4);
-          renderer.readRenderTargetPixels(
-            map,
-            0,
-            0,
-            map.width,
-            map.height,
-            data,
-          );
+            faces = map.isWebGLCubeRenderTarget ? 6 : 1,
+            faceBytes = map.width * map.height * 4,
+            data = new Uint8Array(faceBytes * faces);
+          depthTarget.setSize(map.width, map.height);
+          depthQuad.material = depthMaterials[faces === 6 ? 1 : 0];
+          depthQuad.material.uniforms.map.value = map.depthTexture;
+          for (let face = 0; face < faces; face++) {
+            depthQuad.material.uniforms.face.value = face;
+            renderer.setRenderTarget(depthTarget);
+            renderer.render(depthScene, depthCamera);
+            renderer.readRenderTargetPixels(
+              depthTarget,
+              0,
+              0,
+              map.width,
+              map.height,
+              data.subarray(face * faceBytes, (face + 1) * faceBytes),
+            );
+          }
           return data;
         });
         return { pixels, shadows };
@@ -295,6 +332,9 @@ test('cross-fades complementary pixels and alpha-cutout shadows through reversal
       exportedGeometry.forEach((geometry) => geometry.dispose());
       results.finalRepresentations = terrain.foliage.viewStats.drawnInstances;
       target.dispose();
+      depthTarget.dispose();
+      depthGeometry.dispose();
+      depthMaterials.forEach((m) => m.dispose());
       terrain.dispose();
       alphaMap.dispose();
       sun.shadow.map.dispose();

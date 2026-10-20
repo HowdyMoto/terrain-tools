@@ -14,10 +14,13 @@ const registered = new WeakSet<BufferGeometry>();
 const installed = new WeakSet<WebGPURenderer>();
 
 /** Immutable model buffers belong to the leased base geometry, not a batch view. */
-export function registerSharedGeometry(base: BufferGeometry) {
+export function registerSharedGeometry(
+  base: BufferGeometry,
+  owned?: Attribute[],
+) {
   if (registered.has(base)) return;
   registered.add(base);
-  const attributes = [
+  const attributes = owned ?? [
     ...Object.values(base.attributes),
     ...(base.index ? [base.index] : []),
   ];
