@@ -11,6 +11,7 @@ import type { TerrainLodOptions } from './terrain-lod';
 import { WorldAssets } from './world-assets';
 import { modelMemory } from './asset-memory';
 import { checkSignal } from '../render/resources';
+import { webOceanGPUBytes } from './web-ocean/simulation';
 
 export interface WorldColliders {
   /** Prepared colliders remain disabled until their rendered tile is admitted. */
@@ -96,6 +97,7 @@ export class TerrainWorldScene extends THREE.Group {
             terrain.waterSystem.setWorldTile(
               terrain.position.x,
               terrain.position.z,
+              this,
             );
             if (options.lod !== false) {
               lod = new TerrainLod(terrain, options.lod);
@@ -145,7 +147,13 @@ export class TerrainWorldScene extends THREE.Group {
                 measured.gpuBytes +
                 instanceBytes +
                 (lod?.memoryBytes.gpuBytes ?? 0) +
-                waterBytes,
+                waterBytes +
+                (p.water?.ocean.enabled &&
+                p.water.ocean.renderer === 'web-ocean'
+                  ? webOceanGPUBytes(
+                      p.water.ocean.spectral?.quality ?? 'balanced',
+                    )
+                  : 0),
               dispose,
             };
           } catch (error) {

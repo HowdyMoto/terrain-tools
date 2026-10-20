@@ -12,6 +12,7 @@ import type { WaterMaterial } from './water-material';
 import { prepareWaterShore } from './water-shore';
 import type { TerrainMaterial } from '../render/material';
 import type { AssetLease } from '../core/asset-registry';
+import { WebOcean } from './web-ocean/simulation';
 
 export function prepareWaterTerrain(project: TerrainProject) {
   if (!project.water) return undefined;
@@ -81,6 +82,7 @@ interface Resources {
     mesh: THREE.Mesh;
     shading: WaterMaterial;
     mask: THREE.DataTexture;
+    spectral?: WebOcean;
   }[];
 }
 export type PreparedWater = PreparedResource<Resources>;
@@ -95,14 +97,16 @@ function heightTexture(data: Float32Array, width: number) {
   texture.needsUpdate = true;
   return texture;
 }
-function grid(width: number, depth: number, ocean: boolean) {
-  const geometry = new THREE.PlaneGeometry(width, depth, 128, 128);
+function grid(width: number, depth: number, ocean: boolean, spectral = false) {
+  const segments = spectral ? 256 : 128;
+  const geometry = new THREE.PlaneGeometry(width, depth, segments, segments);
   geometry.rotateX(-Math.PI / 2);
   if (ocean) {
     const pos = geometry.getAttribute('position');
     for (let i = 0; i < pos.count; i++) {
       const warp = (v: number) =>
-        (Math.sign(v) * (Math.pow(1 + Math.abs(v) * 7, 3) - 1)) / 511;
+        (Math.sign(v) * (Math.pow(1 + Math.abs(v) * 7, spectral ? 4 : 3) - 1)) /
+        (spectral ? 4095 : 511);
       pos.setXYZ(
         i,
         warp((pos.getX(i) * 2) / width),
@@ -110,6 +114,30 @@ function grid(width: number, depth: number, ocean: boolean) {
         warp((pos.getZ(i) * 2) / depth),
       );
     }
+  }
+  if (spectral) {
+    const pos = geometry.getAttribute('position');
+    const spacing = new Float32Array(pos.count * 2);
+    for (let z = 0; z <= segments; z++)
+      for (let x = 0; x <= segments; x++) {
+        const i = z * (segments + 1) + x;
+        const left = z * (segments + 1) + Math.max(0, x - 1);
+        const right = z * (segments + 1) + Math.min(segments, x + 1);
+        const above = Math.max(0, z - 1) * (segments + 1) + x;
+        const below = Math.min(segments, z + 1) * (segments + 1) + x;
+        spacing[i * 2] = Math.max(
+          Math.abs(pos.getX(i) - pos.getX(left)),
+          Math.abs(pos.getX(right) - pos.getX(i)),
+        );
+        spacing[i * 2 + 1] = Math.max(
+          Math.abs(pos.getZ(i) - pos.getZ(above)),
+          Math.abs(pos.getZ(below) - pos.getZ(i)),
+        );
+      }
+    geometry.setAttribute(
+      'waterSpacing',
+      new THREE.BufferAttribute(spacing, 2),
+    );
   }
   return geometry;
 }
@@ -158,12 +186,14 @@ export class TerrainWater extends THREE.Group {
   private state?: Resources;
   private time = 0;
   private bounded = false;
+  private oceanScope: object = this;
   /** A streamed cell owns a finite ocean patch; waves use manifest coordinates. */
-  setWorldTile(x: number, z: number) {
+  setWorldTile(x: number, z: number, oceanScope?: object) {
     if (!Number.isFinite(x) || !Number.isFinite(z))
       throw new Error('Invalid water tile origin.');
     if (!this.state) return;
     this.bounded = true;
+    if (oceanScope) this.oceanScope = oceanScope;
     if (this.state.bank) this.state.bank.visible = false;
     for (const entry of this.state.entries) {
       entry.shading.uniforms.waterPhaseOrigin.value.set(x, z);
@@ -173,6 +203,7 @@ export class TerrainWater extends THREE.Group {
           this.state.project.size,
           this.state.project.size,
           false,
+          !!entry.spectral,
         );
         entry.mesh.geometry.dispose();
         entry.mesh.geometry = geometry;
@@ -202,6 +233,22 @@ export class TerrainWater extends THREE.Group {
       before!.holes === project.holes &&
       a.seaLevel === b.seaLevel &&
       a.ocean.enabled === b.ocean.enabled &&
+      (a.ocean.renderer ?? 'standard') === (b.ocean.renderer ?? 'standard') &&
+      (b.ocean.renderer !== 'web-ocean' ||
+        JSON.stringify([
+          a.ocean.spectral,
+          a.ocean.surface.swellHeight,
+          a.ocean.surface.swellLength,
+          a.ocean.surface.direction,
+          a.ocean.surface.windLinked,
+        ]) ===
+          JSON.stringify([
+            b.ocean.spectral,
+            b.ocean.surface.swellHeight,
+            b.ocean.surface.swellLength,
+            b.ocean.surface.direction,
+            b.ocean.surface.windLinked,
+          ])) &&
       this.sameShore(a.ocean.surface, b.ocean.surface) &&
       a.bodies.length === b.bodies.length &&
       a.bodies.every(
@@ -267,8 +314,19 @@ export class TerrainWater extends THREE.Group {
     prepared.assert(this);
     const state = prepared.value;
     if (!state.height) return;
+    if (!isWebGPU(renderer) && state.entries.some((e) => e.spectral))
+      throw new Error(
+        'web-ocean requires native WebGPU. Choose Standard water for a WebGL host.',
+      );
     if (isWebGPU(renderer)) {
       return validateGPU(renderer, async () => {
+        for (const e of state.entries)
+          e.spectral?.ensure(
+            renderer,
+            this.oceanScope,
+            state.project.water!,
+            state.project.wind.direction,
+          );
         for (const texture of [
           state.height!,
           ...(state.foam ? [state.foam] : []),
@@ -401,6 +459,12 @@ export class TerrainWater extends THREE.Group {
           mask.needsUpdate = true;
           let geometry: THREE.BufferGeometry | undefined,
             shading: WaterMaterial | undefined;
+          const spectral =
+            body.id === 'ocean' &&
+            body.enabled &&
+            settings.ocean.renderer === 'web-ocean'
+              ? new WebOcean()
+              : undefined;
           try {
             shading = createWaterMaterial(
               body.surface,
@@ -411,11 +475,12 @@ export class TerrainWater extends THREE.Group {
               body.elevation,
               state.foam,
               body.extent,
+              spectral?.bindings,
             );
             const b = body.extent
               ? bounds(body.extent, project.size)
               : { x: 0, z: 0, width: 2, depth: 2 };
-            geometry = grid(b.width, b.depth, !body.extent);
+            geometry = grid(b.width, b.depth, !body.extent, !!spectral);
             const mesh = new THREE.Mesh(geometry, shading.material);
             mesh.name = body.name;
             mesh.position.set(b.x, body.elevation, b.z);
@@ -424,10 +489,31 @@ export class TerrainWater extends THREE.Group {
             mesh.receiveShadow = true;
             mesh.renderOrder = 10 - body.elevation / 10000;
             mesh.userData.waterBody = body.id;
+            if (spectral)
+              mesh.onBeforeRender = (renderer, _scene, camera) => {
+                if (!isWebGPU(renderer))
+                  throw new Error('web-ocean requires native WebGPU.');
+                const p = this.worldToLocal(
+                  camera.getWorldPosition(this.cameraPosition),
+                );
+                const origin = shading!.uniforms.waterPhaseOrigin.value;
+                spectral.ensure(
+                  renderer,
+                  this.oceanScope,
+                  state.project.water!,
+                  state.project.wind.direction,
+                );
+                spectral.step(
+                  this.time * state.project.water!.ocean.surface.speed,
+                  p.x + origin.x,
+                  p.z + origin.y,
+                );
+              };
             // Highest surfaces establish depth first, rejecting overlapping lower water.
             state.group.add(mesh);
-            state.entries.push({ id: body.id, mesh, shading, mask });
+            state.entries.push({ id: body.id, mesh, shading, mask, spectral });
           } catch (error) {
+            spectral?.dispose();
             geometry?.dispose();
             shading?.material.dispose();
             mask.dispose();
@@ -719,6 +805,7 @@ export class TerrainWater extends THREE.Group {
     return result;
   }
   private release(state: Resources) {
+    for (const e of state.entries) e.spectral?.dispose();
     state.height?.dispose();
     if (state.foamLease) state.foamLease.release();
     else state.foam?.dispose();

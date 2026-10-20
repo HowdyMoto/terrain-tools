@@ -1,4 +1,12 @@
-import { readdir, readFile, writeFile, rename, access } from 'node:fs/promises';
+import {
+  readdir,
+  readFile,
+  writeFile,
+  rename,
+  access,
+  mkdir,
+  copyFile,
+} from 'node:fs/promises';
 import { dirname, join, resolve, extname } from 'node:path';
 import ts from 'typescript';
 
@@ -76,3 +84,8 @@ async function finalize(directory) {
   }
 }
 await finalize('lib/types');
+await mkdir('lib/licenses', { recursive: true });
+await copyFile(
+  'src/runtime/web-ocean/LICENSE.txt',
+  'lib/licenses/web-ocean-MIT.txt',
+);

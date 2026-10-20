@@ -1,4 +1,8 @@
-import { WATER_PRESETS, waterPreset } from '../core/water';
+import {
+  WATER_PRESETS,
+  waterPreset,
+  defaultSpectralOceanSettings,
+} from '../core/water';
 import type { WaterSettings, WaterSurface, WaterPreset } from '../core/water';
 const escape = (s: string) =>
   s.replace(
@@ -51,9 +55,14 @@ export function waterControls(
   const body = w.bodies.find((b) => b.id === selected),
     s = body?.surface ?? w.ocean.surface;
   const shape = body?.extent;
+  const spectral = !body && w.ocean.renderer === 'web-ocean';
+  const ocean = w.ocean.spectral ?? defaultSpectralOceanSettings();
   return (
     '<div class="inspector-heading"><span class="eyebrow">ENVIRONMENT</span><h1>Water</h1><p>Shape oceans, lakes and clear shallow pools.</p></div>' +
     `<div id="water-context"><label class="field"><span>Selected water</span><select id="water-body"><option value="ocean">Ocean</option>${w.bodies.map((b) => `<option value="${escape(b.id)}" ${b.id === selected ? 'selected' : ''}>${escape(b.name)}</option>`).join('')}</select></label>` +
+    (!body
+      ? `<label class="field"><span>Ocean rendering</span><select id="water-renderer"><option value="standard" ${!spectral ? 'selected' : ''}>Standard · lightweight</option><option value="web-ocean" ${spectral ? 'selected' : ''}>web-ocean · spectral</option></select></label><p class="field-note">${spectral ? 'Wind waves, swells and whitecaps for open seas. Tune their detail in Waves.' : 'Lightweight waves for oceans. Choose web-ocean for richer wind waves and whitecaps.'}</p>`
+      : '<p class="field-note">Ponds and lakes use Standard waves. Select Ocean to use web-ocean.</p>') +
     toggle(
       body ? 'water-body-enabled' : 'water',
       body ? 'Show this body' : 'Show ocean',
@@ -132,9 +141,65 @@ export function waterControls(
       'Waves & swells',
       controls
         .slice(2, 9)
+        .filter(
+          ([key]) =>
+            !spectral || (key !== 'waveHeight' && key !== 'waveLength'),
+        )
         .map((c) => slider(s, c))
         .join('') +
-        toggle('water-wind', 'Follow world wind direction', s.windLinked),
+        toggle('water-wind', 'Follow world wind direction', s.windLinked) +
+        (spectral
+          ? `<label class="field"><span>Spectral detail</span><select id="water-ocean-quality"><option value="balanced" ${ocean.quality === 'balanced' ? 'selected' : ''}>Balanced</option><option value="high" ${ocean.quality === 'high' ? 'selected' : ''}>High detail</option></select></label>` +
+            field(
+              'water-ocean-windSpeed',
+              'Wind speed (m/s)',
+              ocean.windSpeed,
+              0,
+              30,
+            ) +
+            field(
+              'water-ocean-choppiness',
+              'Choppiness',
+              ocean.choppiness,
+              0,
+              1.6,
+              0.05,
+            ) +
+            field(
+              'water-ocean-whitecaps',
+              'Whitecap amount',
+              ocean.whitecaps,
+              0,
+              2,
+              0.05,
+            ) +
+            field(
+              'water-ocean-swellDirection',
+              'Swell direction (°)',
+              ocean.swellDirection,
+              -360,
+              360,
+              1,
+            ) +
+            '<details><summary>Advanced wave controls</summary>' +
+            field(
+              'water-ocean-fetch',
+              'Open-water wind fetch (km)',
+              ocean.fetch / 1000,
+              1,
+              800,
+              1,
+            ) +
+            field(
+              'water-ocean-seed',
+              'Wave pattern seed',
+              ocean.seed,
+              0,
+              65535,
+              1,
+            ) +
+            '<p class="field-note">Fetch is the distance wind travels over open water. Greater fetch develops a longer wind sea. Swell height and length are independent of wind speed.</p></details>'
+          : ''),
     ) +
     section(
       'water-shore',
@@ -168,6 +233,36 @@ export function bindWaterControls(
   const surface = (w: WaterSettings) =>
     w.bodies.find((b) => b.id === selected)?.surface ?? w.ocean.surface;
   on('water-body', () => select(input('water-body')!.value));
+  on('water-renderer', () =>
+    edit((w) => {
+      w.ocean.renderer = input('water-renderer')!.value as
+        'standard' | 'web-ocean';
+      if (w.ocean.renderer === 'web-ocean')
+        w.ocean.spectral ??= defaultSpectralOceanSettings();
+    }),
+  );
+  on('water-ocean-quality', () =>
+    edit((w) => {
+      (w.ocean.spectral ??= defaultSpectralOceanSettings()).quality = input(
+        'water-ocean-quality',
+      )!.value as 'balanced' | 'high';
+    }),
+  );
+  for (const key of [
+    'windSpeed',
+    'fetch',
+    'choppiness',
+    'whitecaps',
+    'swellDirection',
+    'seed',
+  ] as const)
+    on('water-ocean-' + key, () =>
+      edit((w) => {
+        (w.ocean.spectral ??= defaultSpectralOceanSettings())[key] =
+          input('water-ocean-' + key)!.valueAsNumber *
+          (key === 'fetch' ? 1000 : 1);
+      }),
+    );
   on('water-sea-level', () =>
     edit((w) => {
       w.seaLevel = input('water-sea-level')!.valueAsNumber;
@@ -200,6 +295,7 @@ export function bindWaterControls(
   );
   for (const [key] of controls) {
     const el = input('water-' + key)!;
+    if (!el) continue;
     el.oninput = () => {
       document.getElementById('out-water-' + key)!.textContent = el.value;
     };

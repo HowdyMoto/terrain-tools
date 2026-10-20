@@ -45,17 +45,22 @@ import {
   reflect,
   select,
   uniformArray,
+  attribute,
 } from 'three/tsl';
 import { terrainDirectSpecular } from '../render/node-lighting';
 import { nodeTexture, nodeUniforms } from '../render/node-uniforms';
+import { oceanNodes } from './web-ocean/nodes';
+import type { OceanBindings } from './web-ocean/simulation';
 
 type N2 = Node<'vec2'>;
 /** Native water shading. All distances, wave phases and foam remain in metres. */
 export function configureWaterNodes(
   material: MeshPhysicalMaterial,
   values: Record<string, IUniform>,
+  spectral?: OceanBindings,
 ) {
   const u = nodeUniforms(values);
+  const ocean = spectral ? oceanNodes(spectral) : undefined;
   const height = nodeTexture(values.waterHeight),
     mask = nodeTexture(values.waterMask),
     foam = nodeTexture(values.waterFoamDetail);
@@ -205,7 +210,21 @@ export function configureWaterNodes(
   const horizontal = positionGeometry.xz
     .mul(u('waterGridScale', 'vec2'))
     .add(u('waterCenter', 'vec2'));
-  const motion = wave(horizontal, false);
+  const spacing = ocean
+    ? attribute('waterSpacing', 'vec2').mul(u('waterGridScale', 'vec2'))
+    : undefined;
+  const spectralMotion = ocean?.position(
+    horizontal.add(u('waterPhaseOrigin', 'vec2')),
+    max(spacing!.x, spacing!.y),
+  );
+  // FFT derivatives describe the original Lagrangian coordinate, before the
+  // horizontal choppy displacement. Terrain contact still uses displaced local.
+  const oceanCoordinate = ocean
+    ? varying(horizontal.add(u('waterPhaseOrigin', 'vec2')))
+    : undefined;
+  const motion = spectralMotion
+    ? vec3(spectralMotion.y, 0, 0)
+    : wave(horizontal, false);
   const shallow = smoothstep(
     0,
     2,
@@ -213,9 +232,13 @@ export function configureWaterNodes(
   );
   const local = varying(
     vec3(
-      horizontal.x,
+      spectralMotion
+        ? horizontal.x.add(spectralMotion.x.mul(shallow))
+        : horizontal.x,
       u('waterLevel').add(positionGeometry.y).add(motion.x.mul(shallow)),
-      horizontal.y,
+      spectralMotion
+        ? horizontal.y.add(spectralMotion.z.mul(shallow))
+        : horizontal.y,
     ),
   );
   const depth = local.y.sub(ground(local.xz));
@@ -261,7 +284,7 @@ export function configureWaterNodes(
     fine = foamA.g.mul(0.65).add(foamB.g.mul(0.35));
   const fill = smoothstep(0.55, 0.95, density).mul(0.2);
   const coverage = mix(lace.mul(fine.mul(0.75).add(0.25)), fine, fill);
-  const foamAmount = u('waterFoam')
+  const shoreFoam = u('waterFoam')
     .mul(shore)
     .mul(patches)
     .mul(coverage)
@@ -276,9 +299,19 @@ export function configureWaterNodes(
           .sub(max(abs(local.x), abs(local.z))),
       ),
     );
+  const oceanFields = ocean?.fields(oceanCoordinate!);
+  const foamAmount = ocean
+    ? max(
+        shoreFoam,
+        ocean
+          .whitecap(local.xz.add(u('waterPhaseOrigin', 'vec2')))
+          .mul(smoothstep(0, 2, max(0, u('waterLevel').sub(ground(local.xz)))))
+          .mul(coverage.mul(0.8).add(0.2)),
+      )
+    : shoreFoam;
   const relief = foamA.g.mul(0.002).add(foamB.g.mul(0.001)).mul(foamAmount);
-  const detail = wave(local.xz, true)
-    .yz.mul(smoothstep(0, 2, max(0, u('waterLevel').sub(ground(local.xz)))))
+  const detail = (oceanFields ? oceanFields.xy : wave(local.xz, true).yz)
+    .mul(smoothstep(0, 2, max(0, u('waterLevel').sub(ground(local.xz)))))
     .add(gradient(relief).clamp(-0.35, 0.35));
   const normal = normalize(
     u('waterNormalWorld', 'mat3').mul(
@@ -404,15 +437,34 @@ export function configureWaterNodes(
   })();
   Object.assign(material, {
     positionNode: vec3(
-      positionGeometry.x,
+      spectralMotion
+        ? positionGeometry.x.add(
+            spectralMotion.x.mul(shallow).div(u('waterGridScale', 'vec2').x),
+          )
+        : positionGeometry.x,
       positionGeometry.y.add(motion.x.mul(shallow)),
-      positionGeometry.z,
+      spectralMotion
+        ? positionGeometry.z.add(
+            spectralMotion.z.mul(shallow).div(u('waterGridScale', 'vec2').y),
+          )
+        : positionGeometry.z,
     ),
     maskNode: inside(local.xz)
       .greaterThanEqual(0.5)
       .and(depth.greaterThanEqual(0)),
     colorNode: mix(materialColor.rgb, vec3(0.86, 0.89, 0.88), foamAmount),
-    roughnessNode: mix(materialRoughness, fine.mul(0.3).add(0.55), foamAmount),
+    roughnessNode: mix(
+      oceanFields
+        ? max(
+            materialRoughness,
+            // PhysicalMaterial squares perceptual roughness into GGX alpha.
+            // The filtered field stores RMS slope, so convert it accordingly.
+            sqrt(oceanFields.z).add(u('waterRipple').mul(0.02)),
+          ).clamp(0.02, 1)
+        : materialRoughness,
+      fine.mul(0.3).add(0.55),
+      foamAmount,
+    ),
     normalNode: normalize(cameraViewMatrix.mul(vec4(normal, 0)).xyz).mul(
       select(frontFacing, float(1), float(-1)),
     ),

@@ -2,6 +2,7 @@ import { nodeGraphKey } from '../render/node-uniforms';
 import * as THREE from 'three';
 import type { WaterExtent, WaterSurface } from '../core/water';
 import { configureWaterNodes } from './water-nodes';
+import type { OceanBindings } from './web-ocean/simulation';
 
 const terrain = /* glsl */ `
 uniform sampler2D waterHeight;
@@ -143,6 +144,7 @@ export function createWaterMaterial(
   elevation: number,
   foam: THREE.DataTexture,
   extent?: WaterExtent,
+  spectral?: OceanBindings,
 ) {
   const uniforms = {
     waterHeight: { value: height },
@@ -326,7 +328,7 @@ export function createWaterMaterial(
       `,
       );
   };
-  configureWaterNodes(material, uniforms);
+  configureWaterNodes(material, uniforms, spectral);
   return { material, uniforms };
 }
 export type WaterMaterial = ReturnType<typeof createWaterMaterial>;

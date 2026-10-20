@@ -1,6 +1,59 @@
 # Performance evidence
 
-The editor and interactive runtime examples now use native WebGPU. Measurements recorded below predate the port and are **WebGL baselines** unless explicitly marked otherwise. No WebGPU speedup or 30 FPS acceptance claim is made by the migration. Additional performance work is deferred until migration correctness is established; see [WebGPU scope](WEBGPU.md). `benchmark:surfaces` and `benchmark:foliage` still exercise the explicit legacy WebGL paths.
+The editor and interactive runtime examples use native WebGPU. The first optimization pass removes repeated shader construction and reduces native streaming stalls; steady 30 FPS remains a separate acceptance target. Other measurements are **WebGL baselines** unless explicitly marked otherwise. See [WebGPU scope](WEBGPU.md). `benchmark:surfaces`, `benchmark:foliage` and `benchmark-forest.mjs` still exercise explicit legacy WebGL paths.
+
+## Optional spectral ocean — 19 October 2026
+
+The web-ocean-derived provider adds six native GPU FFT cascades and persistent foam on the existing renderer device. Its simulation allocation reservation is **13.17 MiB Balanced** or **84.67 MiB High**, including buffers and simulation texture mipmaps. These values exclude scene captures, terrain masks, geometry and the existing shared pore texture. Synchronized world tiles share matching simulations, while conservative residency reservations still charge per tile. Independent clocks and animation rates use separate histories.
+
+Targeted checks exercise animation, coastal composition with a separate pond, shared/disposed GPU resources, allocation failure/retry, undo and persistence. They are correctness checks; no integrated incremental GPU timing or dense-tropical FPS comparison was measured for this addition. The earlier streaming and Standard-water measurements below do not establish spectral-ocean performance. See [configuration and limits](WATER.md#choose-an-ocean-renderer) and [integration evidence](benchmarks/web-ocean-integration-2026-10-19.json).
+
+## Native streaming optimization — 19 October 2026
+
+The optimization working tree, based on `a2ace3f` and preceding the final shadow-disposal correction below, was measured on the **RTX 5060 Laptop GPU**, driver 617.42, Windows Chrome 155.0.8059.82, at **1920 × 1080**. This uses the same requested three-lap route and timing harness as the original native report, in a fresh temporary browser profile with screenshots disabled. No benchmark, browser test, build or asset encoder ran concurrently with the accepted run. Population counts, texture settings, shadow resolution/cascades, terrain error targets and screen effects are unchanged.
+
+| Metric                                      | Original native port | Optimized native |
+| ------------------------------------------- | -------------------: | ---------------: |
+| Average submitted FPS, including stalls     |                0.147 |        **35.72** |
+| Submitted frames                            |                   30 |            3,860 |
+| Recording duration, including final loading |             204.75 s |         108.07 s |
+| Frame interval p95                          |          28,751.5 ms |          54.8 ms |
+| Worst frame interval                        |          51,090.6 ms |       1,200.0 ms |
+| CPU update/render submission p95            |          28,747.1 ms |          50.2 ms |
+| Steady 30 FPS acceptance                    |                 Fail |             Fail |
+
+The table records the isolated run **before the final shadow-disposal correction**. Current code passes all 13 targeted browser checks. Its subsequent [retest](benchmarks/world-webgpu-contended-2026-10-19.json) measured **24.16 FPS**, **115.4 ms p95**, and **2,345.4 ms worst interval**, with no reported errors and zero tracked allocations after teardown. iRacing started during that run (17:12:01 local time); after the benchmark stopped, RTX utilization was 68% and iRacing consumed 2.77 CPU seconds in an approximately one-second sample. This is a contended measurement, not evidence that the cleanup change caused a regression. A clean final-code FPS retest remains pending.
+
+CPU sampling identified repeated TSL shader building as the original dominant cost, especially in shadow passes. Spatial foliage batches now share materials and native instance attributes; LOD fades keep one shader. Terrain tiles share a graph with independent palette/shore bindings, and their single native position morph reads a vertex attribute instead of triggering a new program for each morph texture. Opaque shadows no longer evaluate full terrain PBR just to produce alpha 1. Stable shadow overrides and one scene-transform update per composed frame reduce repeated work in warm frames.
+
+The focused cold-forest probe reduced main terrain shader builds from 44 to one. Browser readback verifies independent foliage matrices across 50 batches and two renderers, independent red/blue tile palettes, a changed morph on only one tile, exact terrain silhouette agreement with WebGL in that fixture, and unchanged rendering of a surviving tile after its neighbor is disposed. Shadow cleanup waits until source-material disposal listeners finish, preventing double release of shared GPU bindings. Regression checks remove/rebuild foliage while other shadow casters remain alive, and exercise failed foliage/surface edits, retry, undo/redo and persistence. Build, lint and 321 unit tests pass, along with targeted native rendering/resource and legacy cutout-shadow checks. This is not a full browser-suite rerun.
+
+The accepted traversal reported no rendering/load errors and released all tracked tiles, assets and renderer resources. **Frame consistency still needs work**: two intervals exceeded one second. The fresh pre-port WebGL reference below averaged 52.63 FPS and its p95 also missed steady 30 FPS. These are complete implementation comparisons, not API-only or equal-image-quality claims. The original native stalls skipped route phases, so its executed camera samples differ. This measures streaming/teleport responsiveness, not stationary FPS, editor FPS, physical display latency or dense populations of the supplied high-polygon banana model. GPU timestamp samples are not equivalent cross-backend coverage.
+
+See [raw optimized timings](benchmarks/world-webgpu-optimized-2026-10-19.json) and [source fingerprints, profiling, validation and limits](benchmarks/webgpu-optimization-2026-10-19.json). Short prototype timings and an attempt interrupted to eliminate overlap with a finishing browser test are excluded. Reproduce after `npm run build` with `npm run benchmark:world -- --no-captures --output=test-results/world-timing.json`.
+
+## Native WebGPU migration comparison — 19 October 2026
+
+Production builds at `7992451` (pre-port WebGL) and `a2ace3f` (native WebGPU) were measured sequentially on the **RTX 5060 Laptop GPU**, NVIDIA driver 617.42, Windows Chrome 155.0.8059.82, 1920 × 1080, device scale 1. iRacing was closed before measurement; no other benchmark, build, browser test or asset encoder ran concurrently. Prepared assets, procedural world inputs, requested route and authoring settings were unchanged. Three and the rendering pipelines changed, so this compares complete implementations rather than isolating the graphics API or asserting identical image quality.
+
+| Metric                                           | Fresh WebGL rerun | Native WebGPU repeat |
+| ------------------------------------------------ | ----------------: | -------------------: |
+| Average submitted FPS, including stalls          |             52.63 |            **0.147** |
+| Recording duration, including final tile loading |          108.08 s |             204.75 s |
+| Submitted frames                                 |             5,688 |                   30 |
+| Frame interval p95                               |           54.4 ms |      **28,751.5 ms** |
+| Worst frame interval                             |          660.7 ms |      **51,090.6 ms** |
+| CPU update/render submission p95                 |           45.5 ms |          28,747.1 ms |
+| Frame intervals over one second                  |                 0 |                   10 |
+| Steady 30 FPS acceptance                         |              Fail |                 Fail |
+
+The original native repeat loses 99.72% of effective traversal FPS. This is dominated by multi-second freezes and **is not a warmed stationary-view FPS measurement**. The route advances by wall time; these stalls skip route phases, so the native run does not establish a successfully rendered three-lap traversal. Main-thread update/render spans reach 51 seconds, while spot checks often found little GPU activity. Follow-up profiling identified repeated node shader construction as the dominant cause; the optimization above addresses that work. The ten native GPU timing samples do not provide equivalent coverage to the WebGL queries, and no GPU-time improvement is claimed. Both completed without reported rendering/load errors and released all tracked tile/asset resources at teardown.
+
+See the [comparison and methodology](benchmarks/webgpu-performance-comparison-2026-10-19.json), [fresh WebGL raw timings](benchmarks/world-webgl-recheck-2026-10-19.json) and [native raw timings](benchmarks/world-webgpu-2026-10-19.json). An [exploratory native run](benchmarks/world-webgpu-exploratory-2026-10-19.json) similarly recorded only 29 frames with multi-second freezes; its older timing boundary included a warmup-crossing first interval, so it is excluded from the primary FPS comparison. An initial screenshot-enabled attempt timed out before measurement and is also excluded. The historical WebGL report below averaged 38.65 FPS under its earlier session conditions; the fresh rerun is the primary comparison.
+
+Reproduce with `npm ci`, `npm run build`, then `npm run benchmark:world -- --no-captures --output=test-results/world-timing.json`. The harness requires the RTX 5060 unless explicitly overridden. For the old build, create a separate checkout of `7992451`, install its locked dependencies, build there, and serve its production output on a different port; invoke the current harness with `--url=http://127.0.0.1:5184`. Do not build while measuring. `--output` preserves separate reports; its parent directory must exist. Screenshot capture is outside timing and can be skipped to avoid cold-frame capture timeouts.
+
+Average FPS counts submitted frames over the browser-clock recording window. Frame percentiles omit the first interval because it begins before recording; raw samples retain it for auditing. The window includes waiting for final tile loads, and neither metric measures physical display scanout or input latency. Initial readiness in the raw report means assets reached the idle promise, not that the first frame finished compiling. These are bounded development runs with background/clock variability and a small native sample count. The new harness passed syntax/format checks and the two complete comparison runs; renderer source was unchanged and the full correctness suite was not rerun for this measurement.
 
 ## Streamed world and prepared assets
 

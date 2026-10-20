@@ -9,6 +9,7 @@ import {
   waterContains,
   waterMasks,
   waterPreset,
+  defaultSpectralOceanSettings,
 } from '../src/core/water';
 import { TerrainWater } from '../src/runtime/water';
 import { prepareWaterShore } from '../src/runtime/water-shore';
@@ -36,6 +37,38 @@ function fixture() {
   return { ...p, water: p.water };
 }
 describe('authored water', () => {
+  it('round-trips optional spectral ocean settings and rejects invalid providers and simulation limits', () => {
+    const p = fixture();
+    const legacy = structuredClone(p.water);
+    expect(parseWaterSettings(legacy)).toEqual(legacy);
+    p.water.ocean.renderer = 'web-ocean';
+    p.water.ocean.spectral = defaultSpectralOceanSettings();
+    expect(parseProject(serializeProject(p)).water).toEqual(p.water);
+    expect(() =>
+      parseWaterSettings({
+        ...p.water,
+        ocean: { ...p.water.ocean, renderer: 'unknown' },
+      }),
+    ).toThrow('renderer');
+    for (const [key, value] of [
+      ['quality', 'ultra'],
+      ['windSpeed', NaN],
+      ['fetch', 0],
+      ['choppiness', 4],
+      ['whitecaps', -1],
+      ['seed', 1.5],
+      ['swellDirection', Infinity],
+    ])
+      expect(() =>
+        parseWaterSettings({
+          ...p.water,
+          ocean: {
+            ...p.water.ocean,
+            spectral: { ...p.water.ocean.spectral, [key]: value },
+          },
+        }),
+      ).toThrow();
+  });
   it('round-trips independent levels, visibility, optics and outlines while retaining legacy documents', () => {
     const legacy = createProject(32, 64);
     legacy.view.water = false;
