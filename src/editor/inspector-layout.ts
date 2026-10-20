@@ -241,13 +241,13 @@ export function renderCompactInspector(
       colors.querySelector('summary')!.textContent =
         'Environment colors & tips';
     }
-    const ao = source.querySelector(
-      '.environment-controls details:has(#env-ao-enabled)',
+    const indirect = source.querySelectorAll(
+      '.environment-controls details:has(#env-ao-enabled), .environment-controls details:has(#env-canopy-enabled)',
     );
-    if (ao) {
+    if (indirect.length) {
       const section = document.createElement('section');
       section.className = 'control-section inspector-contact';
-      section.append(ao);
+      section.append(...indirect);
       source.append(section);
     }
     pages = [

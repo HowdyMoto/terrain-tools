@@ -74,6 +74,13 @@ export function installNativeShadows(renderer: WebGPURenderer) {
       byLight.set(original, variant);
     }
     const nodes = shadowNodes(material);
+    // Position graphs are shared across tiles; their values still belong to the
+    // source draw, including when an override material evaluates wind.
+    Object.assign(variant, {
+      terrainWindUniforms: (
+        material as Material & { terrainWindUniforms?: unknown }
+      ).terrainWindUniforms,
+    });
     variant.colorNode = nodes.colorNode ?? original.colorNode;
     variant.depthNode = nodes.depthNode ?? original.depthNode;
     variant.positionNode = nodes.positionNode ?? original.positionNode;

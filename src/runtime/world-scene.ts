@@ -13,6 +13,7 @@ import { modelMemory } from './asset-memory';
 import { checkSignal } from '../render/resources';
 import { webOceanGPUBytes } from './web-ocean/simulation';
 import { foliageMotionReservation } from '../render/native-foliage';
+import { TerrainPreparer, yieldPreparation } from './terrain-preparer';
 
 export interface WorldColliders {
   /** Prepared colliders remain disabled until their rendered tile is admitted. */
@@ -30,6 +31,11 @@ export interface WorldSceneOptions extends WorldStreamingOptions {
   lod?: TerrainLodOptions | false;
   /** For hosts preparing geometry without browser texture decoding. */
   materials?: boolean;
+  /** Browser workers prepare immutable grid/normals/LOD data; main-thread fallback remains available. */
+  terrainPreparation?: 'worker' | 'main';
+  foliageClusters?: boolean;
+  /** Optional staged shader/upload warmup. Resolves before residency/collision activation. */
+  prepareGPU?: (terrain: TerrainScene, signal: AbortSignal) => Promise<void>;
 }
 interface TileView {
   descriptor: WorldTile;
@@ -52,6 +58,7 @@ export class TerrainWorldScene extends THREE.Group {
   private elapsed = 0;
   private closed = false;
   private seamsDirty = false;
+  private preparer?: TerrainPreparer;
   /** Last 256 preparation durations; includes payload, texture/model decode and terrain work. */
   readonly loadMilliseconds: number[] = [];
   constructor(
@@ -62,6 +69,10 @@ export class TerrainWorldScene extends THREE.Group {
     this.world = validateTerrainWorld(world);
     this.assets = options.assets ?? new WorldAssets();
     this.ownAssets = !options.assets;
+    if (options.terrainPreparation !== 'main' && typeof Worker !== 'undefined')
+      this.preparer = new TerrainPreparer(
+        Math.min(8, options.maxConcurrentLoads ?? 2),
+      );
     this.streaming = new WorldStreamer(
       this.world,
       {
@@ -74,7 +85,18 @@ export class TerrainWorldScene extends THREE.Group {
             p.heights.length !== (p.resolution + 1) ** 2
           )
             throw new Error('World tile dimensions do not match the manifest.');
-          const terrain = new TerrainScene(p, { assets: this.assets });
+          const data = await this.preparer?.prepare(
+            p,
+            signal,
+            options.lod !== false,
+          );
+          checkSignal(signal);
+          const terrain = new TerrainScene(p, {
+            assets: this.assets,
+            preparedTerrain: data,
+            yieldPreparation: this.preparer ? yieldPreparation : undefined,
+            foliageClusters: options.foliageClusters,
+          });
           let lod: TerrainLod | undefined,
             collision: WorldColliders | undefined;
           const dispose = () => {
@@ -104,6 +126,8 @@ export class TerrainWorldScene extends THREE.Group {
               lod = new TerrainLod(terrain, options.lod);
               terrain.add(lod);
             }
+            if (options.prepareGPU) await options.prepareGPU(terrain, signal);
+            checkSignal(signal);
             if (options.collision)
               collision = await options.collision.prepare(terrain, signal);
             checkSignal(signal);
@@ -117,6 +141,7 @@ export class TerrainWorldScene extends THREE.Group {
                 });
             });
             const measured = modelMemory(parts);
+            const canopyBytes = terrain.canopyLighting.field?.memoryBytes ?? 0;
             let instanceBytes = 0,
               motionCPUBytes = 0,
               motionGPUBytes = 0;
@@ -143,6 +168,7 @@ export class TerrainWorldScene extends THREE.Group {
               value: { descriptor, terrain, lod, collision },
               cpuBytes:
                 measured.cpuBytes +
+                canopyBytes +
                 motionCPUBytes +
                 instanceBytes +
                 (lod?.memoryBytes.cpuBytes ?? 0) +
@@ -153,6 +179,7 @@ export class TerrainWorldScene extends THREE.Group {
                 (collision?.cpuBytes ?? 0),
               gpuBytes:
                 measured.gpuBytes +
+                canopyBytes +
                 motionGPUBytes +
                 instanceBytes +
                 (lod?.memoryBytes.gpuBytes ?? 0) +
@@ -329,6 +356,7 @@ export class TerrainWorldScene extends THREE.Group {
     if (this.closed) return;
     this.closed = true;
     this.streaming.dispose();
+    this.preparer?.dispose();
     this.active.clear();
     this.clear();
     if (this.ownAssets) this.assets.dispose();

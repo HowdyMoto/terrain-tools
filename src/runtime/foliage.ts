@@ -10,6 +10,7 @@ import {
 } from '../core/foliage-lod';
 import { configureFoliageFade, FOLIAGE_FADE_ATTRIBUTE } from './foliage-fade';
 import { FoliageInteraction } from '../core/interaction';
+import { FoliageDrawClusters } from './foliage-clusters';
 import type { GroundContact } from '../core/interaction';
 import type {
   FoliageInstance,
@@ -21,6 +22,9 @@ import type { ModelLibrary, ModelPart, PreparedModels } from '../render/models';
 import { registerFoliageBatch } from '../render/native-foliage';
 import { PreparedResource } from '../render/resources';
 export type PreparedFoliage = PreparedResource<TerrainFoliage>;
+export interface FoliageRenderOptions {
+  distantClusters?: boolean;
+}
 import { configureWind, windUniforms, shadowMaterials } from './wind';
 import {
   prepareFlexibility,
@@ -108,10 +112,13 @@ function queueUpload(
 
 /** Shared foliage drawing, sparse contact response, and camera-dependent detail selection. */
 export class TerrainFoliage extends THREE.Group {
+  /** Called only after adopting a population, never for failed preparation. */
+  onPopulationChanged?: () => void;
   private owned = new Set<{ dispose(): void }>();
   private edit?: EditTransaction;
   private retained?: TerrainFoliage;
   private tiles: Tile[] = [];
+  private clusters?: FoliageDrawClusters;
   private fadingTiles = new Set<Tile>();
   private uniforms = windUniforms();
   private locations = new Map<number, { tile: Tile; index: number }>();
@@ -131,6 +138,7 @@ export class TerrainFoliage extends THREE.Group {
   constructor(
     project: TerrainProject,
     private library: ModelLibrary,
+    private options: FoliageRenderOptions = {},
   ) {
     super();
     this.project = project;
@@ -138,7 +146,7 @@ export class TerrainFoliage extends THREE.Group {
   }
   /** Build detached draw buffers; failure leaves the current population and contacts intact. */
   prepare(project: TerrainProject, models?: PreparedModels): PreparedFoliage {
-    const candidate = new TerrainFoliage(project, this.library);
+    const candidate = new TerrainFoliage(project, this.library, this.options);
     try {
       candidate.elapsed = this.elapsed;
       candidate.interaction = this.interaction.fork(project.foliage);
@@ -154,6 +162,7 @@ export class TerrainFoliage extends THREE.Group {
     return {
       project: this.project,
       tiles: this.tiles,
+      clusters: this.clusters,
       fadingTiles: this.fadingTiles,
       uniforms: this.uniforms,
       locations: this.locations,
@@ -172,6 +181,7 @@ export class TerrainFoliage extends THREE.Group {
   private restoreState(state: ReturnType<TerrainFoliage['state']>) {
     this.project = state.project;
     this.tiles = state.tiles;
+    this.clusters = state.clusters;
     this.fadingTiles = state.fadingTiles;
     this.uniforms = state.uniforms;
     this.locations = state.locations;
@@ -198,6 +208,7 @@ export class TerrainFoliage extends THREE.Group {
     const candidate = prepared.take(this);
     this.exchange(candidate);
     candidate.dispose();
+    this.onPopulationChanged?.();
   }
   /** Preserve the exact previous population while a geometry-only edit is previewed. */
   beginEdit(project: TerrainProject): EditTransaction {
@@ -214,6 +225,7 @@ export class TerrainFoliage extends THREE.Group {
       () => {
         finish();
         previous.dispose();
+        this.onPopulationChanged?.();
       },
       () => {
         finish();
@@ -439,6 +451,7 @@ export class TerrainFoliage extends THREE.Group {
               modelId: model.id,
               model: asset,
               lodLevel: level,
+              lodDistance: level === 0 ? 0 : model.lods![level - 1].distance,
               instanceIds:
                 level === 0 ? instances.map((instance) => instance.id) : [],
             };
@@ -480,6 +493,15 @@ export class TerrainFoliage extends THREE.Group {
       if (tile.transitions) this.pack(tile);
       this.fitBounds(tile);
     }
+    this.clusters =
+      this.options.distantClusters === false
+        ? undefined
+        : new FoliageDrawClusters(
+            this.tiles.flatMap((tile) => tile.batches),
+            this,
+            this.uniforms,
+            (resource) => this.own(resource),
+          );
     this.viewDirty = true;
     this.lastCamera.set(Infinity, Infinity, Infinity);
     this.refreshStats();
@@ -614,6 +636,7 @@ export class TerrainFoliage extends THREE.Group {
     }))
       this.fitBounds(tile);
     this.viewDirty = true;
+    this.clusters?.update();
   }
   private updateWind() {
     const wind = this.project.wind,
@@ -638,6 +661,7 @@ export class TerrainFoliage extends THREE.Group {
     this.updateMatrices(dt, contacts);
     if (camera) this.updateView(camera);
     this.advanceTransitions();
+    this.clusters?.update();
     // Keep animation/contact time moving on the retained landscape too.
     if (this.retained) {
       this.updateWorldMatrix(true, false);
@@ -827,6 +851,7 @@ export class TerrainFoliage extends THREE.Group {
     this.refreshStats();
   }
   private refreshStats() {
+    this.clusters?.update();
     const stats = emptyStats();
     for (const tile of this.tiles) {
       let selected = 0;
@@ -838,21 +863,22 @@ export class TerrainFoliage extends THREE.Group {
       stats.instances += tile.visibleCount;
       stats.culled += tile.instances.length - tile.visibleCount;
       stats.transitioning += tile.transitions?.activeCount ?? 0;
-      for (const { mesh } of tile.batches)
-        if (mesh.count) {
-          stats.batches++;
-          stats.triangles +=
-            (mesh.count *
-              (mesh.geometry.index?.count ??
-                mesh.geometry.getAttribute('position').count)) /
-            3;
-        }
     }
+    for (const mesh of this.children as THREE.InstancedMesh[])
+      if (mesh.visible && mesh.count) {
+        stats.batches++;
+        stats.triangles +=
+          (mesh.count *
+            (mesh.geometry.index?.count ??
+              mesh.geometry.getAttribute('position').count)) /
+          3;
+      }
     this.viewStats = stats;
   }
   clearInteractions() {
     this.interaction.clear();
     this.updateMatrices(0);
+    this.clusters?.update();
   }
   /** Independent geometry/draw buffers, all primary instances. Caller disposes meshes, geometries, and materials; textures remain shared. Masked foliage exports its rest pose. */
   forExport() {
@@ -901,6 +927,7 @@ export class TerrainFoliage extends THREE.Group {
     this.owned.clear();
     this.clear();
     this.tiles = [];
+    this.clusters = undefined;
     this.fadingTiles.clear();
     this.locations.clear();
     this.modelInteractions.clear();

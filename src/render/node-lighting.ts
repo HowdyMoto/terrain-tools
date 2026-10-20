@@ -5,6 +5,7 @@ import { installSharedGeometryOwnership } from './shared-geometry';
 import { installNativeFoliage } from './native-foliage';
 import { installNativeTerrainLod } from './native-terrain-lod';
 import { installNativeShadows } from './native-shadows';
+import { applyCanopyLight } from './canopy-nodes';
 
 export const terrainIndirect = property('vec3', 'terrainIndirect');
 export const terrainDirectSpecular = property('vec3', 'terrainDirectSpecular');
@@ -58,6 +59,7 @@ export function installTerrainLighting(renderer: WebGPURenderer) {
           }
         ).terrainCausticNode;
         if (caustic) light.directDiffuse.mulAssign(caustic);
+        applyCanopyLight(light);
         terrainIndirect.assign(
           light.indirectDiffuse.add(light.indirectSpecular),
         );

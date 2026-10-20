@@ -1,8 +1,10 @@
+import { getCanopyBinding, setCanopyBinding } from '../render/canopy-binding';
 import * as THREE from 'three';
 import { buildTerrainLods } from '../core/terrain-lod';
 import type { TerrainScene } from './terrain-scene';
 import { registerTerrainLod } from '../render/native-terrain-lod';
 import { registerSharedGeometry } from '../render/shared-geometry';
+import { takePreparedTerrain } from './terrain-preparer';
 
 export interface TerrainLodOptions {
   /** Maximum sampled projected height error, in drawing-buffer pixels. */
@@ -49,13 +51,16 @@ export class TerrainLod extends THREE.Group {
       for (const original of source.terrain.children as THREE.Mesh[]) {
         registerSharedGeometry(original.geometry);
         const { cellsX, cellsZ } = original.userData;
-        const levels = buildTerrainLods(
-          original.geometry.getAttribute('position').array as Float32Array,
-          original.geometry.index!.array as Uint32Array,
-          cellsX,
-          cellsZ,
-        );
-        const geometries = levels.map((level) => {
+        const prepared = takePreparedTerrain(original.geometry);
+        const levels =
+          prepared?.lods ??
+          buildTerrainLods(
+            original.geometry.getAttribute('position').array as Float32Array,
+            original.geometry.index!.array as Uint32Array,
+            cellsX,
+            cellsZ,
+          );
+        const geometries = levels.map((level, index) => {
           const geometry = new THREE.BufferGeometry();
           this.allocated.add(geometry);
           for (const [name, attribute] of Object.entries(
@@ -66,11 +71,24 @@ export class TerrainLod extends THREE.Group {
           geometry.morphAttributes.position = [
             new THREE.BufferAttribute(level.target, 3),
           ];
-          geometry.computeBoundingBox();
-          geometry.computeBoundingSphere();
+          const bound = prepared?.lodBounds?.[index];
+          if (bound) {
+            geometry.boundingBox = new THREE.Box3(
+              new THREE.Vector3().fromArray(bound.box),
+              new THREE.Vector3().fromArray(bound.box, 3),
+            );
+            geometry.boundingSphere = new THREE.Sphere(
+              new THREE.Vector3().fromArray(bound.sphere),
+              bound.sphere[3],
+            );
+          } else {
+            geometry.computeBoundingBox();
+            geometry.computeBoundingSphere();
+          }
           return geometry;
         });
         const mesh = new THREE.Mesh(geometries[0], original.material);
+        setCanopyBinding(mesh, getCanopyBinding(original));
         registerTerrainLod(mesh);
         mesh.castShadow = mesh.receiveShadow = true;
         const bounds = geometries[0].boundingSphere!;

@@ -3330,6 +3330,7 @@ for (const direction of ['undo', 'redo'] as const)
   };
 $('#cancel-preparation').onclick = () => {
   cancelPreparation();
+  if (tab === 'light') renderInspector();
   notify('Preparation cancelled.');
 };
 $('#project-name').onchange = () => {
@@ -3387,25 +3388,47 @@ async function changeEnvironment(value: EnvironmentSettings) {
   assertProjectCapacity({ ...project, environment: settings });
   await prepareAction(
     'Preparing lighting…',
-    async () => {
+    async (signal) => {
       const prepared = viewport.lighting.matchesSource(settings)
         ? undefined
         : await viewport.lighting.prepare(settings);
+      let canopy:
+        | Awaited<ReturnType<typeof viewport.content.canopyLighting.prepare>>
+        | undefined;
       let applied = false;
-      return {
-        apply() {
-          history.checkpoint(project);
-          if (prepared) viewport.lighting.apply(prepared, project);
-          else viewport.lighting.set(settings, project);
-          applied = true;
-          project.environment = settings;
-          persist();
-          renderInspector();
-        },
-        dispose() {
-          if (!applied) prepared?.dispose();
-        },
-      };
+      try {
+        canopy = await viewport.content.canopyLighting.prepare(
+          project,
+          settings,
+          undefined,
+          signal,
+        );
+        await viewport.content.canopyLighting.prepareGPU(
+          canopy,
+          viewport.renderer,
+        );
+        return {
+          apply() {
+            canopy!.assert(viewport.content.canopyLighting);
+            history.checkpoint(project);
+            if (prepared) viewport.lighting.apply(prepared, project);
+            else viewport.lighting.set(settings, project);
+            applied = true;
+            project.environment = settings;
+            viewport.content.canopyLighting.apply(canopy!);
+            persist();
+            renderInspector();
+          },
+          dispose() {
+            if (!applied) prepared?.dispose();
+            canopy?.dispose();
+          },
+        };
+      } catch (error) {
+        prepared?.dispose();
+        canopy?.dispose();
+        throw error;
+      }
     },
     (prepared) => prepared.apply(),
   );

@@ -1,3 +1,4 @@
+import { getCanopyBinding, setCanopyBinding } from './canopy-binding';
 import {
   InstancedInterleavedBuffer,
   InterleavedBufferAttribute,
@@ -220,6 +221,7 @@ export function installNativeFoliage(renderer: WebGPURenderer) {
       }
     }
     proxy.material = material;
+    setCanopyBinding(proxy, getCanopyBinding(source));
     proxy.receiveShadow = source.receiveShadow;
     proxy.castShadow = source.castShadow;
     (geometry as InstancedBufferGeometry).instanceCount = source.count;

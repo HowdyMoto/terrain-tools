@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { createProject, buildMeshData } from '../src/core/terrain';
 import { buildTerrainLods } from '../src/core/terrain-lod';
@@ -194,4 +194,76 @@ describe('streamed rendered world', () => {
     await world.whenIdle();
     physics.dispose();
   });
+});
+
+it('stages optional GPU work before collision/admission and releases failure or cancelled work before retry', async () => {
+  let fail = true,
+    hold = false,
+    release: (() => void) | undefined;
+  const disposed: boolean[] = [],
+    collisionPrepared: TerrainScene[] = [];
+  const world = new TerrainWorldScene(manifest, {
+    materials: false,
+    radius: 48,
+    maxResidentTiles: 2,
+    load: async (d) => tile(d, true),
+    prepareGPU: async (terrain) => {
+      expect(terrain.parent).toBeNull();
+      const index = disposed.push(false) - 1;
+      (terrain.terrain.children[0] as THREE.Mesh).geometry.addEventListener(
+        'dispose',
+        () => {
+          disposed[index] = true;
+        },
+      );
+      if (terrain.position.x === 48 && fail) {
+        fail = false;
+        throw new Error('Injected shader warmup failure');
+      }
+      if (terrain.position.x === 16 && hold)
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+    },
+    collision: {
+      prepare: async (terrain) => {
+        collisionPrepared.push(terrain);
+        return { cpuBytes: 0, activate() {}, dispose() {} };
+      },
+    },
+  });
+  try {
+    world.update(camera(), 0);
+    await world.whenIdle();
+    expect(world.tiles).toHaveLength(1);
+    const retained = world.tiles[0];
+    expect(world.streaming.errors.get('1,0')?.message).toContain('Injected');
+    expect(disposed.filter(Boolean)).toHaveLength(1);
+    expect(collisionPrepared).toHaveLength(1);
+    world.streaming.retry('1,0');
+    await world.whenIdle();
+    expect(world.tiles).toHaveLength(2);
+    expect(world.tiles).toContain(retained);
+    expect(world.streaming.errors.size).toBe(0);
+    world.update(camera(5000), 0);
+    await world.whenIdle();
+    hold = true;
+    world.update(camera(), 0);
+    await vi.waitFor(() => expect(release).toBeTypeOf('function'));
+    world.update(camera(5000), 0);
+    release!();
+    await world.whenIdle();
+    expect(world.tiles).toHaveLength(0);
+    expect(world.stats.cpuBytes).toBe(0);
+    hold = false;
+    world.update(camera(), 0);
+    await world.whenIdle();
+    expect(world.tiles).toHaveLength(2);
+    expect(world.streaming.errors.size).toBe(0);
+  } finally {
+    release?.();
+    world.dispose();
+    await world.whenIdle();
+  }
+  expect(disposed.every(Boolean)).toBe(true);
 });

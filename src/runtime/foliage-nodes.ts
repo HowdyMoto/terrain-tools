@@ -51,7 +51,7 @@ import {
 } from 'three/tsl';
 import type { WindUniforms } from './wind';
 import type { FoliageSubsurface } from '../core/foliage-shading';
-import { nodeUniforms } from '../render/node-uniforms';
+import { materialNodeUniforms } from '../render/node-uniforms';
 import {
   foliageMatrixAttribute,
   foliagePreviousAttribute,
@@ -60,6 +60,10 @@ import {
 } from '../render/native-foliage';
 
 type N = Node<'vec3'>;
+const windGraphs = new Map<string, { positionNode: Node; outputNode: Node }>();
+const windMaterialUniforms = materialNodeUniforms('terrainWindUniforms');
+const fadeGraphs = new WeakMap<() => boolean, Node>();
+const leafGraphs = new Map<string, Record<string, unknown>>();
 const matrix3 = (a: N, b: N, c: N) => mat3(a, b, c);
 const matrix4 = mat4;
 // Matrix indexing is supported by TSL; published declarations restrict element to arrays.
@@ -308,7 +312,14 @@ export function configureWindNodes(
   uniforms: WindUniforms,
   root?: number,
 ) {
-  const u = nodeUniforms(uniforms);
+  Object.assign(material, { terrainWindUniforms: uniforms });
+  const graphKey = amount + '|' + root;
+  const cached = windGraphs.get(graphKey);
+  if (cached) {
+    Object.assign(material, cached);
+    return;
+  }
+  const u = windMaterialUniforms;
   const matrices = new WeakMap<InstancedMesh, Node<'mat4'>>();
   const positionNode = Fn((builder: NodeBuilder) => {
     const mesh = builder.object as InstancedMesh;
@@ -389,7 +400,7 @@ export function configureWindNodes(
     if (tangent) tangentLocal.assign(column3(deformed, 2));
     return column3(deformed, 0);
   })();
-  Object.assign(material, {
+  const graph = {
     positionNode,
     outputNode: Fn((builder: NodeBuilder) => {
       if (
@@ -419,12 +430,16 @@ export function configureWindNodes(
       // Fresh/cross-fading cutouts should not inherit unrelated old coverage.
       return vec4(output.rgb, output.a.mul(history));
     })(),
-  });
+  };
+  windGraphs.set(graphKey, graph);
+  if (windGraphs.size > 32) windGraphs.delete(windGraphs.keys().next().value!);
+  Object.assign(material, graph);
 }
 
 export function configureFadeNodes(material: Material, enabled: () => boolean) {
-  Object.assign(material, {
-    maskNode: Fn((builder: NodeBuilder) => {
+  let maskNode = fadeGraphs.get(enabled);
+  if (!maskNode) {
+    maskNode = Fn((builder: NodeBuilder) => {
       if (!enabled()) return float(1);
       const fade = varying(
         builder.geometry.hasAttribute(foliageCurrentStateAttribute)
@@ -439,14 +454,27 @@ export function configureFadeNodes(material: Material, enabled: () => boolean) {
         ).mul(52.9829189),
       );
       return noise.greaterThanEqual(fade.x).and(noise.lessThan(fade.y));
-    })(),
-  });
+    })();
+    fadeGraphs.set(enabled, maskNode);
+  }
+  Object.assign(material, { maskNode });
 }
 
 export function configureLeafNodes(
   material: Material,
   settings: FoliageSubsurface,
 ) {
+  const key = JSON.stringify([
+    settings.strength,
+    settings.thickness,
+    settings.tint,
+    settings.wrap,
+  ]);
+  const cached = leafGraphs.get(key);
+  if (cached) {
+    Object.assign(material, cached);
+    return;
+  }
   const strength = uniform(settings.strength),
     thickness = uniform(settings.thickness),
     tint = color(settings.tint),
@@ -471,12 +499,15 @@ export function configureLeafNodes(
       );
     }
   }
-  Object.assign(material, {
+  const graph = {
     // Include the custom lighting inputs in NodeMaterial's graph cache key.
     terrainLeafStrengthNode: strength,
     terrainLeafThicknessNode: thickness,
     terrainLeafTintNode: tint,
     terrainLeafWrapNode: wrap,
     setupLightingModel: () => new LeafLighting(),
-  });
+  };
+  leafGraphs.set(key, graph);
+  if (leafGraphs.size > 32) leafGraphs.delete(leafGraphs.keys().next().value!);
+  Object.assign(material, graph);
 }

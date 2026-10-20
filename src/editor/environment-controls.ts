@@ -200,7 +200,17 @@ export function environmentControls(settings = defaultEnvironmentSettings()) {
     '<label class="field"><span>Occlusion strength</span><input type="number" id="env-ao-strength" data-ao="strength" min="0" max="3" step="0.05" value="' +
     (settings.ambientOcclusion?.strength ?? 1.25) +
     '" required/></label>' +
-    '<p class="field-note">Adds depth around roots, rocks and overlapping plants by reducing indirect light. Direct sunlight and leaf transmission keep their brightness. Uses visible surfaces, including moving leaf cutouts; off-screen canopy and bounced light require more advanced illumination. Costs one depth pass plus screen-space filtering.</p></details></section>'
+    '<p class="field-note">Adds depth around roots, rocks and overlapping plants by reducing indirect light. Direct sunlight and leaf transmission keep their brightness. Uses visible surfaces, including moving leaf cutouts; use canopy shade below to approximate off-screen tree cover. Costs one depth pass plus screen-space filtering.</p></details>' +
+    '<details><summary>Canopy shade & bounce</summary><label class="toggle-field"><span>Canopy lighting</span><input type="checkbox" id="env-canopy-enabled" data-canopy="enabled" ' +
+    (settings.canopyLighting?.enabled ? 'checked' : '') +
+    '/><span class="switch"></span></label>' +
+    '<label class="field"><span>Canopy shade strength</span><input type="number" data-canopy="strength" min="0" max="1" step="0.05" value="' +
+    (settings.canopyLighting?.strength ?? 0.65) +
+    '" required/></label>' +
+    '<label class="field"><span>Ground bounce strength</span><input type="number" data-canopy="bounce" min="0" max="1" step="0.05" value="' +
+    (settings.canopyLighting?.bounce ?? 0.35) +
+    '" required/></label>' +
+    '<p class="field-note">Approximates off-screen tree cover and ground-colored indirect light in a small baked volume. Rebuilds after terrain or foliage edits. Bounce follows the sun; direct shadows and leaf transmission remain separate. Uses tree bounds and material tints, not triangle tracing or dynamic GI. Requires WebGPU.</p></details></section>'
   );
 }
 export function bindEnvironmentControls(
@@ -280,6 +290,24 @@ export function bindEnvironmentControls(
       });
     };
   });
+  document
+    .querySelectorAll<HTMLInputElement>('[data-canopy]')
+    .forEach((input) => {
+      input.onchange = () => {
+        if (!input.reportValidity()) return;
+        apply({
+          ...settings(),
+          canopyLighting: {
+            enabled: false,
+            strength: 0.65,
+            bounce: 0.35,
+            ...settings().canopyLighting,
+            [input.dataset.canopy!]:
+              input.type === 'checkbox' ? input.checked : Number(input.value),
+          },
+        });
+      };
+    });
   document
     .querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-env]')
     .forEach((input) => {

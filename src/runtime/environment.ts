@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { setCanopySun } from '../render/canopy-nodes';
 import { installTerrainLighting } from '../render/node-lighting';
 import { isWebGPU, validateGPU } from '../render/renderer';
 import type { TerrainRenderer } from '../render/renderer';
@@ -622,6 +623,14 @@ export class TerrainEnvironment {
       this.prepared!.daylight!.set(s, this.hour);
       this.applyDaylight(s);
     }
+    if (!s.timeOfDay?.enabled)
+      setCanopySun(
+        this.scene,
+        s,
+        this.sun.color,
+        this.sun.intensity,
+        Math.sin(THREE.MathUtils.degToRad(s.sunElevation)),
+      );
   }
   /** Advance by elapsed seconds. Static or paused lighting does no animation work. */
   tick(deltaSeconds: number) {
@@ -810,6 +819,13 @@ export class TerrainEnvironment {
         .lerp(dayFog, state.day);
     }
     this.group.updateMatrixWorld(true);
+    setCanopySun(
+      this.scene,
+      settings,
+      this.sun.color,
+      this.sun.intensity,
+      state.y,
+    );
   }
   /** Refresh after height edits; coverage includes the terrain and authored height padding. */
   fitShadow(
