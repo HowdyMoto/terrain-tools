@@ -77,11 +77,23 @@ try {
   page.on('console', (m) => {
     if (m.type() === 'error') errors.push(m.text());
   });
+  let profileSession;
+  if (process.argv.includes('--profile')) {
+    profileSession = await page.context().newCDPSession(page);
+    await profileSession.send('Profiler.enable');
+    await profileSession.send('Profiler.setSamplingInterval', {
+      interval: 1000,
+    });
+    await profileSession.send('Profiler.start');
+  }
   const loadStarted = performance.now();
   console.log('Loading the production world.');
   const parameters = new URLSearchParams();
   if (process.argv.includes('--full-detail')) parameters.set('full-detail', '');
   if (nearClusters) parameters.set('near-clusters', '');
+  if (process.argv.includes('--impostors')) parameters.set('impostors', '');
+  if (process.argv.includes('--eager-instances'))
+    parameters.set('eager-instances', '');
   await page.goto(
     url + '/world.html' + (parameters.size ? '?' + parameters : ''),
   );
@@ -181,6 +193,14 @@ try {
     }));
     measurementWallMs = raw.measurementEnded - measurementStarted;
   }
+  if (profileSession) {
+    const { profile } = await profileSession.send('Profiler.stop');
+    await writeFile(
+      output.replace(/\.json$/, '') + '-profile.json',
+      JSON.stringify(profile),
+    );
+    await profileSession.detach();
+  }
   console.log(`Recorded ${raw.frames.length} frames; releasing resources.`);
   // Capture outside the timing interval: screenshot readback stalls are instrumentation.
   for (const name of captures ? ['forest', 'open', 'coast'] : []) {
@@ -243,6 +263,11 @@ try {
       'CPU/GPU residency counters estimate typed buffers/textures. Heap is main-thread JS only. Driver allocations, workers and host source documents are not directly measured.',
     errors,
   };
+  result.meetsStreamingResponsiveness =
+    result.summary.frameMs.max < 250 &&
+    result.summary.frameMs.p95 <= 33.5 &&
+    !errors.length &&
+    !raw.stats.failedTiles;
   result.meets30FPS =
     raw.frames.length > 30 &&
     result.summary.frameMs.p95 <= 33.5 &&

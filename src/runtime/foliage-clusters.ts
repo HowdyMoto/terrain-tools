@@ -8,6 +8,8 @@ import { FOLIAGE_FADE_ATTRIBUTE } from './foliage-fade';
 import type { WindUniforms } from './wind';
 
 export interface FoliageClusterSource {
+  /** Logical ceiling when source draw storage is allocated lazily. */
+  capacity?: number;
   mesh: THREE.InstancedMesh;
   baseGeometry: THREE.BufferGeometry;
   contact?: THREE.InstancedBufferAttribute;
@@ -46,7 +48,7 @@ export class FoliageDrawClusters {
     >();
     for (const source of sources) {
       const mesh = source.mesh;
-      if (!mesh.instanceMatrix.count) continue;
+      if (!(source.capacity ?? mesh.instanceMatrix.count)) continue;
       if (
         !options.nearby &&
         (mesh.userData.lodLevel < 2 || mesh.userData.lodDistance < 96)
@@ -90,7 +92,8 @@ export class FoliageDrawClusters {
           if (group.length < 2) continue;
           const first = group[0],
             capacity = group.reduce(
-              (sum, source) => sum + source.mesh.instanceMatrix.count,
+              (sum, source) =>
+                sum + (source.capacity ?? source.mesh.instanceMatrix.count),
               0,
             );
           const contact = first.contact

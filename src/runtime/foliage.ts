@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { configureImpostorMaterial } from './foliage-impostor';
+import type { FoliageImpostor } from './foliage-impostor';
 import { configureFoliageSubsurface } from './foliage-shading';
 import { EditTransaction } from '../render/edit-transaction';
 import { effectiveHoles, heightAt, isHole } from '../core/terrain';
@@ -21,10 +23,13 @@ import type {
 } from '../core/types';
 import type { ModelLibrary, ModelPart, PreparedModels } from '../render/models';
 import { registerFoliageBatch } from '../render/native-foliage';
-import { PreparedResource } from '../render/resources';
+import { PreparedResource, checkSignal } from '../render/resources';
 export type PreparedFoliage = PreparedResource<TerrainFoliage>;
 export interface FoliageRenderOptions {
   distantClusters?: boolean | FoliageClusterOptions;
+  /** Replaces only the last authored LOD; primary geometry and exports remain complete. */
+  impostors?: ReadonlyMap<string, FoliageImpostor>;
+  lazyInstances?: boolean;
 }
 import { configureWind, windUniforms, shadowMaterials } from './wind';
 import {
@@ -40,6 +45,7 @@ interface BatchMaterials {
   distance: THREE.MeshDistanceMaterial;
 }
 interface Batch {
+  capacity: number;
   baseGeometry: THREE.BufferGeometry;
   contact?: THREE.InstancedBufferAttribute;
   fade?: THREE.InstancedBufferAttribute;
@@ -151,7 +157,38 @@ export class TerrainFoliage extends THREE.Group {
     try {
       candidate.elapsed = this.elapsed;
       candidate.interaction = this.interaction.fork(project.foliage);
-      candidate.build(project, models);
+      for (const _step of candidate.build(project, models)) {
+        void _step;
+      }
+      candidate.updateWind();
+      return new PreparedResource(this, candidate, () => candidate.dispose());
+    } catch (error) {
+      candidate.dispose();
+      throw error;
+    }
+  }
+  /** Same detached transaction as prepare(), cooperatively yielding between spatial cells. */
+  async prepareAsync(
+    project: TerrainProject,
+    models: PreparedModels | undefined,
+    signal: AbortSignal,
+    yieldWork: (signal: AbortSignal) => Promise<void>,
+  ): Promise<PreparedFoliage> {
+    checkSignal(signal);
+    const candidate = new TerrainFoliage(project, this.library, this.options);
+    try {
+      candidate.elapsed = this.elapsed;
+      candidate.interaction = this.interaction.fork(project.foliage);
+      let deadline = performance.now() + 4;
+      for (const _step of candidate.build(project, models)) {
+        void _step;
+        checkSignal(signal);
+        if (performance.now() >= deadline) {
+          await yieldWork(signal);
+          deadline = performance.now() + 4;
+        }
+      }
+      checkSignal(signal);
       candidate.updateWind();
       return new PreparedResource(this, candidate, () => candidate.dispose());
     } catch (error) {
@@ -249,7 +286,7 @@ export class TerrainFoliage extends THREE.Group {
     this.owned.add(resource);
     return resource;
   }
-  private build(project: TerrainProject, models?: PreparedModels) {
+  private *build(project: TerrainProject, models?: PreparedModels) {
     this.windBoundStrength = Math.ceil(
       project.wind.enabled ? project.wind.strength : 0,
     );
@@ -285,6 +322,7 @@ export class TerrainFoliage extends THREE.Group {
         configureWind(material, model.wind, this.uniforms, root);
         configureFoliageSubsurface(material, model.subsurface);
         if (hasFade) configureFoliageFade(material);
+        configureImpostorMaterial(material, part, model.subsurface);
         return material;
       });
       const shadows = shadowMaterials(
@@ -331,6 +369,9 @@ export class TerrainFoliage extends THREE.Group {
           count = instances.length,
           bounds = this.library.bounds(model.model, models),
           root = model.flexibility ? bounds.min.y : undefined,
+          lazy =
+            !!this.options.lazyInstances &&
+            !!(model.lods?.length || model.cullDistance),
           geometryKey = JSON.stringify([
             model.flexibility,
             bounds.min.y,
@@ -345,6 +386,8 @@ export class TerrainFoliage extends THREE.Group {
                 model.lodFadeDuration!,
               )
             : undefined;
+        if (lazy && transitions)
+          for (let i = 0; i < count; i++) transitions.setTarget(i, -1, 0, true);
         const tile: Tile = {
           instances,
           model,
@@ -355,11 +398,12 @@ export class TerrainFoliage extends THREE.Group {
             foliageDensityRank(instance.id),
           ),
           selected: new Int8Array(count).fill(-1),
-          drawn: transitions?.targets ?? new Int8Array(count),
+          drawn:
+            transitions?.targets ?? new Int8Array(count).fill(lazy ? -1 : 0),
           transitions,
-          visibleCount: count,
+          visibleCount: lazy ? 0 : count,
           batches: [],
-          counts: [count, 0, 0, 0],
+          counts: [lazy ? 0 : count, 0, 0, 0],
           camera: new THREE.Vector3(),
           guard: 0,
         };
@@ -373,7 +417,12 @@ export class TerrainFoliage extends THREE.Group {
           const density = level === 0 ? 1 : model.lods![level - 1].density;
           let capacity = 0;
           for (const rank of tile.ranks) if (rank < density) capacity++;
-          for (const part of this.library.get(asset, models)) {
+          const impostor =
+            level > 0 && level === levels.length - 1
+              ? this.options.impostors?.get(model.model)
+              : undefined;
+          for (const part of impostor?.parts ??
+            this.library.get(asset, models)) {
             const normal = materialsFor(
               model,
               part,
@@ -406,13 +455,13 @@ export class TerrainFoliage extends THREE.Group {
             }
             const contact = model.flexibility
               ? new THREE.InstancedBufferAttribute(
-                  new Float32Array(capacity),
+                  new Float32Array(lazy ? 0 : capacity),
                   1,
                 ).setUsage(THREE.DynamicDrawUsage)
               : undefined;
             const fade = transitions
               ? new THREE.InstancedBufferAttribute(
-                  new Float32Array(capacity * 3),
+                  new Float32Array(lazy ? 0 : capacity * 3),
                   3,
                 ).setUsage(THREE.DynamicDrawUsage)
               : undefined;
@@ -436,15 +485,19 @@ export class TerrainFoliage extends THREE.Group {
               Math.max(Math.abs(box.min.z), Math.abs(box.max.z)),
             );
             const mesh = this.own(
-              new THREE.InstancedMesh(geometry, normal.color, capacity),
+              new THREE.InstancedMesh(
+                geometry,
+                normal.color,
+                lazy ? 0 : capacity,
+              ),
             );
             mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-            registerFoliageBatch(mesh, attributes, this.uniforms);
+            registerFoliageBatch(mesh, attributes, this.uniforms, capacity);
             mesh.customDepthMaterial = normal.depth;
             mesh.customDistanceMaterial = normal.distance;
             mesh.castShadow = mesh.receiveShadow = true;
             mesh.frustumCulled = true;
-            mesh.count = level === 0 ? count : 0;
+            mesh.count = level === 0 && !lazy ? count : 0;
             mesh.visible = mesh.count > 0;
             mesh.name = brush.name + ' ' + key + (level ? ' LOD' + level : '');
             mesh.userData = {
@@ -454,11 +507,15 @@ export class TerrainFoliage extends THREE.Group {
               lodLevel: level,
               lodDistance: level === 0 ? 0 : model.lods![level - 1].distance,
               instanceIds:
-                level === 0 ? instances.map((instance) => instance.id) : [],
+                level === 0 && !lazy
+                  ? instances.map((instance) => instance.id)
+                  : [],
             };
             const slots = new Int32Array(count).fill(-1);
-            if (level === 0) for (let i = 0; i < count; i++) slots[i] = i;
+            if (level === 0 && !lazy)
+              for (let i = 0; i < count; i++) slots[i] = i;
             tile.batches.push({
+              capacity,
               mesh,
               level,
               slots,
@@ -474,6 +531,7 @@ export class TerrainFoliage extends THREE.Group {
         instances.forEach((instance, index) =>
           this.locations.set(instance.id, { tile, index }),
         );
+        yield;
       }
     }
     this.modelInteractions.clear();
@@ -491,7 +549,7 @@ export class TerrainFoliage extends THREE.Group {
     this.interaction.setInstances(project.foliage);
     this.updateMatrices(0);
     for (const tile of this.tiles) {
-      if (tile.transitions) this.pack(tile);
+      if (tile.transitions && !this.options.lazyInstances) this.pack(tile);
       this.fitBounds(tile);
     }
     this.clusters =
@@ -801,6 +859,32 @@ export class TerrainFoliage extends THREE.Group {
     for (const batch of tile.batches) {
       const sources = groups[batch.level],
         mesh = batch.mesh;
+      if (sources.length && !mesh.instanceMatrix.count && batch.capacity) {
+        // A distant cell needs no primary/intermediate draw storage until that
+        // representation actually appears. Reserve its full deterministic subset once.
+        mesh.instanceMatrix = new THREE.InstancedBufferAttribute(
+          new Float32Array(batch.capacity * 16),
+          16,
+        ).setUsage(THREE.DynamicDrawUsage);
+        const attributes: Record<string, THREE.BufferAttribute> = {};
+        if (batch.contact) {
+          batch.contact = new THREE.InstancedBufferAttribute(
+            new Float32Array(batch.capacity),
+            1,
+          ).setUsage(THREE.DynamicDrawUsage);
+          mesh.geometry.setAttribute(CONTACT_SHADER_ATTRIBUTE, batch.contact);
+          attributes[CONTACT_SHADER_ATTRIBUTE] = batch.contact;
+        }
+        if (batch.fade) {
+          batch.fade = new THREE.InstancedBufferAttribute(
+            new Float32Array(batch.capacity * 3),
+            3,
+          ).setUsage(THREE.DynamicDrawUsage);
+          mesh.geometry.setAttribute(FOLIAGE_FADE_ATTRIBUTE, batch.fade);
+          attributes[FOLIAGE_FADE_ATTRIBUTE] = batch.fade;
+        }
+        registerFoliageBatch(mesh, attributes, this.uniforms, batch.capacity);
+      }
       const repack =
         mesh.count !== sources.length ||
         sources.some((source, slot) => batch.slots[source] !== slot);

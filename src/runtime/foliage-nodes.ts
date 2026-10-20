@@ -463,12 +463,14 @@ export function configureFadeNodes(material: Material, enabled: () => boolean) {
 export function configureLeafNodes(
   material: Material,
   settings: FoliageSubsurface,
+  strengthMask?: Node<'float'>,
 ) {
   const key = JSON.stringify([
     settings.strength,
     settings.thickness,
     settings.tint,
     settings.wrap,
+    strengthMask?.getCacheKey(),
   ]);
   const cached = leafGraphs.get(key);
   if (cached) {
@@ -493,6 +495,7 @@ export function configureLeafNodes(
           .mul(diffuseColor.rgb)
           .mul(tint)
           .mul(strength)
+          .mul(strengthMask ?? float(1))
           .mul(through)
           .mul(absorption)
           .mul(1 / Math.PI),

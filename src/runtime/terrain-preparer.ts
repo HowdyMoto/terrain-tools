@@ -184,8 +184,4 @@ export class TerrainPreparer {
   }
 }
 
-export async function yieldPreparation(signal: AbortSignal) {
-  checkSignal(signal);
-  await new Promise<void>((resolve) => setTimeout(resolve, 0));
-  checkSignal(signal);
-}
+export { yieldPreparation } from '../render/resources';

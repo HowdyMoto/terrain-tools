@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { timePreparation } from './preparation-timing';
+import type { PreparationTiming } from './preparation-timing';
 import type { TerrainProject } from '../core/types';
 import { heightAt as projectHeight } from '../core/terrain';
 import { WorldStreamer } from '../core/world-streamer';
@@ -12,7 +14,10 @@ import { WorldAssets } from './world-assets';
 import { modelMemory } from './asset-memory';
 import { checkSignal } from '../render/resources';
 import { webOceanGPUBytes } from './web-ocean/simulation';
-import { foliageMotionReservation } from '../render/native-foliage';
+import {
+  foliageMotionReservation,
+  foliagePendingInstanceBytes,
+} from '../render/native-foliage';
 import { TerrainPreparer, yieldPreparation } from './terrain-preparer';
 
 export interface WorldColliders {
@@ -33,6 +38,12 @@ export interface WorldSceneOptions extends WorldStreamingOptions {
   materials?: boolean;
   /** Browser workers prepare immutable grid/normals/LOD data; main-thread fallback remains available. */
   terrainPreparation?: 'worker' | 'main';
+  /** Allocate source level draw arrays only when first selected. Default: true. */
+  foliageLazyInstances?: boolean;
+  foliageImpostors?: ReadonlyMap<
+    string,
+    import('./foliage-impostor').FoliageImpostor
+  >;
   foliageClusters?:
     boolean | import('./foliage-clusters').FoliageClusterOptions;
   /** Optional staged shader/upload warmup. Resolves before residency/collision activation. */
@@ -62,6 +73,8 @@ export class TerrainWorldScene extends THREE.Group {
   private preparer?: TerrainPreparer;
   /** Last 256 preparation durations; includes payload, texture/model decode and terrain work. */
   readonly loadMilliseconds: number[] = [];
+  /** Bounded stage telemetry, timestamps use the browser performance clock. */
+  readonly preparationTimings: (PreparationTiming & { tile: string })[] = [];
   constructor(
     world: TerrainWorld,
     readonly options: WorldSceneOptions,
@@ -79,24 +92,39 @@ export class TerrainWorldScene extends THREE.Group {
       {
         load: async (descriptor, signal) => {
           const started = performance.now();
-          const p = await options.load(descriptor, signal);
+          const report = (timing: PreparationTiming) => {
+            this.preparationTimings.push({
+              ...timing,
+              tile: worldTileKey(descriptor.x, descriptor.z),
+            });
+            if (this.preparationTimings.length > 2048)
+              this.preparationTimings.shift();
+          };
+          const p = await timePreparation(
+            'payload',
+            () => options.load(descriptor, signal),
+            report,
+          );
           checkSignal(signal);
           if (
             p.size !== this.world.tileSize ||
             p.heights.length !== (p.resolution + 1) ** 2
           )
             throw new Error('World tile dimensions do not match the manifest.');
-          const data = await this.preparer?.prepare(
-            p,
-            signal,
-            options.lod !== false,
+          const data = await timePreparation(
+            'worker',
+            () => this.preparer?.prepare(p, signal, options.lod !== false),
+            report,
           );
           checkSignal(signal);
           const terrain = new TerrainScene(p, {
             assets: this.assets,
             preparedTerrain: data,
+            onPreparationTiming: report,
             yieldPreparation: this.preparer ? yieldPreparation : undefined,
             foliageClusters: options.foliageClusters,
+            foliageImpostors: options.foliageImpostors,
+            foliageLazyInstances: options.foliageLazyInstances !== false,
           });
           let lod: TerrainLod | undefined,
             collision: WorldColliders | undefined;
@@ -130,7 +158,11 @@ export class TerrainWorldScene extends THREE.Group {
             if (options.prepareGPU) await options.prepareGPU(terrain, signal);
             checkSignal(signal);
             if (options.collision)
-              collision = await options.collision.prepare(terrain, signal);
+              collision = await timePreparation(
+                'collision',
+                () => options.collision!.prepare(terrain, signal),
+                report,
+              );
             checkSignal(signal);
             const parts: Parameters<typeof modelMemory>[0] = [];
             terrain.traverse((object) => {
@@ -150,6 +182,7 @@ export class TerrainWorldScene extends THREE.Group {
               if (object instanceof THREE.InstancedMesh) {
                 instanceBytes +=
                   object.instanceMatrix.array.byteLength +
+                  foliagePendingInstanceBytes(object) +
                   (object.instanceColor?.array.byteLength ?? 0);
                 const motion = foliageMotionReservation(object);
                 motionCPUBytes += motion.cpuBytes;
@@ -331,6 +364,19 @@ export class TerrainWorldScene extends THREE.Group {
     return {
       ...this.streaming.stats,
       assets: this.assets.stats,
+      /** Allocated authored draw arrays, including combined clusters; excludes native motion streams. */
+      foliageDrawArrayBytes: [...this.active.values()].reduce((sum, tile) => {
+        tile.terrain.foliage.traverse((object) => {
+          if (object instanceof THREE.InstancedMesh)
+            sum +=
+              object.instanceMatrix.array.byteLength +
+              (object.geometry.getAttribute('terrainContact')?.array
+                .byteLength ?? 0) +
+              (object.geometry.getAttribute('terrainFade')?.array.byteLength ??
+                0);
+        });
+        return sum;
+      }, 0),
       selectedTerrainTriangles: [...this.active.values()].reduce(
         (sum, tile) =>
           sum +

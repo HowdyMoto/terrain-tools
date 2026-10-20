@@ -24,6 +24,7 @@ export const foliagePreviousStateAttribute = 'terrainPreviousState';
 export const foliageCurrentStateAttribute = 'terrainInstanceState';
 type Attributes = Record<string, BufferAttribute | InterleavedBufferAttribute>;
 interface Batch {
+  capacity: number;
   owned: Attributes;
   current?: InstancedInterleavedBuffer;
   previous?: InstancedInterleavedBuffer;
@@ -45,19 +46,38 @@ export function registerFoliageBatch(
   mesh: InstancedMesh,
   owned: Attributes,
   wind: WindUniforms,
+  capacity = mesh.instanceMatrix.count,
 ) {
-  batches.set(mesh, { owned, wind });
+  batches.set(mesh, { owned, wind, capacity });
 }
 
 /** Conservative one-view streaming reservation, including CPU pose snapshots.
  * Geometry accounting can also include the packed GPU buffer; double counting
  * it is intentional during admission. Extra independent views need host budgets. */
 export function foliageMotionReservation(mesh: InstancedMesh) {
-  if (!batches.has(mesh)) return { cpuBytes: 0, gpuBytes: 0 };
+  const batch = batches.get(mesh);
+  if (!batch) return { cpuBytes: 0, gpuBytes: 0 };
   return {
-    cpuBytes: mesh.instanceMatrix.count * 352 + 1024,
-    gpuBytes: mesh.instanceMatrix.count * 88,
+    cpuBytes: batch.capacity * 352 + 1024,
+    gpuBytes: batch.capacity * 88,
   };
+}
+
+/** Future source draw allocations stay inside tile admission budgets even when
+ * lazy levels have not allocated their matrix/contact/fade arrays yet. */
+export function foliagePendingInstanceBytes(mesh: InstancedMesh) {
+  const batch = batches.get(mesh);
+  if (!batch) return 0;
+  let bytes = Math.max(0, batch.capacity - mesh.instanceMatrix.count) * 64;
+  for (const name of ['terrainContact', 'terrainFade']) {
+    const attribute = batch.owned[name];
+    if (attribute)
+      bytes += Math.max(
+        0,
+        batch.capacity * attribute.itemSize * 4 - attribute.array.byteLength,
+      );
+  }
+  return bytes;
 }
 
 /** Three r186 specializes InstancedMesh node programs per object. A plain Mesh

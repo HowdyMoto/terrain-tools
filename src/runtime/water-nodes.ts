@@ -48,33 +48,81 @@ import {
   attribute,
 } from 'three/tsl';
 import { terrainDirectSpecular } from '../render/node-lighting';
-import { nodeTexture, nodeUniforms } from '../render/node-uniforms';
+import {
+  nodeTexture,
+  nodeUniforms,
+  materialNodeUniforms,
+  materialNodeTexture,
+} from '../render/node-uniforms';
 import { oceanNodes } from './web-ocean/nodes';
 import type { OceanBindings } from './web-ocean/simulation';
 
 type N2 = Node<'vec2'>;
 /** Native water shading. All distances, wave phases and foam remain in metres. */
+const sharedWaterUniforms = materialNodeUniforms('terrainWaterUniforms');
+let sharedWaterGraph:
+  | { graph: Record<string, unknown>; users: number; release(): void }
+  | undefined;
+
+function releaseSharedWater(
+  material: MeshPhysicalMaterial,
+  shared: NonNullable<typeof sharedWaterGraph>,
+) {
+  let released = false;
+  material.addEventListener('dispose', () => {
+    if (released) return;
+    released = true;
+    if (--shared.users === 0) shared.release();
+  });
+}
+
 export function configureWaterNodes(
   material: MeshPhysicalMaterial,
   values: Record<string, IUniform>,
   spectral?: OceanBindings,
 ) {
-  const u = nodeUniforms(values);
+  Object.assign(material, { terrainWaterUniforms: values });
+  for (const name of [
+    'waterHeight',
+    'waterMask',
+    'waterFoamDetail',
+    'waterSceneColor',
+    'waterSceneDepth',
+  ])
+    Object.assign(material, { ['terrainWater' + name]: values[name] });
+  if (!spectral && sharedWaterGraph) {
+    const shared = sharedWaterGraph;
+    shared.users++;
+    Object.assign(material, shared.graph);
+    releaseSharedWater(material, shared);
+    return;
+  }
+  const u = spectral ? nodeUniforms(values) : sharedWaterUniforms;
+  const map = (name: string, fallback?: import('three').Texture) =>
+    spectral
+      ? nodeTexture(values[name], fallback)
+      : materialNodeTexture(
+          'terrainWater' + name,
+          values[name].value ?? fallback,
+          fallback,
+        );
+
   const ocean = spectral ? oceanNodes(spectral) : undefined;
-  const height = nodeTexture(values.waterHeight),
-    mask = nodeTexture(values.waterMask),
-    foam = nodeTexture(values.waterFoamDetail);
+  const height = map('waterHeight'),
+    mask = map('waterMask'),
+    foam = map('waterFoamDetail');
   const emptyDepth = new DepthTexture(1, 1);
   // Declare the eventual capture's single-sample layout before shader preflight.
   // An unattached depth texture otherwise inherits the current MSAA setting,
   // leaving cached shaders incompatible when the real capture is bound.
   const emptyCapture = new RenderTarget(1, 1, { depthTexture: emptyDepth });
-  material.addEventListener('dispose', () => {
+  const release = () => {
     emptyDepth.dispose();
     emptyCapture.dispose();
-  });
-  const sceneColor = nodeTexture(values.waterSceneColor),
-    sceneDepth = nodeTexture(values.waterSceneDepth, emptyDepth);
+  };
+  if (spectral) material.addEventListener('dispose', release);
+  const sceneColor = map('waterSceneColor'),
+    sceneDepth = map('waterSceneDepth', emptyDepth);
   const ground = Fn(([p]: [N2]) => {
     const uv = p.div(u('waterSize')).add(0.5).toVar();
     const result = u('waterLevel').sub(1000).toVar();
@@ -135,7 +183,15 @@ export function configureWaterNodes(
         result.assign(select(outside, float(0), mask.sample(uv).r));
       })
       .Else(() => {
-        const points = uniformArray<'vec2'>(values.waterPoints.value, 'vec2'),
+        const points = uniformArray<'vec2'>(
+            values.waterPoints.value,
+            'vec2',
+          ).onObjectUpdate(function ({ material: current }) {
+            if (!spectral)
+              this.array = (
+                current as unknown as { terrainWaterUniforms: typeof values }
+              ).terrainWaterUniforms.waterPoints.value;
+          }),
           count = u('waterPointCount', 'int');
         const b = points.element(count.sub(1)).toVar();
         Loop({ start: int(0), end: int(128), type: 'int' }, ({ i: index }) => {
@@ -435,7 +491,7 @@ export function configureWaterNodes(
       select(u('waterReactive').greaterThan(0.5), float(0.28), float(1)),
     );
   })();
-  Object.assign(material, {
+  const graph = {
     positionNode: vec3(
       spectralMotion
         ? positionGeometry.x.add(
@@ -469,5 +525,18 @@ export function configureWaterNodes(
       select(frontFacing, float(1), float(-1)),
     ),
     outputNode,
-  });
+  };
+  Object.assign(material, graph);
+  if (!spectral) {
+    const shared = {
+      graph,
+      users: 1,
+      release() {
+        if (sharedWaterGraph === shared) sharedWaterGraph = undefined;
+        release();
+      },
+    };
+    sharedWaterGraph = shared;
+    releaseSharedWater(material, shared);
+  }
 }

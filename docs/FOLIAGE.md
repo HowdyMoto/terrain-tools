@@ -2,6 +2,45 @@
 
 The Foliage inspector opens on **Paint**, with radius, density, spacing, surface rules and Populate together. Use **Models** for brush composition and scale/yaw, **Effects** for leaf lighting, contact and flexibility, **Detail** for LOD/culling, and **Library** for imports, default brushes, portable brush files and asset cleanup. The active brush is always available; the model selector stays visible on pages that edit a model.
 
+## Generate distant tree impostors
+
+No new art is required. The native runtime can generate relightable distant representations from an already loaded static tree using `bakeFoliageImpostor(parts, options)`. `/world.html?impostors` automatically prepares the bundled CC0 pine; its progress is shown before the world opens. This is an opt-in runtime prototype; editor preview/apply controls are tracked in #17.
+
+The default bake captures eight azimuths and five elevations (-30 to +90 degrees) into sRGB albedo/coverage, model-space normal/depth and roughness/metalness/leaf-mask atlases. It submits 80 triangles per tree, selects and dithers between the closest views independently for the camera and shadow cameras, and reconstructs depth. Scene lighting, roughness and leaf transmission remain dynamic. This differs from draw grouping, which retains all original triangles.
+
+```ts
+import { bakeFoliageImpostor, TerrainScene } from 'terrain-tools/three';
+
+// source.library belongs to an already loaded TerrainScene.
+const impostor = await bakeFoliageImpostor(source.library.get(model.model), {
+  renderer,
+  resolution: 256,
+  tint: model.color,
+  subsurface: model.subsurface,
+  signal,
+  onProgress: (completed, total) => console.log(completed / total),
+});
+const candidate = new TerrainScene(project, {
+  foliageImpostors: new Map([[model.model, impostor]]),
+  foliageLazyInstances: true,
+});
+await candidate.load();
+candidate.update(0, [], camera); // Select/allocate the needed representations.
+// The last authored LOD uses the impostor; primary meshes and complete exports remain.
+// The host adds/replaces its scene only after successful preparation.
+// Retire candidate before releasing the bake it borrows:
+candidate.dispose();
+impostor.dispose();
+```
+
+Models need an authored LOD to replace; primary geometry is never substituted. Density, culling, placements and stable IDs retain their authored settings. A 256-pixel, eight-azimuth bake uses **30 MiB for its three atlases**, excluding geometry and driver allocations. Options support 128/256/512 pixels and 8/16 azimuths; `maxBytes` defaults to 64 MiB and rejects larger requests before rendering. Higher settings can require an explicit larger budget. Hosts own atlas lifetime and must rebuild after source geometry, material tint or baked material-selection changes. Do not dispose a bake while a scene still borrows it.
+
+Cancellation, allocation failure and progress-handler errors release the candidate; renderer target/MRT/clear state is restored before every asynchronous wait. Bakes and projects remain separate: generated atlases are runtime resources, not new checked-in project art, and original model credits remain authoritative. The pine reference uses the existing [CC0 source and author acknowledgments](../public/foliage/photoreal/CREDITS.txt).
+
+This first implementation supports opaque/cutout PBR trees; blended/refractive materials are rejected. It captures a rest pose and approximates distant wind on the cards; it does not reproduce individual leaf motion, deep multi-layer parallax or every possible material extension. View changes reject old temporal coverage conservatively. Atlas filtering, extreme upward views below -30 degrees, large-leaf tropical assets and close-range use need further validation. Close trees retain their authored meshes. This is not a claim of CryEngine parity or a universal FPS improvement.
+
+`TerrainWorldScene` allocates source LOD draw arrays when first selected (`foliageLazyInstances`, default true); single-terrain/editor behavior defaults to eager allocation. Detailed arrays stay unallocated for distant cells until needed. Lazy scenes must be updated with their render camera before drawing. Compatible combined far groups still reserve their draw arrays, and full source models/base geometry remain available for authoring/export. Admission reserves the maximum possible matrix/contact/fade/motion growth, so lazy allocation does not bypass the world memory ceiling. Buffers retire with their streamed cell; this is not a complete geometry/texture paging system. Use `foliageLazyInstances: false` or `/world.html?eager-instances` for comparison.
+
 ## Motion and temporal stabilization
 
 Native `TerrainScene` foliage supplies motion vectors for current/previous wind, contact deformation and instance placement. Existing **Light → View → Stable foliage edges (temporal)** uses them automatically. Authored plant IDs match history after LOD packing, so a plant does not borrow another plant's previous transform. Wind speed, strength, gusts and direction retain their previous drawn values, rather than assuming one fixed simulation timestep. A still pose produces zero leaf motion; moving the camera still reprojects normally.

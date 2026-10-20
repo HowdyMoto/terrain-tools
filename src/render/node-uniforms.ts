@@ -20,12 +20,16 @@ export function materialNodeUniforms(property: string) {
   return get;
 }
 
-export function materialNodeTexture(property: string, initial: Texture | null) {
+export function materialNodeTexture(
+  property: string,
+  initial: Texture | null,
+  fallback: Texture = emptyTexture,
+) {
   return texture(initial ?? emptyTexture).onObjectUpdate(({ material }) => {
     const value = (
       material as unknown as Record<string, IUniform<Texture | null>>
     )[property];
-    return value.value ?? emptyTexture;
+    return value.value ?? fallback;
   });
 }
 

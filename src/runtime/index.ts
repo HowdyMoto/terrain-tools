@@ -73,3 +73,11 @@ export async function loadTerrain(
 }
 export type { FoliageViewStats } from './foliage';
 export type { FoliageClusterOptions } from './foliage-clusters';
+
+export { bakeFoliageImpostor } from './foliage-impostor';
+export type {
+  FoliageImpostor,
+  FoliageImpostorOptions,
+} from './foliage-impostor';
+
+export { shaderCacheStats } from '../render/shader-cache';

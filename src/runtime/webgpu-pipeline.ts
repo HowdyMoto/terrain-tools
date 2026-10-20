@@ -101,7 +101,7 @@ class WaterCapture {
       this.underwater,
     );
     this.material.fragmentNode = mrt({
-      output: vec4(resolved, 1),
+      output: vec4(resolved, source.a),
       normal: texture(this.target.textures[1]),
       indirect: texture(this.target.textures[2]),
       velocity: texture(this.target.textures[3]),
@@ -118,10 +118,6 @@ class WaterCapture {
         waters.push(o);
     });
     const r = this.renderer;
-    if (!waters.length) {
-      r.render(scene, camera);
-      return;
-    }
     const target = r.getRenderTarget()!,
       autoClear = r.autoClear,
       background = scene.background;
@@ -148,6 +144,7 @@ class WaterCapture {
       }
       this.inverseProjection.value.copy(camera.projectionMatrixInverse);
       this.quad.render(r);
+      if (!surfaces.length) return;
       scene.traverseVisible((o) => {
         if (
           (o instanceof Mesh ||
@@ -243,6 +240,7 @@ const outputGraphs = new WeakMap<
 
 export class WebGPUPipeline {
   private motionFrame = 0;
+  private historyReset = true;
   private motionEpoch = {};
   private velocity: TerrainVelocityNode;
   private pass?: TerrainPass;
@@ -271,7 +269,9 @@ export class WebGPUPipeline {
     this.velocity = graph.velocity;
   }
   reset() {
-    this.key = '';
+    // Teleports invalidate history, not the render graph or compiled scene programs.
+    this.historyReset = true;
+    this.motionEpoch = {};
   }
   render(
     scene: Scene,
@@ -289,12 +289,7 @@ export class WebGPUPipeline {
       settings.ambientOcclusion?.enabled,
       settings.temporalAA,
     ]);
-    if (
-      !this.post ||
-      this.camera !== camera ||
-      key !== this.key ||
-      !size.equals(this.size)
-    ) {
+    if (!this.post || this.camera !== camera || key !== this.key) {
       this.releasePasses();
       this.key = key;
       this.camera = camera;
@@ -357,6 +352,44 @@ export class WebGPUPipeline {
           this.pass.getTextureNode('velocity'),
           camera,
         );
+        // r186 has no public history reset. Seed its existing resolve/history
+        // after the scene input updates instead of destroying the scene pass.
+        // Keep this small version-specific adapter beside our other TRAA ownership fixes.
+        const updateTemporal = temporal.updateBefore.bind(temporal);
+        temporal.updateBefore = (frame) => {
+          updateTemporal(frame);
+          if (this.historyReset) {
+            const targets = temporal as typeof temporal & {
+              _historyRenderTarget: RenderTarget;
+              _resolveRenderTarget: RenderTarget;
+              setSize(width: number, height: number): void;
+            };
+            const input = temporal.beautyNode as typeof temporal.beautyNode & {
+              isRTTNode?: boolean;
+              renderTarget: RenderTarget;
+              passNode: { renderTarget: RenderTarget };
+            };
+            const source = input.isRTTNode
+              ? input.renderTarget
+              : input.passNode.renderTarget;
+            // An RTT input can acquire its actual size during the first resolve draw.
+            // TRAA inspected its 1x1 bootstrap before that draw; seed at the now-current size.
+            targets.setSize(source.width, source.height);
+            const beauty = source.texture;
+            this.renderer.initRenderTarget(targets._historyRenderTarget);
+            this.renderer.initRenderTarget(targets._resolveRenderTarget);
+            this.renderer.copyTextureToTexture(
+              beauty,
+              targets._historyRenderTarget.texture,
+            );
+            this.renderer.copyTextureToTexture(
+              beauty,
+              targets._resolveRenderTarget.texture,
+            );
+            this.historyReset = false;
+          }
+          return undefined;
+        };
         // Three r186's TRAANode replaces its initial depth texture after the
         // first frame, but does not release it in dispose(). Retain ownership
         // here, separately from the history target that replaces its value.
@@ -396,6 +429,11 @@ export class WebGPUPipeline {
         this.renderer,
         nodeObject(result).context({ velocity: this.velocity }),
       );
+    }
+    if (!size.equals(this.size)) {
+      this.size.copy(size);
+      this.pass?.setSize(size.x, size.y);
+      this.reset();
     }
     if (this.occlusion && settings.ambientOcclusion) {
       this.occlusion.radius.value = settings.ambientOcclusion.radius;
@@ -445,6 +483,7 @@ export class WebGPUPipeline {
   }
   private releasePasses() {
     this.motionEpoch = {};
+    this.historyReset = true;
     this.effects.forEach((effect) => effect.dispose());
     this.effects = [];
     this.occlusion = undefined;

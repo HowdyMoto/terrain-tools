@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { gpuDevice } from '../render/renderer';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import {
   TerrainWorldScene,
@@ -8,7 +9,10 @@ import {
   TerrainEnvironment,
   createTerrainRenderer,
   rendererDescription,
+  bakeFoliageImpostor,
+  shaderCacheStats,
 } from '../runtime';
+import type { FoliageImpostor } from '../runtime';
 import type { TerrainProject } from '../core/types';
 import { referenceWorld, referenceHeight } from './world-source';
 import { createProject } from '../core/terrain';
@@ -90,10 +94,31 @@ const { TerrainPhysics, createWorldCollisionSource } =
   await import('../physics/rapier');
 const physics = new TerrainPhysics();
 await physics.init();
+const foliageImpostors = new Map<string, FoliageImpostor>();
+if (new URLSearchParams(location.search).has('impostors')) {
+  const decoded = await assets.decode(modelData['ph-pine-b'].data);
+  try {
+    foliageImpostors.set(
+      'ph-pine-b',
+      await bakeFoliageImpostor(decoded.parts, {
+        renderer,
+        onProgress: (done, total) => {
+          status.textContent = `Preparing distant pine views: ${Math.round((done / total) * 100)}%`;
+        },
+      }),
+    );
+  } finally {
+    decoded.dispose();
+  }
+}
 let warmup = Promise.resolve();
 const world = new TerrainWorldScene(referenceWorld, {
   collision: createWorldCollisionSource(physics.world),
   assets,
+  foliageImpostors,
+  foliageLazyInstances: !new URLSearchParams(location.search).has(
+    'eager-instances',
+  ),
   foliageClusters: new URLSearchParams(location.search).has('unclustered')
     ? false
     : new URLSearchParams(location.search).has('near-clusters')
@@ -202,6 +227,7 @@ document
 view('forest');
 const adapter = rendererDescription(renderer);
 let timestampPending = false;
+let framePending = false;
 let last = performance.now(),
   recording = false,
   stopped = false,
@@ -214,6 +240,14 @@ const observer = new PerformanceObserver((list) => {
 });
 observer.observe({ type: 'longtask', buffered: false });
 const snapshots: unknown[] = [];
+const intervalStalls: { start: number; interval: number }[] = [];
+const slowFrames: {
+  start: number;
+  update: number;
+  physics: number;
+  environment: number;
+  render: number;
+}[] = [];
 let route:
   | {
       start: number;
@@ -224,10 +258,14 @@ let route:
     }
   | undefined;
 function draw(now: number) {
-  if (stopped) return;
+  if (stopped || framePending) return;
   const dt = Math.max(0, Math.min((now - last) / 1000, 0.1)),
     started = performance.now();
-  if (recording) frames.push(now - last);
+  if (recording) {
+    frames.push(now - last);
+    if (now - last >= 100)
+      intervalStalls.push({ start: now, interval: now - last });
+  }
   last = now;
   if (route) {
     const elapsed = Math.max(0, (now - route.start) / 1000),
@@ -256,10 +294,37 @@ function draw(now: number) {
   controls.update();
   camera.updateMatrixWorld();
   world.update(camera, dt, innerHeight);
+  const updated = performance.now();
   physics.world.step();
+  const stepped = performance.now();
   environment.tick(dt);
   environment.updateCamera(camera);
+  const lit = performance.now();
   environment.render(camera);
+  const rendered = performance.now();
+  // Sample the newest camera pose only when the previous composed frame has
+  // finished. Higher submission FPS must not queue old camera frames.
+  framePending = true;
+  void gpuDevice(renderer)
+    .queue.onSubmittedWorkDone()
+    .then(
+      () => {
+        framePending = false;
+      },
+      (error: unknown) => {
+        framePending = false;
+        stopped = true;
+        console.error(error);
+      },
+    );
+  if (recording && rendered - started >= 50)
+    slowFrames.push({
+      start: started,
+      update: updated - started,
+      physics: stepped - updated,
+      environment: lit - stepped,
+      render: rendered - lit,
+    });
   if (
     recording &&
     renderer.hasFeature('timestamp-query') &&
@@ -341,6 +406,8 @@ const api = {
     gpu = [];
     longTasks = [];
     snapshots.length = 0;
+    slowFrames.length = 0;
+    intervalStalls.length = 0;
     recording = true;
   },
   stop() {
@@ -354,8 +421,19 @@ const api = {
       gpu,
       longTasks,
       snapshots,
+      slowFrames,
+      intervalStalls,
+      gpuQueue: 'one unfinished composed frame',
       preparation,
       loadMilliseconds: [...world.loadMilliseconds],
+      preparationTimings: [...world.preparationTimings],
+      shaderCache: shaderCacheStats(renderer),
+      impostors: [...foliageImpostors.values()].map((i) => ({
+        views: i.views,
+        memoryBytes: i.memoryBytes,
+        sourceTriangles: i.sourceTriangles,
+        triangles: i.triangles,
+      })),
       colliderCount: physics.world.colliders.len(),
       stats: world.stats,
       sourceEncodedCharacters: Object.values(modelData).reduce(
@@ -369,6 +447,7 @@ const api = {
     world.dispose();
     await world.whenIdle();
     physics.dispose();
+    foliageImpostors.forEach((i) => i.dispose());
     assets.dispose();
     materials.dispose();
     decoder.dispose();

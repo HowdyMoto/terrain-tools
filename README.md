@@ -10,6 +10,8 @@ The engine audit is tracked as [prioritized GitHub issues](https://github.com/Ho
 
 **Rendering:** the editor, import previews, `/runtime.html`, and `/world.html` use native **WebGPU**. Terrain, vegetation, shadows, atmosphere, water and PBR baking use node shaders. Startup rejects a WebGL fallback and explains recovery if WebGPU is unavailable. Existing project files need no conversion. Worker preparation, shared shader graphs and distant draw clustering improve the latest RTX 5060/1080p resident forest sample from 22.9 to 29.1 submitted FPS; its 50 ms frame p95 still misses steady 30 FPS. Optional canopy shade/bounce improves spatial indirect lighting. See [performance evidence and limits](docs/PERFORMANCE.md) and [WebGPU integration](docs/WEBGPU.md).
 
+The distant-tree prototype can be tried at **`/world.html?impostors`**. It generates its own color/normal/depth/material views from the existing CC0 pine; no new artist-authored assets are needed. It remains optional and preserves primary models and exports. See [impostor workflow and limits](docs/FOLIAGE.md#generate-distant-tree-impostors).
+
 ## Run locally
 
 Requires Node.js 22.12+ (Node 24 is used for development), npm, and current Chrome or Edge with native WebGPU and hardware acceleration. Serve over localhost or HTTPS.
@@ -187,3 +189,13 @@ Feed only ground contacts, call with an empty contact array during recovery, and
 Terrain Studio's original code, documentation and reference example are available under the [MIT License](LICENSE), copyright 2026 Wright Bagwell. Third-party dependencies retain their own licenses.
 
 The bundled Poly Haven foliage and alpha maps retain their [CC0 1.0 license](assets/cc0-foliage/LICENSE.md). Credit goes to **Rico Cilliers**, **Rob Tuytel**, and **Poly Haven**; see the [per-asset credits and modification notes](public/foliage/photoreal/CREDITS.txt). User-imported artwork retains its own licensing. Personal landscape projects and local research downloads are not part of this repository.
+
+Automatic-impostor and streaming checks (after `npm ci` and `npm run build`):
+
+```sh
+npm run test:browser -- tests/browser/foliage-impostor.spec.mjs tests/browser/temporal-reset.spec.mjs
+npm run benchmark:world -- --impostors --no-captures --output=.qa/world-impostors.json
+npm run benchmark:world -- --eager-instances --no-captures --output=.qa/world-eager.json
+```
+
+Keep timed runs separate from builds, tests and asset encoders. The world renderer permits one unfinished GPU frame, so results from older unbounded submission runs are not directly equivalent. `--profile --quick` writes a diagnostic CPU profile beside the world report; use an unprofiled full three-lap run for acceptance.

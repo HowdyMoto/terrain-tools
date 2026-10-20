@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { timePreparation } from './preparation-timing';
+import type { PreparationTiming } from './preparation-timing';
 import { EditTransaction } from '../render/edit-transaction';
 import { TerrainWater, prepareWaterTerrain } from './water';
 import type { PreparedWater } from './water';
@@ -80,7 +82,13 @@ export class TerrainScene extends THREE.Group {
       assets?: WorldAssets;
       decoder?: import('../render/model-loader').ModelDecoder;
       preparedTerrain?: PreparedTerrainData;
+      onPreparationTiming?: (timing: PreparationTiming) => void;
       yieldPreparation?: (signal: AbortSignal) => Promise<void>;
+      foliageLazyInstances?: boolean;
+      foliageImpostors?: ReadonlyMap<
+        string,
+        import('./foliage-impostor').FoliageImpostor
+      >;
       foliageClusters?:
         boolean | import('./foliage-clusters').FoliageClusterOptions;
     } = {},
@@ -101,6 +109,8 @@ export class TerrainScene extends THREE.Group {
     this.options = { ...options, preparedTerrain: undefined };
     this.foliage = new TerrainFoliage(project, this.library, {
       distantClusters: options.foliageClusters,
+      impostors: options.foliageImpostors,
+      lazyInstances: options.foliageLazyInstances,
     });
     this.canopyLighting = new CanopyLighting(
       this,
@@ -162,20 +172,36 @@ export class TerrainScene extends THREE.Group {
     };
     controller.signal.addEventListener('abort', release, { once: true });
     try {
-      models = await this.library.prepareAssets(project, controller.signal);
+      const stage = <T>(name: string, work: () => T | Promise<T>) =>
+        timePreparation(name, work, this.options.onPreparationTiming);
+      models = await stage('models', () =>
+        this.library.prepareAssets(project, controller.signal),
+      );
       checkSignal(controller.signal);
       if (materials)
-        material = await this.terrainMaterial.prepare(
-          project,
-          controller.signal,
+        material = await stage('materials', () =>
+          this.terrainMaterial.prepare(project, controller.signal),
         );
       checkSignal(controller.signal);
       await this.options.yieldPreparation?.(controller.signal);
-      geometry = this.prepareTerrain(undefined, project);
+      geometry = await stage('geometry', () =>
+        this.prepareTerrain(undefined, project),
+      );
       await this.options.yieldPreparation?.(controller.signal);
-      foliage = this.foliage.prepare(project, models);
+      foliage = await stage('foliage', () =>
+        this.options.yieldPreparation
+          ? this.foliage.prepareAsync(
+              project,
+              models,
+              controller.signal,
+              this.options.yieldPreparation,
+            )
+          : this.foliage.prepare(project, models),
+      );
       await this.options.yieldPreparation?.(controller.signal);
-      const props = this.prepareProps(project, models);
+      const props = await stage('props', () =>
+        this.prepareProps(project, models),
+      );
       canopy = await this.canopyLighting.prepare(
         project,
         project.environment,
