@@ -1,7 +1,6 @@
 import {
   InstancedInterleavedBuffer,
   InterleavedBufferAttribute,
-  DynamicDrawUsage,
   Mesh,
 } from 'three';
 import type {
@@ -106,16 +105,18 @@ export function installNativeFoliage(renderer: WebGPURenderer) {
     // Attributes belong to the batch, not a renderer. A second viewport must
     // not replace buffers still in use by the first viewport's cached bindings.
     if (!batch.current) {
+      // Versioned updates are deliberate. Three's DynamicDrawUsage forces
+      // another full-capacity upload in unchanged shadow/water/main passes.
       batch.current = new InstancedInterleavedBuffer(
         new Float32Array(source.instanceMatrix.count * 20),
         20,
         1,
-      ).setUsage(DynamicDrawUsage);
+      );
       batch.previous = new InstancedInterleavedBuffer(
         new Float32Array(source.instanceMatrix.count * 18),
         18,
         1,
-      ).setUsage(DynamicDrawUsage);
+      );
       batch.states = new InterleavedBufferAttribute(batch.previous, 2, 16);
       batch.owned[foliagePreviousStateAttribute] = batch.states;
       geometry.setAttribute(foliagePreviousStateAttribute, batch.states);
@@ -152,6 +153,8 @@ export function installNativeFoliage(renderer: WebGPURenderer) {
         batch.current.array[slot * 20 + 18] = fade?.getY(slot) ?? 1;
         batch.current.array[slot * 20 + 19] = fade?.getZ(slot) ?? 0;
       }
+      batch.current.clearUpdateRanges();
+      batch.current.addUpdateRange(0, source.count * 20);
       batch.current.needsUpdate = true;
       batch.matrixVersion = source.instanceMatrix.version;
       batch.contactVersion = contact?.version ?? 0;
@@ -209,6 +212,8 @@ export function installNativeFoliage(renderer: WebGPURenderer) {
           batch.previous!.array[slot * 18 + 16] = history.states[slot * 2];
           batch.previous!.array[slot * 18 + 17] = history.states[slot * 2 + 1];
         }
+        batch.previous!.clearUpdateRanges();
+        batch.previous!.addUpdateRange(0, source.count * 18);
         batch.previous!.needsUpdate = true;
         batch.history = history;
         batch.historyVersion = history.version;

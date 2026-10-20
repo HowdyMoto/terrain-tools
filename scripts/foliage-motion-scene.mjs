@@ -4,6 +4,7 @@ export async function foliageMotionScene({
   runtimeURL = '/__runtime_test/lib/',
   width = 1920,
   height = 1080,
+  lodDensity = 1,
 } = {}) {
   const THREE = await import('three');
   const {
@@ -39,7 +40,7 @@ export async function foliageMotionScene({
     color: '#ffffff',
     crush: 0.5,
     flexibility: { source: 'height', start: 0.08, end: 1, exponent: 1.5 },
-    lods: [{ model: ids[1], distance: 10, density: 1 }],
+    lods: [{ model: ids[1], distance: 10, density: lodDensity }],
     lodFadeDuration: 0.4,
     lodHysteresis: 0.08,
     cullDistance: 50,
@@ -182,5 +183,6 @@ export async function foliageMotionScene({
     plants: project.foliage.length,
     width,
     height,
+    lodDensity,
   };
 }

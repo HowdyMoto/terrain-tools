@@ -18,6 +18,9 @@ const output = resolve(value('output') ?? '.qa/foliage-motion-benchmark.json');
 const baseline = value('baseline-lib') ? resolve(value('baseline-lib')) : null;
 const capture = process.argv.includes('--capture');
 const port = Number(value('port') ?? 5197);
+const lodDensity = Number(value('density') ?? 1);
+if (!Number.isFinite(lodDensity) || lodDensity < 0 || lodDensity > 1)
+  throw new Error('Density must be from 0 to 1.');
 if (!Number.isInteger(port) || port < 1 || port > 65535)
   throw new Error('Invalid preview port.');
 const server = spawn(
@@ -132,6 +135,7 @@ try {
     const fixture = await page.evaluate(foliageMotionScene, {
       runtimeURL:
         mode === 'baseline' ? '/__motion_baseline/' : '/__runtime_test/lib/',
+      lodDensity,
     });
     if (
       !/nvidia.*blackwell|RTX 5060/i.test(fixture.adapter) &&
@@ -269,7 +273,7 @@ try {
     capture,
     beforeGPU,
     afterGPU: gpuStatus(),
-    note: '400 CC0 fern instances with LOD transitions, terrain, shadows, Standard ocean capture, GTAO and TRAA at 1080p. CPU times end at submission; GPU timestamps include composed render passes. RAF intervals include timestamp resolution overhead. Screenshots and reference readbacks occur outside timing. RGB error is versus a paused non-temporal MSAA reference, not ground truth. Capture mode is excluded from performance evidence.',
+    note: `400 CC0 fern instances with LOD density ${lodDensity}, transitions, terrain, shadows, Standard ocean capture, GTAO and TRAA at 1080p. CPU times end at submission; GPU timestamps include composed render passes. RAF intervals include timestamp resolution overhead. Screenshots and reference readbacks occur outside timing. RGB error is versus a paused non-temporal MSAA reference, not ground truth. Capture mode is excluded from performance evidence.`,
     results,
   };
   await mkdir(resolve(output, '..'), { recursive: true });

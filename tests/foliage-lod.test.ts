@@ -51,6 +51,57 @@ function drawn(scene: TerrainScene) {
   return result;
 }
 describe('foliage distance detail', () => {
+  it('reserves density subsets exactly through interrupted fades, reset and rollback', () => {
+    const { project, model } = fixture();
+    model.lods = [
+      { model: 'pine-low', distance: 20, density: 0.6 },
+      { model: 'pine-low', distance: 40, density: 0.2 },
+      { model: 'pine-low', distance: 50, density: 0 },
+    ];
+    model.lodFadeDuration = 1;
+    project.foliage = Array.from({ length: 400 }, (_, i) =>
+      instance(i + 1, 1 + (i % 20), 1 + Math.floor(i / 20)),
+    );
+    const scene = new TerrainScene(project),
+      camera = new THREE.PerspectiveCamera();
+    scene.rebuildFoliage();
+    const primary = scene.foliage.children[0];
+    const check = () => {
+      for (const mesh of scene.foliage.children as THREE.InstancedMesh[]) {
+        const level = mesh.userData.lodLevel as number;
+        const density = level === 0 ? 1 : model.lods![level - 1].density;
+        expect(mesh.instanceMatrix.count).toBe(
+          project.foliage.filter(
+            (plant) => foliageDensityRank(plant.id) < density,
+          ).length,
+        );
+        expect(mesh.count).toBeLessThanOrEqual(mesh.instanceMatrix.count);
+        expect(mesh.userData.instanceIds).toHaveLength(mesh.count);
+        if (level > 0)
+          expect(
+            mesh.userData.instanceIds.every(
+              (id: number) => foliageDensityRank(id) < density,
+            ),
+          ).toBe(true);
+      }
+    };
+    for (const x of [0, 40, 60, 10, -30, 100, 10]) {
+      camera.position.set(x, 2, 0);
+      scene.update(0.15, [], camera);
+      check();
+    }
+    scene.foliage.resetView();
+    check();
+    const edit = scene.foliage.beginEdit(project);
+    scene.foliage.updateView(camera);
+    edit.rollback();
+    expect(scene.foliage.children[0]).toBe(primary);
+    camera.position.x = -100;
+    scene.update(2, [], camera);
+    check();
+    expect(scene.foliage.viewStats.instances).toBe(0);
+    scene.dispose();
+  });
   it('validates ordered distance/density ranges and every embedded LOD asset reference', () => {
     const { project, model } = fixture();
     expect(parseProject(serializeProject(project))).toEqual(project);

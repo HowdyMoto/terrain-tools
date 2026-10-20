@@ -355,6 +355,11 @@ export class TerrainFoliage extends THREE.Group {
           ...(model.lods ?? []).map((lod) => lod.model),
         ];
         levels.forEach((asset, level) => {
+          // A level can only draw its deterministic density subset, including
+          // during retargeted fades. Reserve exactly that subset, not every plant.
+          const density = level === 0 ? 1 : model.lods![level - 1].density;
+          let capacity = 0;
+          for (const rank of tile.ranks) if (rank < density) capacity++;
           for (const part of this.library.get(asset, models)) {
             const normal = materialsFor(
               model,
@@ -388,13 +393,13 @@ export class TerrainFoliage extends THREE.Group {
             }
             const contact = model.flexibility
               ? new THREE.InstancedBufferAttribute(
-                  new Float32Array(count),
+                  new Float32Array(capacity),
                   1,
                 ).setUsage(THREE.DynamicDrawUsage)
               : undefined;
             const fade = transitions
               ? new THREE.InstancedBufferAttribute(
-                  new Float32Array(count * 3),
+                  new Float32Array(capacity * 3),
                   3,
                 ).setUsage(THREE.DynamicDrawUsage)
               : undefined;
@@ -418,7 +423,7 @@ export class TerrainFoliage extends THREE.Group {
               Math.max(Math.abs(box.min.z), Math.abs(box.max.z)),
             );
             const mesh = this.own(
-              new THREE.InstancedMesh(geometry, normal.color, count),
+              new THREE.InstancedMesh(geometry, normal.color, capacity),
             );
             mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
             registerFoliageBatch(mesh, attributes, this.uniforms);
@@ -765,11 +770,20 @@ export class TerrainFoliage extends THREE.Group {
     for (const batch of tile.batches) {
       const sources = groups[batch.level],
         mesh = batch.mesh;
-      batch.slots.fill(-1);
+      const repack =
+        mesh.count !== sources.length ||
+        sources.some((source, slot) => batch.slots[source] !== slot);
+      if (repack) batch.slots.fill(-1);
       const matrices = mesh.instanceMatrix.array;
       sources.forEach((source, slot) => {
-        batch.slots[source] = slot;
-        batch.contact?.setX(slot, tile.contacts[source]);
+        if (repack) {
+          batch.slots[source] = slot;
+          batch.contact?.setX(slot, tile.contacts[source]);
+          matrices.set(
+            tile.matrices.subarray(source * 16, source * 16 + 16),
+            slot * 16,
+          );
+        }
         if (batch.fade) {
           tile.transitions!.writeRange(
             source,
@@ -779,23 +793,21 @@ export class TerrainFoliage extends THREE.Group {
           );
           batch.fade.setZ(slot, tile.ranks[source]);
         }
-        matrices.set(
-          tile.matrices.subarray(source * 16, source * 16 + 16),
-          slot * 16,
-        );
       });
       mesh.count = sources.length;
       mesh.visible = mesh.count > 0;
-      mesh.userData.instanceIds = sources.map((i) => tile.instances[i].id);
-      mesh.instanceMatrix.clearUpdateRanges();
-      if (mesh.count) mesh.instanceMatrix.addUpdateRange(0, mesh.count * 16);
-      mesh.instanceMatrix.needsUpdate = true;
+      if (repack) {
+        mesh.userData.instanceIds = sources.map((i) => tile.instances[i].id);
+        mesh.instanceMatrix.clearUpdateRanges();
+        if (mesh.count) mesh.instanceMatrix.addUpdateRange(0, mesh.count * 16);
+        mesh.instanceMatrix.needsUpdate = true;
+      }
       if (batch.fade) {
         batch.fade.clearUpdateRanges();
         if (mesh.count) batch.fade.addUpdateRange(0, mesh.count * 3);
         batch.fade.needsUpdate = true;
       }
-      if (batch.contact) {
+      if (batch.contact && repack) {
         batch.contact.clearUpdateRanges();
         if (mesh.count) batch.contact.addUpdateRange(0, mesh.count);
         batch.contact.needsUpdate = true;
