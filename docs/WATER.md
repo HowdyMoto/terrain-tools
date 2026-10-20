@@ -112,3 +112,9 @@ The 19 October spectral integration passed build/type checks, lint, all **325 un
 ```sh
 npm run test:browser -- tests/browser/web-ocean.spec.mjs tests/browser/water.spec.mjs tests/browser/compact-inspector.spec.mjs tests/browser/webgpu.spec.mjs
 ```
+
+## Integrated performance checks
+
+`npm run benchmark:tropical-water -- --project="C:/path/to/scene.terrain" --output=.qa/water.json --seconds=10` measures Standard, spectral Balanced and spectral High through the native terrain/foliage/shadow/sky/GTAO/temporal pipeline, with forward/reverse coastal and canopy views. It reads the external project without modifying it. It requires the RTX 5060, records power/GPU context and limits unfinished GPU frames to one. Do not compare its completed-frame cadence directly with an unbounded submission benchmark. Native render timestamps do not include FFT compute; frame intervals include the integrated work.
+
+After the game was closed, the clean 7,323-plant Tropical Grove run measured roughly 21–30 FPS across modes; order/clock variation prevents a reliable FPS ranking, and most frame p95 values remain 50 ms. A separate direct GPU timestamp probe measured FFT/foam compute at 0.096 ms median / 0.112 ms p95 for Balanced and 0.470 / 0.491 ms for High. Those isolated compute costs exclude water shading, reflection capture and the forest. All modes rendered without captured errors and released tracked resources. `--compute-only` reproduces the shorter instrumented coastal probe; its FPS is not a whole-scene acceptance result. See [performance evidence and limits](PERFORMANCE.md#forest-streaming-clusters-and-canopy-light--20-october-2026). Standard remains the default; sustained dense-scene 30 FPS is still unproven.

@@ -22,6 +22,7 @@ Requires Node.js 22.12+ (Node 24 is used for development), npm, and native WebGP
 - `npm run dev`: start the local Vite editor; `/runtime.html` is the integration example.
 - `/world.html`: the streamed 2 × 2 km reference with shared compressed assets and optional Rapier integration.
 - `npm run build:assets:runtime`: rebuild the bundled Meshopt/KTX2 pack from checked-in derivatives using pinned WASM/Node tools; ordinary builds do not encode assets.
+- `npm run benchmark:tropical-water -- --project="C:/path/to/scene.terrain" --output=.qa/tropical-water.json --seconds=10`: native 1080p Standard/Balanced/High water and canopy-field comparison on an external read-only project after building. Requires RTX 5060; one unfinished GPU frame.
 - `npm run benchmark:world`: sustained 1080p traversal/teleport benchmark after building; requires the RTX 5060 unless explicitly passed `--allow-other-gpu`.
 - `npm run benchmark:foliage-motion`: bounded native 1080p fern motion/history comparison after building; owns preview port 5197 (`-- --port=5198` overrides it). Optional `-- --baseline-lib=.qa/baseline/lib` compares a saved baseline build. Run it separately from builds, browser tests, other benchmarks and video capture. `npx playwright install ffmpeg` installs the local helper for separate `--capture` runs.
 - `npm run benchmark:foliage-selection`: CPU-only foliage update/LOD scaling and instance-buffer reservations at 1k/10k/50k plants after building; owns port 5199. Supports `-- --baseline-lib=.qa/baseline/lib`. This creates no renderer and does not measure FPS.
@@ -37,7 +38,7 @@ Requires Node.js 22.12+ (Node 24 is used for development), npm, and native WebGP
 - `npm run test:browser -- tests/browser/webgpu.spec.mjs tests/browser/webgpu-world.spec.mjs`: native shader, PBR export and prepared-world checks.
 - `npm run format` / `npm run format:check`: write/check Prettier formatting.
 
-Browser tests use installed Google Chrome on Windows and port 5175. `scripts/chrome-gpu.mjs` reads DXGI adapters through built-in PowerShell/.NET and selects the RTX 5060 when present for the temporary test profile; it does not change user graphics settings. See `playwright.config.ts` before running on another platform. Benchmark commands and their required builds are documented in `README.md`.
+Browser tests use installed Google Chrome on Windows and port 5175. Their wrapper and the world/tropical water benchmarks hold a temporary Windows execution request to avoid Modern Standby, then release it; no saved power settings change. Reports record AC/battery state. Run benchmarks separately from builds, tests and encoders. `scripts/chrome-gpu.mjs` reads DXGI adapters through built-in PowerShell/.NET and selects the RTX 5060 when present for the temporary test profile; it does not change user graphics settings. See `playwright.config.ts` before running on another platform. Benchmark commands and their required builds are documented in `README.md`.
 
 When selecting a toolchain, document exact dependency installation, local execution, build, and test commands in `README.md`. Commit the appropriate dependency manifest and lockfile, and update this guide with verified commands.
 

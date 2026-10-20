@@ -8,7 +8,7 @@ The engine audit is tracked as [prioritized GitHub issues](https://github.com/Ho
 
 **Water:** open **Water**, enable **Show ocean**, and set **Water height (m)** for an ocean at sea level, independent ponds/lakes, adjustable swells, depth-dependent clarity, reflections and detailed shoreline foam. See the [water guide and current limits](docs/WATER.md) and [complete system design](docs/WATER-DESIGN.md).
 
-**Rendering:** the editor, import previews, `/runtime.html`, and `/world.html` use native **WebGPU**. Terrain, vegetation, shadows, atmosphere, water and PBR baking use node shaders. Startup rejects a WebGL fallback and explains recovery if WebGPU is unavailable. Existing project files need no conversion. The first optimization pass raises measured native traversal FPS from 0.147 to 35.72 on the RTX 5060 at 1080p; frame-time spikes still miss steady 30 FPS. See [performance evidence](docs/PERFORMANCE.md) and [WebGPU integration and validation](docs/WEBGPU.md). That isolated measurement predates the final shadow-cleanup correction; its final-code retest was contended by iRacing, so a clean repeat remains pending.
+**Rendering:** the editor, import previews, `/runtime.html`, and `/world.html` use native **WebGPU**. Terrain, vegetation, shadows, atmosphere, water and PBR baking use node shaders. Startup rejects a WebGL fallback and explains recovery if WebGPU is unavailable. Existing project files need no conversion. Worker preparation, shared shader graphs and distant draw clustering improve the latest RTX 5060/1080p resident forest sample from 22.9 to 29.1 submitted FPS; its 50 ms frame p95 still misses steady 30 FPS. Optional canopy shade/bounce improves spatial indirect lighting. See [performance evidence and limits](docs/PERFORMANCE.md) and [WebGPU integration](docs/WEBGPU.md).
 
 ## Run locally
 
@@ -51,7 +51,7 @@ npm run test:browser  # Browser integration checks against the production build
 npm run format        # Format source, tests, and documentation
 ```
 
-For timing without screenshots, run `npm run benchmark:world -- --no-captures --output=test-results/world-timing.json`. The output directory must already exist (the harness creates `test-results`). Reports include wall-clock submission FPS and frame-time percentiles; close other GPU workloads and run benchmarks sequentially. See [performance evidence and measurement limits](docs/PERFORMANCE.md).
+For timing without screenshots, run `npm run benchmark:world -- --no-captures --output=test-results/world-timing.json`. Add `--steady` for fully loaded/warmed forest, open and coast windows instead of traversal. The output directory must already exist (the harness creates `test-results`). Reports include wall-clock submission FPS and frame-time percentiles; close other GPU workloads and run benchmarks sequentially. Shader prewarming is opt-in at `/world.html?prewarm`; it can delay visible tile admission. See [performance evidence and measurement limits](docs/PERFORMANCE.md).
 
 `npm run benchmark:foliage-motion` starts its own preview on port 5197 (`-- --port=5198` overrides it), renders 400 checked-in CC0 ferns with LODs, shadows, water capture, GTAO and temporal stabilization, and writes `.qa/foliage-motion-benchmark.json`. To compare two builds, first copy the baseline `lib/` outside the generated build directory, rebuild, then pass `-- --baseline-lib=.qa/baseline/lib --output=.qa/motion-comparison.json`. Optional `--density=0.25` retains 25% of the distant ferns; the default is full density. It runs baseline/current/current/baseline sequentially. Install the local video helper with `npx playwright install ffmpeg` before using `--capture`; capture runs record separate videos and are excluded from performance evidence. See [scope and measurements](docs/PERFORMANCE.md#foliage-motion-history--19-october-2026).
 
@@ -68,6 +68,10 @@ Run the navigation checks with `npm run test:browser -- tests/browser/navigation
 ESLint checks `src/` using the recommended JavaScript and TypeScript rules; formatting stays with Prettier. Test/build-script lint coverage is separate remaining work. The pinned lint setup uses `npm install --save-dev --save-exact eslint@10.13.0 @eslint/js@10.0.1 typescript-eslint@8.71.2 globals@17.13.0`; ordinary setup remains `npm ci`. Configuration follows the [typescript-eslint flat-config guide](https://typescript-eslint.io/getting-started/).
 
 Three.js is pinned to 0.186.1, with `@types/three` 0.186.0 and `@webgpu/types` 0.1.64. The upgrade command is `npm install --save-dev --save-exact three@0.186.1 @types/three@0.186.0 @webgpu/types@0.1.64`; normal setup uses the committed lockfile with `npm ci`. The runtime peer requires Three ^0.186.1. This includes the WGSL array-texture gradient fix required by layered terrain.
+
+After building, `npm run benchmark:tropical-water -- --project="C:/path/to/scene.terrain" --output=.qa/tropical-water.json --seconds=10` compares Standard, spectral Balanced and spectral High at 1080p in forward/reverse order, then measures optional canopy lighting. Add `--compute-only` for a shorter coastal probe with direct FFT/foam GPU timestamps; its FPS is instrumented and separate from full-scene acceptance. It loads the external document read-only and records its hash. The default path is the local Tropical Grove content project, which is not distributed with this repository. No artwork is copied into the source tree. The benchmark requires the RTX 5060 and observes one GPU frame fence before the next animation frame, matching the editor's bounded queue. See [performance scope](docs/PERFORMANCE.md).
+
+On Windows, `npm run test:browser`, world benchmarking and tropical water benchmarking hold a temporary system/display execution request and release it at exit. This avoids Modern Standby interrupting unattended GPU checks; it does not edit saved Windows power settings. Benchmark reports include AC/battery state. Compare runs on the same power source and run builds, asset encoders, browser tests and benchmarks separately.
 
 ## Prepared runtime assets
 
@@ -126,6 +130,8 @@ For outdoor lighting, start with **Light → Sun → Lighting preset → Natural
 
 After building, run the rendering/recovery checks with `npm run test:browser -- tests/browser/cascaded-sun.spec.mjs tests/browser/ambient-occlusion.spec.mjs tests/browser/depth-prepass.spec.mjs tests/browser/temporal-aa.spec.mjs tests/browser/forest-lighting-recovery.spec.mjs tests/browser/foliage-shading.spec.mjs`. The external Pine Forest and Namaqualand studies keep their artwork and project-specific builders outside the codebase; see [content projects](docs/CONTENT-PROJECTS.md).
 
+Optional **Light → Shadows → Canopy shade & bounce** approximates off-screen tree cover and ground-colored indirect light. It is off for existing projects, bakes after settled edits, and follows the changing sun. See [its rendering and approximation limits](docs/ENVIRONMENT.md).
+
 Native foliage now supplies previous wind/contact deformation and ID-matched instance transforms to temporal stabilization. Fresh and cross-fading cutouts reduce stale history; camera projection/aspect and histories survive pause, resize and explicit teleport resets. No new authoring option or project migration is needed. See [foliage motion behavior and limits](docs/FOLIAGE.md#motion-and-temporal-stabilization).
 
 To profile one of those external scenes, run `npm run build:runtime`, then `node scripts/benchmark-forest.mjs "C:/path/to/content-project/exports/scene.terrain" .qa/forest-render.json`. The script uses the `original` or `trail` viewpoint in the parent content project's `content-manifest.json`, launches its own local server and Chrome profile, requires the RTX 5060, and records 1080p GPU pass timings after warm-up. An optional third argument selects a preserved runtime build inside this workspace for comparison. See [measurement scope](docs/PERFORMANCE.md#forest-rendering-on-the-rtx-5060). The separate walk benchmark above measures actual editor input delivery and GPU completion.
@@ -149,7 +155,7 @@ The viewport screenshot button downloads a PNG. Asset inputs accept static GLB (
 - `src/editor/` and `src/main.ts`: persistence and authoring interface.
 - `tests/`: deterministic core tests, actual physics simulations, and browser integration tests.
 
-The package exports `terrain-tools` (pure core), `terrain-tools/three` (rendering/runtime), and `terrain-tools/rapier` (optional physics). Three.js r180 is a shared peer; Rapier is an optional dependency and only loaded on request. See [runtime integration](docs/RUNTIME.md) and [architecture](docs/ARCHITECTURE.md).
+The package exports `terrain-tools` (pure core), `terrain-tools/three` (rendering/runtime), and `terrain-tools/rapier` (optional physics). Three.js r186 is a shared peer; Rapier is an optional dependency and only loaded on request. See [runtime integration](docs/RUNTIME.md) and [architecture](docs/ARCHITECTURE.md).
 
 ## Connect another physics engine
 
