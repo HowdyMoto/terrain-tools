@@ -5,6 +5,7 @@ import { chromeGPUArgs } from './chrome-gpu.mjs';
 import { benchmarkPower } from './benchmark-power.mjs';
 const quick = process.argv.includes('--quick');
 const steady = process.argv.includes('--steady');
+const nearClusters = process.argv.includes('--near-clusters');
 const captures = !process.argv.includes('--no-captures');
 const output =
   process.argv.find((a) => a.startsWith('--output='))?.slice(9) ??
@@ -78,10 +79,11 @@ try {
   });
   const loadStarted = performance.now();
   console.log('Loading the production world.');
+  const parameters = new URLSearchParams();
+  if (process.argv.includes('--full-detail')) parameters.set('full-detail', '');
+  if (nearClusters) parameters.set('near-clusters', '');
   await page.goto(
-    url +
-      '/world.html' +
-      (process.argv.includes('--full-detail') ? '?full-detail' : ''),
+    url + '/world.html' + (parameters.size ? '?' + parameters : ''),
   );
   await page.waitForFunction(() => window.worldExample, undefined, {
     timeout: 180000,
@@ -94,6 +96,7 @@ try {
       .map((script) => script.src)
       .filter(Boolean),
     prewarm: !!window.worldExample.world.options.prepareGPU,
+    nearClusters: !!window.worldExample.world.options.foliageClusters?.nearby,
     stats: window.worldExample.world.stats,
     failures: [...window.worldExample.world.streaming.errors].map(([k, e]) => [
       k,
@@ -209,6 +212,7 @@ try {
       tileSize: 250,
       maxResidentTiles: 12,
       mode: steady ? 'resident-views' : 'streaming-traversal',
+      nearClusters: initial.nearClusters,
       laps,
       secondsPerView: seconds,
       proceduralTileSource: true,

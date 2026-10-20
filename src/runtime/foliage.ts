@@ -11,6 +11,7 @@ import {
 import { configureFoliageFade, FOLIAGE_FADE_ATTRIBUTE } from './foliage-fade';
 import { FoliageInteraction } from '../core/interaction';
 import { FoliageDrawClusters } from './foliage-clusters';
+import type { FoliageClusterOptions } from './foliage-clusters';
 import type { GroundContact } from '../core/interaction';
 import type {
   FoliageInstance,
@@ -23,7 +24,7 @@ import { registerFoliageBatch } from '../render/native-foliage';
 import { PreparedResource } from '../render/resources';
 export type PreparedFoliage = PreparedResource<TerrainFoliage>;
 export interface FoliageRenderOptions {
-  distantClusters?: boolean;
+  distantClusters?: boolean | FoliageClusterOptions;
 }
 import { configureWind, windUniforms, shadowMaterials } from './wind';
 import {
@@ -501,6 +502,9 @@ export class TerrainFoliage extends THREE.Group {
             this,
             this.uniforms,
             (resource) => this.own(resource),
+            typeof this.options.distantClusters === 'object'
+              ? this.options.distantClusters
+              : undefined,
           );
     this.viewDirty = true;
     this.lastCamera.set(Infinity, Infinity, Infinity);
@@ -600,6 +604,7 @@ export class TerrainFoliage extends THREE.Group {
         touched.add(tile);
       }
     }
+    for (const tile of touched) this.clusters?.invalidate(tile.batches);
     return touched;
   }
   private fitBounds(tile: Tile) {
@@ -625,6 +630,7 @@ export class TerrainFoliage extends THREE.Group {
       }
       batch.mesh.boundingSphere = bound;
     }
+    this.clusters?.invalidate(tile.batches);
   }
   reanchor(region: TerrainRegion) {
     const pad = (2 * this.project.size) / this.project.resolution;
@@ -763,6 +769,7 @@ export class TerrainFoliage extends THREE.Group {
           queueUpload(batch.fade!, slot * 3, 2);
         }
       });
+      this.clusters?.invalidate(tile.batches);
       if (completed) {
         this.pack(tile);
         changed = true;
@@ -819,7 +826,7 @@ export class TerrainFoliage extends THREE.Group {
         }
       });
       mesh.count = sources.length;
-      mesh.visible = mesh.count > 0;
+      mesh.visible = !mesh.userData.clusteredSource && mesh.count > 0;
       if (repack) {
         mesh.userData.instanceIds = sources.map((i) => tile.instances[i].id);
         mesh.instanceMatrix.clearUpdateRanges();
@@ -837,6 +844,7 @@ export class TerrainFoliage extends THREE.Group {
         batch.contact.needsUpdate = true;
       }
     }
+    this.clusters?.invalidate(tile.batches);
   }
   /** Full primary meshes, for authoring comparison; never changes project instances. */
   resetView() {
@@ -917,6 +925,7 @@ export class TerrainFoliage extends THREE.Group {
             ...original.userData,
             instanceIds: tile.instances.map((instance) => instance.id),
           };
+          delete mesh.userData.clusteredSource;
           group.add(mesh);
         }
     return group;

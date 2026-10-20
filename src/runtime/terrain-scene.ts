@@ -81,7 +81,8 @@ export class TerrainScene extends THREE.Group {
       decoder?: import('../render/model-loader').ModelDecoder;
       preparedTerrain?: PreparedTerrainData;
       yieldPreparation?: (signal: AbortSignal) => Promise<void>;
-      foliageClusters?: boolean;
+      foliageClusters?:
+        boolean | import('./foliage-clusters').FoliageClusterOptions;
     } = {},
   ) {
     super();

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { runtimePackagePage } from './runtime-package-page.mjs';
 
-test('CC0 distant tree clusters preserve wind, cutout shadows and pixels across sun directions', async ({
+test('CC0 near and distant tree clusters preserve wind, cutout shadows and pixels across sun directions', async ({
   page,
 }, info) => {
   test.setTimeout(180000);
@@ -79,7 +79,9 @@ test('CC0 distant tree clusters preserve wind, cutout shadows and pixels across 
       runs = [],
       comparisons = [];
     for (const clustered of [false, true]) {
-      const terrain = new TerrainScene(p, { foliageClusters: clustered });
+      const terrain = new TerrainScene(p, {
+        foliageClusters: clustered ? { nearby: true } : false,
+      });
       await terrain.load();
       const scene = new THREE.Scene();
       scene.add(terrain);
@@ -92,9 +94,18 @@ test('CC0 distant tree clusters preserve wind, cutout shadows and pixels across 
       settings.fogEnabled = false;
       await environment.load(settings, p);
       const stats = [];
-      for (const [index, azimuth] of [20, 150].entries()) {
+      for (const [index, view] of [
+        { z: 310, azimuth: 20 },
+        { z: 310, azimuth: 150 },
+        { z: 90, azimuth: 20 },
+        { z: 90, azimuth: 150 },
+      ].entries()) {
+        camera.position.set(0, 8, view.z);
+        camera.lookAt(0, 7, 0);
+        const azimuth = view.azimuth;
         environment.set({ ...settings, sunAzimuth: azimuth }, p);
-        for (let frame = 0; frame < 10; frame++) {
+        // Capture the near views during the primary/intermediate cross-fade.
+        for (let frame = 0; frame < (view.z === 90 ? 4 : 10); frame++) {
           await new Promise(requestAnimationFrame);
           terrain.update(1 / 30, [], camera);
           environment.updateCamera(camera);

@@ -94,7 +94,11 @@ let warmup = Promise.resolve();
 const world = new TerrainWorldScene(referenceWorld, {
   collision: createWorldCollisionSource(physics.world),
   assets,
-  foliageClusters: !new URLSearchParams(location.search).has('unclustered'),
+  foliageClusters: new URLSearchParams(location.search).has('unclustered')
+    ? false
+    : new URLSearchParams(location.search).has('near-clusters')
+      ? { nearby: true }
+      : true,
   terrainPreparation: new URLSearchParams(location.search).has('main-thread')
     ? 'main'
     : 'worker',

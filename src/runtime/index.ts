@@ -72,3 +72,4 @@ export async function loadTerrain(
   }
 }
 export type { FoliageViewStats } from './foliage';
+export type { FoliageClusterOptions } from './foliage-clusters';

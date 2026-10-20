@@ -33,7 +33,8 @@ export interface WorldSceneOptions extends WorldStreamingOptions {
   materials?: boolean;
   /** Browser workers prepare immutable grid/normals/LOD data; main-thread fallback remains available. */
   terrainPreparation?: 'worker' | 'main';
-  foliageClusters?: boolean;
+  foliageClusters?:
+    boolean | import('./foliage-clusters').FoliageClusterOptions;
   /** Optional staged shader/upload warmup. Resolves before residency/collision activation. */
   prepareGPU?: (terrain: TerrainScene, signal: AbortSignal) => Promise<void>;
 }

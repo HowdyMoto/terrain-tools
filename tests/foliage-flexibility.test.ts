@@ -240,6 +240,7 @@ describe('foliage flexibility masks', () => {
     const batches = scene.foliage.children as THREE.InstancedMesh[];
     const trunks = batches.filter(
       (mesh) =>
+        !mesh.userData.clustered &&
         mesh.userData.modelId === model.id &&
         mesh.geometry.getAttribute('position').count ===
           batches[0].geometry.getAttribute('position').count,

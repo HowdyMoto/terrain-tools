@@ -1,8 +1,11 @@
 import { readFile } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
 /** Test the built public runtime without adding hooks to the editor. */
-export async function runtimePackagePage(page) {
+export async function runtimePackagePage(page, runtimeDirectory = 'lib') {
   const root = resolve('.');
+  const runtimeRoot = resolve(runtimeDirectory);
+  if (!runtimeRoot.startsWith(root + sep))
+    throw new Error('Runtime directory must be inside the workspace.');
   await page.route('**/__runtime_test/**', async (route) => {
     const path = new URL(route.request().url()).pathname.slice(
       '/__runtime_test/'.length,
@@ -13,7 +16,7 @@ export async function runtimePackagePage(page) {
         body: '<!doctype html><title>Foliage deformation verification</title><script type="importmap">{"imports":{"three":"/__runtime_test/three/build/three.module.js","three/webgpu":"/__runtime_test/three/build/three.webgpu.js","three/tsl":"/__runtime_test/three/build/three.tsl.js","three/":"/__runtime_test/three/","three/addons/":"/__runtime_test/three/examples/jsm/"}}</script>',
       });
     const local = path.startsWith('lib/')
-      ? resolve(root, path)
+      ? resolve(runtimeRoot, path.slice(4))
       : path.startsWith('three/')
         ? resolve(root, 'node_modules', path)
         : '';

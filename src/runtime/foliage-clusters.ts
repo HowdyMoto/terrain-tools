@@ -13,6 +13,11 @@ export interface FoliageClusterSource {
   contact?: THREE.InstancedBufferAttribute;
   fade?: THREE.InstancedBufferAttribute;
 }
+export interface FoliageClusterOptions {
+  /** Also group primary/intermediate draws in 64 m cells. Extra source buffers
+   * remain resident and larger cells reduce culling precision. Default: false. */
+  nearby?: boolean;
+}
 interface Cluster {
   sources: FoliageClusterSource[];
   mesh: THREE.InstancedMesh;
@@ -21,16 +26,19 @@ interface Cluster {
   versions: number[];
   bounds: (THREE.Sphere | null)[];
 }
-/** Combine the authored distant LODs into 128 m draw clusters. Geometry, IDs,
- * wind, complementary fade coverage and shadow materials remain unchanged.
- * Near levels keep their 32 m batches; this is batching, not an impostor bake. */
+/** Combine compatible distant opaque draws into 128 m cells, optionally using
+ * 64 m cells for primary/intermediate levels too.
+ * Geometry, IDs, wind, fade coverage and shadow materials remain unchanged.
+ * Sources remain available for authoring; this is batching, not an impostor bake. */
 export class FoliageDrawClusters {
-  private clusters: Cluster[] = [];
+  private bySource = new WeakMap<THREE.InstancedMesh, Cluster>();
+  private dirty = new Set<Cluster>();
   constructor(
     sources: FoliageClusterSource[],
     parent: THREE.Group,
     wind: WindUniforms,
     own: <T extends { dispose(): void }>(resource: T) => T,
+    options: FoliageClusterOptions = {},
   ) {
     const materials = new Map<
       THREE.Material | THREE.Material[],
@@ -38,10 +46,23 @@ export class FoliageDrawClusters {
     >();
     for (const source of sources) {
       const mesh = source.mesh;
+      if (!mesh.instanceMatrix.count) continue;
       if (
-        mesh.userData.lodLevel < 2 ||
-        mesh.userData.lodDistance < 96 ||
-        !mesh.instanceMatrix.count
+        !options.nearby &&
+        (mesh.userData.lodLevel < 2 || mesh.userData.lodDistance < 96)
+      )
+        continue;
+      const surfaces = Array.isArray(mesh.material)
+        ? mesh.material
+        : [mesh.material];
+      // Preserve separate object sorting for blended and refractive materials.
+      if (
+        surfaces.some(
+          (surface) =>
+            surface.transparent ||
+            (surface instanceof THREE.MeshPhysicalMaterial &&
+              surface.transmission > 0),
+        )
       )
         continue;
       let geometries = materials.get(mesh.material);
@@ -49,7 +70,16 @@ export class FoliageDrawClusters {
       let cells = geometries.get(source.baseGeometry);
       if (!cells) geometries.set(source.baseGeometry, (cells = new Map()));
       const center = mesh.boundingSphere!.center;
-      const key = Math.floor(center.x / 128) + ',' + Math.floor(center.z / 128);
+      const cellSize =
+        mesh.userData.lodLevel >= 2 && mesh.userData.lodDistance >= 96
+          ? 128
+          : 64;
+      const key =
+        cellSize +
+        ':' +
+        Math.floor(center.x / cellSize) +
+        ',' +
+        Math.floor(center.z / cellSize);
       const group = cells.get(key) ?? [];
       group.push(source);
       cells.set(key, group);
@@ -91,7 +121,7 @@ export class FoliageDrawClusters {
           mesh.customDepthMaterial = first.mesh.customDepthMaterial;
           mesh.customDistanceMaterial = first.mesh.customDistanceMaterial;
           mesh.castShadow = mesh.receiveShadow = true;
-          mesh.name = first.mesh.name + ' distant cluster';
+          mesh.name = first.mesh.name + ' draw cluster';
           mesh.userData = {
             ...first.mesh.userData,
             clustered: true,
@@ -102,19 +132,29 @@ export class FoliageDrawClusters {
           parent.add(mesh);
           for (const source of group)
             source.mesh.userData.clusteredSource = true;
-          this.clusters.push({
+          const cluster: Cluster = {
             sources: group,
             mesh,
             contact,
             fade,
             versions: [],
             bounds: [],
-          });
+          };
+          this.dirty.add(cluster);
+          for (const source of group) this.bySource.set(source.mesh, cluster);
         }
     this.update();
   }
+  /** Source changes are owned by TerrainFoliage. Wind-only frames need no scan
+   * of inactive authoring buffers, nor any packed-instance upload. */
+  invalidate(sources: FoliageClusterSource[]) {
+    for (const source of sources) {
+      const cluster = this.bySource.get(source.mesh);
+      if (cluster) this.dirty.add(cluster);
+    }
+  }
   update() {
-    for (const cluster of this.clusters) {
+    for (const cluster of this.dirty) {
       let matricesChanged = false,
         contactsChanged = false,
         fadesChanged = false,
@@ -189,5 +229,6 @@ export class FoliageDrawClusters {
         attribute.needsUpdate = true;
       }
     }
+    this.dirty.clear();
   }
 }

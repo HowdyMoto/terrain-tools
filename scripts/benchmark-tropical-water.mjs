@@ -18,6 +18,16 @@ const projectPath = option(
 );
 const output = option('output', 'test-results/tropical-water.json');
 const computeOnly = process.argv.includes('--compute-only');
+const runtimeDirectory = option('runtime-lib', 'lib');
+const skipCanopy = process.argv.includes('--no-canopy');
+const nearClusters = process.argv.includes('--near-clusters');
+const variants = option('variants', 'standard,balanced,high').split(',');
+if (
+  !variants.length ||
+  variants.some((value) => !['standard', 'balanced', 'high'].includes(value)) ||
+  new Set(variants).size !== variants.length
+)
+  throw new Error('Choose distinct variants from standard,balanced,high.');
 const seconds = Number(option('seconds', computeOnly ? '3' : '10'));
 if (!Number.isFinite(seconds) || seconds < 1 || seconds > 120)
   throw new Error('Invalid seconds');
@@ -101,9 +111,9 @@ try {
   await page.route('**/__scene.terrain', (route) =>
     route.fulfill({ contentType: 'application/octet-stream', body: bytes }),
   );
-  await runtimePackagePage(page);
+  await runtimePackagePage(page, runtimeDirectory);
   const result = await page.evaluate(
-    async ({ seconds, computeOnly }) => {
+    async ({ seconds, computeOnly, skipCanopy, variants, nearClusters }) => {
       const THREE = await import('three');
       const core = await import('/__runtime_test/lib/core.js');
       const {
@@ -133,7 +143,9 @@ try {
       p.view.water = true;
       const heights = Array.from(p.heights).sort((a, b) => a - b);
       p.water.seaLevel = heights[Math.floor(heights.length * 0.35)] + 0.15;
-      const terrain = new TerrainScene(p);
+      const terrain = new TerrainScene(p, {
+        foliageClusters: nearClusters ? { nearby: true } : true,
+      });
       await terrain.load();
       const scene = new THREE.Scene();
       scene.add(terrain);
@@ -166,13 +178,13 @@ try {
       const runs = [];
       // Reverse the second pass to expose warm/order effects. Same optics and camera.
       const orders = [
-        ['forward', ['standard', 'balanced', 'high']],
-        ['reverse', ['high', 'balanced', 'standard']],
+        ['forward', variants],
+        ['reverse', [...variants].reverse()],
       ];
-      for (const [round, variants] of computeOnly
+      for (const [round, selectedVariants] of computeOnly
         ? orders.slice(0, 1)
         : orders) {
-        for (const variant of variants) {
+        for (const variant of selectedVariants) {
           p.water.ocean.renderer =
             variant === 'standard' ? 'standard' : 'web-ocean';
           p.water.ocean.spectral = {
@@ -268,8 +280,8 @@ try {
       let canopyBakeMs = 0,
         canopyBytes = 0;
       const canopyFrames = [];
-      if (!computeOnly) {
-        // Same final Standard-water scene with canopy field on/off, preserving all authored assets.
+      if (!computeOnly && !skipCanopy) {
+        // Same final water scene with canopy field on/off, preserving all authored assets.
         p.environment.canopyLighting = {
           enabled: true,
           strength: 0.65,
@@ -364,7 +376,7 @@ try {
         validation,
       };
     },
-    { seconds, computeOnly },
+    { seconds, computeOnly, skipCanopy, variants, nearClusters },
   );
   const report = {
     date: new Date().toISOString(),
@@ -380,15 +392,18 @@ try {
         windowsHide: true,
       }).trim(),
       runtimeSHA256: createHash('sha256')
-        .update(await readFile('lib/runtime.js'))
+        .update(await readFile(resolve(runtimeDirectory, 'runtime.js')))
         .digest('hex'),
       coreSHA256: createHash('sha256')
-        .update(await readFile('lib/core.js'))
+        .update(await readFile(resolve(runtimeDirectory, 'core.js')))
         .digest('hex'),
     },
     viewport: [1920, 1080],
     secondsPerView: seconds,
     computeOnly,
+    variants,
+    canopyMeasurement: !computeOnly && !skipCanopy,
+    nearClusters,
     note: 'At most one unfinished GPU frame, matching editor admission: each iteration observes the queue fence before its next RAF. FPS counts completed work, not monitor scanout. CPU timing excludes fence waits. Native render timestamp excludes FFT compute passes; frame intervals include integrated work. Driver memory is not measured. External project is loaded read-only; settings are temporary.',
     ...result,
     errors,
