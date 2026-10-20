@@ -91,6 +91,11 @@ for (const profile of ['', '?impostors&wide-clusters']) {
           backend: api.renderer.backend.isWebGPUBackend,
           adapter: api.adapter,
           stats: api.world.stats,
+          overview: api.overview.stats,
+          overviewFailures: [...api.overview.streaming.errors].map(
+            ([key, e]) => [key, String(e)],
+          ),
+          viewFar: api.camera.far,
           generatedTrees: api.world.options.foliageImpostors?.size ?? 0,
           nearbyCellSize: api.world.options.foliageClusters?.nearbyCellSize,
           failures: [...api.world.streaming.errors].map(([id, e]) => [
@@ -116,6 +121,13 @@ for (const profile of ['', '?impostors&wide-clusters']) {
       expect(result.generatedTrees).toBe(profile ? 1 : 0);
       if (profile) expect(result.nearbyCellSize).toBe(128);
       expect(result.failures).toEqual([]);
+      expect(result.overviewFailures).toEqual([]);
+      expect(result.overview.residentTiles).toBe(64);
+      expect(result.overview.visibleTiles + result.stats.residentTiles).toBe(
+        64,
+      );
+      expect(result.overview.gpuBytes).toBeLessThan(4 * 1024 ** 2);
+      expect(result.viewFar).toBeGreaterThanOrEqual(3000);
       expect(result.validation).toEqual([]);
       expect(result.stats.residentTiles).toBeGreaterThan(0);
       expect(result.stats.residentTiles).toBeLessThanOrEqual(12);

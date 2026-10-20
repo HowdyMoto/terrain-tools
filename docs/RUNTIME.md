@@ -112,6 +112,41 @@ Tiles are immutable while resident; unload/reload after edits. Hosts can transla
 
 Streamed oceans use finite per-cell patches with a shared world wave phase/time and no internal boundary walls. The current ocean-connectivity flood remains tile-local: author coast tiles accordingly. Arbitrary connected basins spanning multiple tiles need a world-wide hydrology/preparation layer; this example does not establish that capability.
 
+## Distant world coverage
+
+Detailed residency and view distance are separate. The example retains its 340 m / 12-cell detailed terrain, foliage and collision budget, while `TerrainWorldOverview` renders coarse height/paint/material data over the full authored 2 × 2 km extent. It uses a 3 km horizontal selection radius, a 4 km camera far plane and fog from 1.2 to 3.5 km. It does not create terrain outside the manifest. A larger world needs more authored tiles and a suitable overview tile/byte budget.
+
+```ts
+import { TerrainWorldOverview } from 'terrain-tools/three';
+
+const distant = new TerrainWorldOverview(manifest, {
+  assets, // share the prepared material library with detailed tiles
+  radius: 3000,
+  maxResidentTiles: 512,
+  cpuByteLimit: 32 * 1024 ** 2,
+  gpuByteLimit: 32 * 1024 ** 2,
+  load: async (tile, signal) =>
+    readHeightPaintAndMaterials(tile.source, signal),
+});
+scene.add(distant); // same parent transform as worldScene
+
+worldScene.update(camera, deltaSeconds, drawingBufferHeight);
+distant.update(camera, worldScene.streaming.residentKeys);
+// At shutdown, before disposing borrowed WorldAssets:
+distant.dispose();
+await distant.whenIdle();
+```
+
+The loader returns a `TerrainProject` with the same authoritative height grid, paint, material definitions and texture resolution as its detailed counterpart. Serve a height/material-only payload to avoid transferring unused embedded models. Overview preparation never decodes models or creates foliage, collision or water. Shared prepared texture arrays use the existing asset leases. Source documents are not modified or retained after preparation. GPU/CPU limits account for retained overview geometry; shared textures have their separate `WorldAssets` budget, and temporary loader documents/driver overhead are not included.
+
+The default interior grid targets 16 coarse cells per tile; every original outer boundary vertex remains, joined with triangle fans. Matching authored edge samples therefore meet detailed tiles without vertical skirts or coplanar overlap. Input edges/material palettes must match; the overview does not repair incompatible source grids. Holes and prop cutouts retain full topology conservatively and reject preparation when that fallback exceeds a single-cell geometry budget. Coarse meshes receive light/shadows but do not cast inaccurate distant shadows.
+
+Pass only admitted detailed keys to `update()`. Their overview meshes stay resident but hidden, then restore when those keys leave the detailed tier. `stats` reports separate residency, visible cells, triangles and bytes; `streaming.errors`/`retry()` and cancellation follow the existing streamer contract. Near cells retain their authoritative `heightAt()` and physics behavior. Distant foliage/forest canopy HLOD is not provided by this terrain layer.
+
+The reference example also prepares one coarse, bounded Standard ocean over its authored coastal cells. Its index buffer omits detailed cells, preserving their water and shore effects without overlapping surfaces. It shares world wave time/phase, but its 64-cell bathymetry is a distant approximation, not a new water-authoring or world-wide hydrology system. Reference telemetry includes the separate distant terrain and ocean triangle counts. Earlier FPS reports predate this additional coverage and are not a performance result for the new view range.
+
+Validation: 368 units, strict build/types, lint and four targeted RTX 5060 Chrome cases pass. The distance fixture actually renders a cell 2.5 km from the camera, verifies its height and detailed-cell handoff, and releases all tracked GPU allocations. Both prepared world profiles cover all 64 authored cells while keeping nearby residency at 12 or fewer; moving/aerial and stationary-tree checks remain active. Geometry tests cover full shared edges, winding, paint, holes, cancellation, budget rejection and retry. See [coverage/resource record](benchmarks/world-distance-2026-10-20.json), [emulated previous cutoff](benchmarks/world-distance-before-2026-10-20.png) and [extended view](benchmarks/world-distance-after-2026-10-20.png). This is not a full browser/device or sustained FPS validation.
+
 ## Prepared runtime assets
 
 The sample ground uses generated albedo images, not an authored PBR material set. Its analytic normal/height arrays are compression-test fixtures and have zero shading strength in the bundled palettes. Applying those periodic fixtures to the landscape creates a waffle pattern that becomes especially obvious from the air. Imported PBR materials retain their authored normal and height controls.

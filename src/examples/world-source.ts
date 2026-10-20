@@ -24,7 +24,7 @@ export function referenceHeight(x: number, z: number) {
   );
 }
 /** Deterministic tile authoring, run in a worker; no world-sized terrain arrays. */
-export function referenceTile(x: number, z: number) {
+export function referenceTile(x: number, z: number, foliage = true) {
   const p = createProject(8, 250, 817 + x + z * 8),
     n = 128;
   p.name = `Reference ${x},${z}`;
@@ -49,6 +49,7 @@ export function referenceTile(x: number, z: number) {
       bodies: [],
       reflections: true,
     };
+  if (!foliage) return p;
   const model = (id: string, fern: boolean) => ({
     id,
     model: id,

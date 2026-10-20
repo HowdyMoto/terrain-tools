@@ -3,6 +3,7 @@ import { gpuDevice } from '../render/renderer';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import {
   TerrainWorldScene,
+  TerrainWorldOverview,
   WorldAssets,
   RuntimeMaterialLibrary,
   createModelDecoder,
@@ -14,9 +15,11 @@ import {
 } from '../runtime';
 import type { FoliageImpostor } from '../runtime';
 import type { TerrainProject } from '../core/types';
-import { referenceWorld, referenceHeight } from './world-source';
+import { referenceWorld, referenceHeight, referenceTile } from './world-source';
 import { createProject } from '../core/terrain';
 import { environmentPreset } from '../core/environment';
+import { waterPreset } from '../core/water';
+import { TerrainWater } from '../runtime/water';
 
 const renderer = await createTerrainRenderer({ timestamps: true });
 renderer.setPixelRatio(1);
@@ -25,7 +28,7 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
 document.body.append(renderer.domElement);
 const scene = new THREE.Scene(),
-  camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.2, 900);
+  camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.2, 4000);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = false;
 controls.maxPolarAngle = Math.PI * 0.49;
@@ -210,13 +213,101 @@ const world = new TerrainWorldScene(referenceWorld, {
   },
 });
 scene.add(world);
+const overview = new TerrainWorldOverview(referenceWorld, {
+  assets,
+  radius: 3000,
+  maxResidentTiles: 64,
+  maxConcurrentLoads: 2,
+  cpuByteLimit: 32 * 1024 ** 2,
+  gpuByteLimit: 32 * 1024 ** 2,
+  load: async (tile, signal) => {
+    signal.throwIfAborted();
+    const p = referenceTile(tile.x, tile.z, false);
+    p.materials = materials.palette(tile.x < 4 ? [0, 1, 2, 3] : [4, 5, 6, 7]);
+    return p;
+  },
+});
+scene.add(overview);
 const environment = new TerrainEnvironment(scene, renderer),
   proxy = createProject(8, 2000);
 const look = environmentPreset('natural');
-look.fogNear = 250;
-look.fogFar = 650;
+look.fogNear = 1200;
+look.fogFar = 3500;
 look.shadowDistance = 160;
 environment.set(look, proxy);
+// One inexpensive distant ocean uses the existing water optics and world wave
+// phase. Exclude detailed cells from its index buffer, avoiding overlapping water.
+const distantOcean = new TerrainWater();
+const oceanProject = createProject(64, 2000);
+for (let z = 0; z <= 64; z++)
+  for (let x = 0; x <= 64; x++)
+    oceanProject.heights[z * 65 + x] = referenceHeight(
+      (x * 2000) / 64,
+      (z * 2000) / 64,
+    );
+oceanProject.water = {
+  schemaVersion: 1,
+  seaLevel: 0,
+  ocean: { enabled: true, surface: waterPreset('tropical') },
+  bodies: [],
+  reflections: true,
+};
+oceanProject.view.water = true;
+const preparedOcean = distantOcean.prepare(oceanProject);
+try {
+  distantOcean.apply(preparedOcean);
+} finally {
+  preparedOcean.dispose();
+}
+distantOcean.position.set(1000, 0, 1000);
+distantOcean.setWorldTile(1000, 1000);
+scene.add(distantOcean);
+const oceanGeometry = distantOcean.surfaces[0].geometry;
+const oceanIndices = (
+  oceanGeometry.index!.array as Uint32Array | Uint16Array
+).slice();
+const oceanCells = new Uint16Array(oceanIndices.length / 6);
+const oceanPositions = oceanGeometry.getAttribute('position');
+for (let i = 0; i < oceanIndices.length; i += 6) {
+  const x =
+    (oceanPositions.getX(oceanIndices[i]) +
+      oceanPositions.getX(oceanIndices[i + 1]) +
+      oceanPositions.getX(oceanIndices[i + 2])) /
+      3 +
+    1000;
+  const z =
+    (oceanPositions.getZ(oceanIndices[i]) +
+      oceanPositions.getZ(oceanIndices[i + 1]) +
+      oceanPositions.getZ(oceanIndices[i + 2])) /
+      3 +
+    1000;
+  oceanCells[i / 6] = Math.floor(z / 250) * 8 + Math.floor(x / 250);
+}
+oceanGeometry.index!.setUsage(THREE.DynamicDrawUsage);
+let oceanCoverage: string | undefined;
+let oceanTime = 0;
+function updateOverview() {
+  const keys = world.streaming.residentKeys;
+  overview.update(camera, keys);
+  const coverage = keys.join(';');
+  if (coverage === oceanCoverage) return;
+  oceanCoverage = coverage;
+  const covered = new Set(
+    keys.map((key) => {
+      const [x, z] = key.split(',').map(Number);
+      return z * 8 + x;
+    }),
+  );
+  let count = 0;
+  const indices = oceanGeometry.index!;
+  for (let i = 0; i < oceanIndices.length; i += 6)
+    if (oceanCells[i / 6] >= 5 * 8 && !covered.has(oceanCells[i / 6])) {
+      indices.array.set(oceanIndices.subarray(i, i + 6), count);
+      count += 6;
+    }
+  indices.needsUpdate = true;
+  oceanGeometry.setDrawRange(0, count);
+}
 const views = {
   forest: [400, 600],
   open: [1350, 700],
@@ -304,6 +395,10 @@ function draw(now: number) {
   controls.update();
   camera.updateMatrixWorld();
   world.update(camera, dt, innerHeight);
+  updateOverview();
+  distantOcean.setTime(oceanTime);
+  distantOcean.update(dt, camera, oceanProject);
+  oceanTime += dt;
   const updated = performance.now();
   physics.world.step();
   const stepped = performance.now();
@@ -353,11 +448,15 @@ function draw(now: number) {
   if (recording) cpu.push(performance.now() - started);
   if (Math.floor(now / 1000) !== Math.floor((now - dt * 1000) / 1000)) {
     const s = world.stats;
-    status.textContent = `${s.residentTiles} tiles · ${Math.round(s.selectedTerrainTriangles / 1000)}k / ${Math.round(s.fullTerrainTriangles / 1000)}k terrain triangles · ${Math.round(s.assets.gpuBytes / 1024 ** 2)} MiB shared GPU assets · ${s.failedTiles} failed`;
+    status.textContent = `${s.residentTiles} detailed + ${overview.stats.visibleTiles} distant tiles · ${Math.round(s.selectedTerrainTriangles / 1000)}k near + ${Math.round(overview.stats.triangles / 1000)}k distant triangles · ${Math.round(s.assets.gpuBytes / 1024 ** 2)} MiB shared GPU assets · ${s.failedTiles + overview.stats.failedTiles} failed`;
     if (recording)
       snapshots.push({
         time: now,
         stats: s,
+        distant: {
+          ...overview.stats,
+          oceanTriangles: oceanGeometry.drawRange.count / 3,
+        },
         renderer: {
           ...renderer.info.memory,
           submittedTriangles: renderer.info.render.triangles,
@@ -379,6 +478,8 @@ addEventListener('resize', () => {
 renderer.setAnimationLoop(draw);
 const api = {
   world,
+  overview,
+  distantOcean,
   assets,
   renderer,
   scene,
@@ -391,10 +492,12 @@ const api = {
     fullGPU: new URLSearchParams(location.search).has('prewarm'),
     waterGPU: !new URLSearchParams(location.search).has('no-water-prewarm'),
   },
-  ready: () => {
+  ready: async () => {
     camera.updateMatrixWorld();
     world.update(camera, 0, innerHeight);
-    return world.whenIdle();
+    updateOverview();
+    await Promise.all([world.whenIdle(), overview.whenIdle()]);
+    updateOverview();
   },
   traverse(laps = 3, seconds = 12) {
     if (
@@ -452,6 +555,10 @@ const api = {
       })),
       colliderCount: physics.world.colliders.len(),
       stats: world.stats,
+      distant: {
+        ...overview.stats,
+        oceanTriangles: oceanGeometry.drawRange.count / 3,
+      },
       sourceEncodedCharacters: Object.values(modelData).reduce(
         (sum, a) => sum + a.data.length,
         0,
@@ -461,7 +568,9 @@ const api = {
   async dispose() {
     stopped = true;
     world.dispose();
-    await world.whenIdle();
+    overview.dispose();
+    await Promise.all([world.whenIdle(), overview.whenIdle()]);
+    distantOcean.dispose();
     physics.dispose();
     foliageImpostors.forEach((i) => i.dispose());
     assets.dispose();

@@ -26,6 +26,8 @@ export { TerrainLod } from './terrain-lod';
 export { webOceanResources } from './web-ocean/simulation';
 export type { TerrainLodOptions } from './terrain-lod';
 export { TerrainWorldScene } from './world-scene';
+export { TerrainWorldOverview } from './world-overview';
+export type { WorldOverviewOptions } from './world-overview';
 export type {
   WorldSceneOptions,
   WorldCollisionSource,

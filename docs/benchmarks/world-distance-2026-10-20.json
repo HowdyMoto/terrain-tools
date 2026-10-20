@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-20",
+  "baselineCommit": "d94c116",
+  "browser": "Chrome 155 / Windows",
+  "adapter": "WebGPU · nvidia blackwell",
+  "device": "RTX 5060 Laptop GPU selected by scripts/chrome-gpu.mjs",
+  "method": "Same frozen reference view at (400,80,600) looking at (1100,15,1550), 1440x960. Before image emulates the previous cutoff by hiding overview/ocean, setting camera far 900m and fog 250..650m in the same build; HUD belongs to the new profile. After enables distant terrain/coastal ocean, far 4000m and fog 1200..3500m. Captures are qualitative coverage checks, not an old-build FPS comparison.",
+  "overview": {
+    "residentTiles": 64,
+    "loadingTiles": 0,
+    "queuedTiles": 0,
+    "failedTiles": 0,
+    "cpuBytes": 2869760,
+    "gpuBytes": 2869760,
+    "visibleTiles": 55,
+    "triangles": 59400
+  },
+  "near": {
+    "residentTiles": 9,
+    "selectedTriangles": 26016
+  },
+  "view": {
+    "far": 4000,
+    "fogNear": 1200,
+    "fogFar": 3500
+  },
+  "oceanTriangles": 12288,
+  "errors": [],
+  "validation": {
+    "unitTests": 368,
+    "browserCases": 4,
+    "renderDistanceProbeMetres": 2500,
+    "terrainGrid": "Every original boundary sample retained; holes retain full topology or reject beyond candidate geometry budget.",
+    "lifecycle": "Hide/restore detailed keys, source failure/retry, retained budget rejection, ignored cancellation, independent borrowed assets, zero tracked renderer allocations after the native distance fixture."
+  },
+  "sourceHashes": {
+    "src/core/terrain-overview.ts": "e741e98259f0ccfdec8813e18328fa7292de429f849d61a435a99a4197b213cf",
+    "src/runtime/world-overview.ts": "b839e84d3ce22e6a646ce1492feff3ed26cd4ed8a94dfa4e348382a4aee7fe0d",
+    "src/examples/world.ts": "7bbe8a06471074d70b02dec0c92781eb097f62fa5084d0b15c8d365ca42f297a",
+    "src/examples/world-source.ts": "a69ba440c56fb23fc2585c9ab40693407c2333e058760d8777a0ec8471fcf5c1"
+  },
+  "limits": "Reference land remains 2x2km. No distant forest HLOD or authoritative distant collision. Generic overview does not render water; reference example adds one bounded coarse Standard ocean. Geometry counts exclude shared textures, water resources, transient project payloads and driver overhead. Larger authored worlds need adequate far tile/byte budgets. No new FPS measurement, full browser suite or other-device validation."
+}

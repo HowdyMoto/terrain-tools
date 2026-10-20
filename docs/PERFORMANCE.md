@@ -1,5 +1,7 @@
 # Performance evidence
 
+The world example now adds coarse terrain and coastal water beyond detailed residency, with a 3 km overview radius and longer fog/clipping distances. The timed runs below predate that additional coverage and the subsequent normal-space corrections. They are historical measurements, not FPS acceptance for the current larger view. See [current distance behavior and correctness evidence](RUNTIME.md#distant-world-coverage).
+
 The editor and interactive runtime examples use native WebGPU. The first optimization pass removes repeated shader construction and reduces native streaming stalls; steady 30 FPS remains a separate acceptance target. Other measurements are **WebGL baselines** unless explicitly marked otherwise. See [WebGPU scope](WEBGPU.md). `benchmark:surfaces`, `benchmark:foliage` and `benchmark-forest.mjs` still exercise explicit legacy WebGL paths.
 
 ## Generated tree impostors and streamed responsiveness — 20 October 2026
