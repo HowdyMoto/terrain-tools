@@ -2,6 +2,8 @@ import type { FoliageModel, TerrainProject } from '../core/types';
 import { editFoliageModels } from '../core/foliage';
 import { assertProjectCapacity } from '../core/project-package';
 import { checkSignal } from '../render/resources';
+import { checkModelFileSize } from '../core/model-limits';
+import { bytesToBase64 } from '../core/base64';
 
 type Gltf = {
   asset: { version: string; [key: string]: unknown };
@@ -57,10 +59,7 @@ export function writeModelDocument(document: ModelDocument): ArrayBuffer {
     20 +
     length +
     document.chunks.reduce((n, chunk) => n + 8 + chunk.bytes.length, 0);
-  if (size > 30_000_000)
-    throw new Error(
-      'Prepared model exceeds 30 MB. Reduce textures or geometry before importing.',
-    );
+  checkModelFileSize(size, 'Prepared model');
   const buffer = new ArrayBuffer(size),
     view = new DataView(buffer),
     bytes = new Uint8Array(buffer);
@@ -82,10 +81,8 @@ export function writeModelDocument(document: ModelDocument): ArrayBuffer {
 }
 export function modelDataURL(buffer: ArrayBuffer) {
   const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (let at = 0; at < bytes.length; at += 8192)
-    binary += String.fromCharCode(...bytes.subarray(at, at + 8192));
-  return 'data:model/gltf-binary;base64,' + btoa(binary);
+  checkModelFileSize(bytes.byteLength);
+  return 'data:model/gltf-binary;base64,' + bytesToBase64(bytes);
 }
 function normalizedPath(value: string) {
   const parts: string[] = [];
@@ -98,6 +95,7 @@ function normalizedPath(value: string) {
   }
   return parts.join('/');
 }
+export class ModelDependencyError extends Error {}
 /** Package only explicitly supplied dependencies; never fetch model URLs. */
 export async function bundleModel(
   file: File,
@@ -105,7 +103,7 @@ export async function bundleModel(
   signal?: AbortSignal,
 ): Promise<ModelDocument> {
   checkSignal(signal);
-  if (file.size > 30_000_000) throw new Error(`${file.name} exceeds 30 MB.`);
+  checkModelFileSize(file.size, file.name);
   const bytes = await file.arrayBuffer();
   checkSignal(signal);
   const document: ModelDocument = /\.glb$/i.test(file.name)
@@ -139,18 +137,33 @@ export async function bundleModel(
         (source) => source.name === path.split('/').at(-1),
       );
     if (matches.length !== 1)
-      throw new Error(
-        `${matches.length ? 'Ambiguous' : 'Missing'} dependency “${item.uri}” for ${file.name}. Choose its containing folder, or include the matching file.`,
+      throw new ModelDependencyError(
+        `${matches.length ? 'Ambiguous' : 'Missing'} dependency “${item.uri}” for ${file.name}. The browser can only read selected files. Choose the model folder to include its BIN and textures, or add the missing files.`,
       );
     const dependency = matches[0];
     total += dependency.size;
-    if (total > 30_000_000)
-      throw new Error(`${file.name} and its dependencies exceed 30 MB.`);
+    checkModelFileSize(total, `${file.name} and its dependencies`);
     const data = new Uint8Array(await dependency.arrayBuffer());
     checkSignal(signal);
-    let binary = '';
-    for (let at = 0; at < data.length; at += 8192)
-      binary += String.fromCharCode(...data.subarray(at, at + 8192));
+    // Keep the usual single external geometry buffer in the GLB's binary
+    // chunk. A base64 URI inside GLB JSON adds another full encoded copy of
+    // large meshes during parsing, transformation and project persistence.
+    if (
+      document.json.buffers?.length === 1 &&
+      item === document.json.buffers[0] &&
+      !document.chunks.some((chunk) => chunk.type === 0x004e4942)
+    ) {
+      const length = document.json.buffers[0].byteLength;
+      if (!Number.isSafeInteger(length) || length < 0 || data.length < length)
+        throw new Error(`Truncated geometry buffer: ${dependency.name}.`);
+      const content = data.subarray(0, length);
+      const padded =
+        length % 4 ? new Uint8Array(Math.ceil(length / 4) * 4) : content;
+      if (padded !== content) padded.set(content);
+      document.chunks.unshift({ type: 0x004e4942, bytes: padded });
+      delete item.uri;
+      continue;
+    }
     const mime = /\.png$/i.test(dependency.name)
       ? 'image/png'
       : /\.jpe?g$/i.test(dependency.name)
@@ -158,9 +171,16 @@ export async function bundleModel(
         : /\.webp$/i.test(dependency.name)
           ? 'image/webp'
           : 'application/octet-stream';
-    item.uri = `data:${mime};base64,${btoa(binary)}`;
+    item.uri = `data:${mime};base64,${bytesToBase64(data)}`;
   }
-  writeModelDocument(document); // Enforce the final embedded size before decoding.
+  // Check without allocating a second full binary container just to discard it.
+  const jsonBytes = new Blob([JSON.stringify(document.json)]).size;
+  checkModelFileSize(
+    20 +
+      Math.ceil(jsonBytes / 4) * 4 +
+      document.chunks.reduce((sum, chunk) => sum + 8 + chunk.bytes.length, 0),
+    'Prepared model',
+  );
   return document;
 }
 export function transformModel(

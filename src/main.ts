@@ -28,6 +28,8 @@ import {
 } from './editor/foliage-shading-controls';
 import type { PreparedFoliage } from './runtime/foliage';
 import type { PreparedSurface, PreparedViewport } from './render/viewport';
+import type { ViewportLoadStage } from './render/viewport';
+import { StartupLoading } from './editor/startup-loading';
 import type { EditTransaction } from './render/edit-transaction';
 import type { PreparedColliders } from './physics/rapier';
 import type { TransformControlsMode } from 'three/addons/controls/TransformControls.js';
@@ -145,6 +147,7 @@ import {
 import type { DefaultFoliageKind } from './editor/default-foliage';
 import { foliageModels, editFoliageModels } from './core/foliage';
 import { readProjectFile } from './core/glb-project';
+import { checkModelFileSize } from './core/model-limits';
 import {
   assertProjectCapacity,
   projectAssetBytes,
@@ -407,8 +410,20 @@ $('#app').innerHTML =
 // Native device initialization is asynchronous. Keep controls inert until their
 // handlers and the restored project are ready.
 $('#app').inert = true;
+const startupLoading = new StartupLoading();
+await startupLoading.stage(0, 'Starting graphics…');
+async function downloadLocalProject() {
+  const saved = await loadLocal();
+  if (!saved)
+    throw new Error('No locally saved project was found in this browser.');
+  download(
+    await projectDownload(saved),
+    saved.name.replace(/[^a-z0-9-_]/gi, '-') + '.terrain',
+  );
+}
 const viewport = await Viewport.create($('#viewport'), project).catch(
   (error) => {
+    startupLoading.close();
     const panel = document.createElement('section');
     panel.id = 'renderer-unavailable';
     panel.className = 'renderer-notice';
@@ -450,6 +465,7 @@ const viewport = await Viewport.create($('#viewport'), project).catch(
   },
 );
 $('#viewport').addEventListener('terrain-renderer-lost', () => {
+  startupLoading.close();
   cancelPreparation();
   $('#app').inert = true;
   const panel = document.createElement('section');
@@ -3784,11 +3800,17 @@ $<HTMLInputElement>('#asset-open').onchange = async (e) => {
     const applied = await prepareAction(
       'Importing model…',
       async (signal) => {
-        if (file.size > 30_000_000) throw new Error('GLB must be under 30 MB.');
+        checkModelFileSize(file.size, file.name);
         if (Object.keys(project.assets).length >= 256)
           throw new Error('Maximum 256 model assets.');
-        const data = await readDataUrl(file);
+        const data = await readDataUrl(file, signal, (fraction) => {
+          if (!signal.aborted)
+            $('#preparation-status span').textContent =
+              `Reading ${file.name} · ${Math.round(fraction * 100)}%…`;
+        });
         checkSignal(signal);
+        $('#preparation-status span').textContent =
+          `Preparing geometry and textures for ${file.name}…`;
         const next = structuredClone(project);
         importedId = 'asset-' + next.nextId++;
         next.assets[importedId] = { name: file.name.slice(0, 120), data };
@@ -3900,56 +3922,71 @@ window.addEventListener('beforeunload', (e) => {
   }
 });
 async function start() {
-  const app = $('#app'),
-    status = $('#preparation-status');
+  const app = $('#app');
   app.inert = true;
-  status.hidden = false;
-  status.querySelector('span')!.textContent =
-    'Opening terrain and default brushes…';
-  $('#cancel-preparation').hidden = true;
+  const warnings: string[] = [];
+  const stages: Record<ViewportLoadStage, [number, string]> = {
+    lighting: [3, 'Preparing sky and lighting…'],
+    terrain: [4, 'Building terrain and foliage…'],
+    shaders: [5, 'Preparing scene rendering…'],
+    water: [6, 'Preparing water…'],
+  };
+  const progress = (stage: ViewportLoadStage) =>
+    startupLoading.stage(...stages[stage]);
+  await startupLoading.stage(1, 'Checking your locally saved project…');
+  let saved: TerrainProject | null = null;
   try {
-    let saved: TerrainProject | null = null;
-    try {
-      saved = await loadLocal();
-    } catch {
-      notify('Local save unavailable; file save is still available.', true);
-    }
-    if (saved) {
-      await viewport.load(saved);
-      project = saved;
-    } else {
-      try {
-        const next = await addDefaultFoliage(
-          { ...project, brushes: [] },
-          defaultFoliageChoices.map(([id]) => id),
-        );
-        populateFoliage(next, next.brushes[0].id);
-        await viewport.load(next);
-        project = next;
-      } catch (error) {
-        populateFoliage(project, 'pine');
-        await viewport.load(project);
-        notify(
-          'Default foliage unavailable; opened basic brushes. Retry from Foliage → Default brushes. ' +
-            String(error),
-          true,
-        );
-      }
-    }
-    viewport.frameTerrain();
-    restoreSculptBrush();
-    renderInspector();
-    updateScene();
-    updateHistory();
-    $<HTMLInputElement>('#project-name').value = project.name;
-    refreshIcons();
-  } finally {
-    app.inert = false;
-    status.hidden = true;
-    $('#cancel-preparation').hidden = false;
+    saved = await loadLocal();
+  } catch {
+    warnings.push('Local save unavailable; file save is still available.');
   }
+  if (saved) {
+    await startupLoading.stage(2, 'Opening your saved terrain…');
+    await viewport.load(saved, true, undefined, progress);
+    project = saved;
+  } else {
+    try {
+      await startupLoading.stage(2, 'Loading default brushes…');
+      const next = await addDefaultFoliage(
+        { ...project, brushes: [] },
+        defaultFoliageChoices.map(([id]) => id),
+        undefined,
+        (completed, total) =>
+          startupLoading.update(
+            2,
+            `Loading default brushes · ${completed} of ${total}`,
+            completed / total,
+          ),
+      );
+      populateFoliage(next, next.brushes[0].id);
+      await viewport.load(next, true, undefined, progress);
+      project = next;
+    } catch (error) {
+      await startupLoading.stage(2, 'Opening basic brushes…');
+      populateFoliage(project, 'pine');
+      await viewport.load(project, true, undefined, progress);
+      warnings.push(
+        'Default foliage unavailable; opened basic brushes. Retry from Foliage → Default brushes. ' +
+          String(error),
+      );
+    }
+  }
+  await startupLoading.stage(7, 'Rendering the first view…');
+  viewport.frameTerrain();
+  restoreSculptBrush();
+  renderInspector();
+  updateScene();
+  updateHistory();
+  $<HTMLInputElement>('#project-name').value = project.name;
+  refreshIcons();
+  await viewport.present();
+  await startupLoading.stage(8, 'Your world is ready');
+  startupLoading.close();
+  app.inert = false;
+  if (warnings.length) notify(warnings.join(' '), true);
 }
 void start().catch((e) => {
-  notify('Editor initialization failed: ' + String(e), true);
+  if (!document.querySelector('.renderer-notice'))
+    startupLoading.fail(String(e), downloadLocalProject);
   console.error(e);
 });

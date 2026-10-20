@@ -4,7 +4,7 @@ The Foliage inspector opens on **Paint**, with radius, density, spacing, surface
 
 ## Import plants into a brush
 
-Choose **Foliage → Library → Import foliage assets**. Drop or select one or more GLBs, or a glTF together with its BIN and textures. **Choose folder** preserves nested dependency paths. A multi-file chooser can resolve unique dependency basenames; folder imports require the correct relative paths. Missing/ambiguous dependencies name the file to include, and external URLs are never fetched. Include corrected files and choose the batch again to retry.
+Choose **Foliage → Library → Import foliage assets**. Drop a complete model folder or select **Choose model folder** for extracted glTF packages; this includes the `.gltf`, companion `.bin` and nested textures. Selecting a `.gltf` file alone gives the browser access to that file only. Missing dependencies now show **Locate model folder**, and the importer remembers the failed selection so you can add just the missing files and retry. Folder drops read every directory batch and preserve relative paths. A multi-file chooser can resolve unique dependency basenames; folder imports require the correct relative paths. Missing/ambiguous dependencies name the file to include, and external URLs are never fetched.
 
 Each file's default scene becomes one variant; mesh collections are not automatically split. Select a row to orbit/zoom the model under neutral lighting. The review shows dimensions in metres, triangles, mesh parts, embedded size and source creator credit. Check **Source units** and the ground grid/pivot axes. Grounding centers the model horizontally and puts its lowest point at Y=0; uncheck it to preserve an authored origin. Unit/pivot changes wrap the imported scene without changing source files, mesh attributes, materials or existing copyright metadata.
 
@@ -16,9 +16,13 @@ Choose the destination explicitly:
 
 The complete batch applies in one undo step after resource preparation. Cancel/Escape, failed preparation and failed history capture preserve the committed scene, assets and redo branch. A failed Apply can be retried in the same panel. Models are embedded in projects and portable brush presets, including any original credits.
 
-The importer accepts up to 32 variants and 128 MB of selected input files per batch, with a 30 MB limit for each prepared embedded GLB. The existing project asset budget and 256-model/256-brush limits still apply. Static glTF 2.0 meshes are supported; convert FBX/OBJ and unpack ZIPs first. Skinned/animated plants and compression extensions requiring unconfigured decoders are not supported. Heavy-model warnings are advisory; there is no automatic mesh reduction or LOD generation. Add authored LODs through **Distance detail** after importing. The preview shows the rest pose, not animated wind or contact.
+The importer accepts up to 32 variants and 384 MiB of selected input files per batch, with a **320 MiB limit for each prepared embedded GLB**. The dialog shows the remaining project asset allowance; the complete project must stay within 384 MiB of distinct embedded assets and 256 models/256 brushes. Packaging external glTF dependencies can increase the prepared model size. Large imports retain source geometry and textures; read/preparation status stays visible and Cancel preserves the committed project. Save large collections as `.terrain`: portable brush JSON still has a separate 100 MB input limit.
 
-See [verification evidence](benchmarks/asset-import-ux-2026-10-16.json) for realistic-asset and browser validation limits.
+For the common glTF layout with one external geometry buffer, that BIN is stored directly in the prepared GLB binary chunk. This avoids expanding large geometry into base64 text inside JSON. Existing embedded GLBs remain readable; multiple-buffer models retain their embedded-data fallback.
+
+Static glTF 2.0 meshes, Meshopt geometry and KTX2 textures are supported by the editor; convert FBX/OBJ and unpack ZIPs first. Skinned/animated plants and Draco compression are not supported. Heavy-model warnings are advisory; there is no automatic mesh reduction or LOD generation. Add authored LODs through **Distance detail** after importing. The preview shows the rest pose, not animated wind or contact. File size alone does not predict rendering cost or decoded texture memory.
+
+See [workflow verification](benchmarks/asset-import-ux-2026-10-16.json) and [large-model verification](benchmarks/large-model-import-2026-10-19.json) for realistic-asset and browser validation limits. To repeat the optional real-asset check, set `TERRAIN_TEST_GLB` to a local static GLB path and run `npm run test:browser -- tests/browser/large-models.spec.mjs -g "artist GLB"` after building. The source stays outside the repository; generated projects and screenshots go to `test-results/`.
 
 ## Compose a brush
 

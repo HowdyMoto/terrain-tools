@@ -29,6 +29,7 @@ async function setup(page) {
         return Reflect.construct(target, args, constructor);
       },
     });
+    Original.prototype.constructor = window.Uint8Array;
     const bitmap = window.createImageBitmap.bind(window);
     window.importBitmapReleases = [];
     window.createImageBitmap = (...args) => {
@@ -390,7 +391,8 @@ test('packages glTF dependencies after an actionable error and converts units an
     'Missing dependency',
   );
   await expect(page.locator('.import-apply')).toBeDisabled();
-  await page.locator('#foliage-files').setInputFiles([file, bin]);
+  await expect(page.locator('#foliage-dependencies')).toBeVisible();
+  await page.locator('#foliage-files').setInputFiles(bin);
   await expect(page.locator('.import-status')).toContainText('1 model ready');
   await page.locator('#foliage-import-units').selectOption('0.01');
   await expect(page.locator('#foliage-model-review')).toContainText(
@@ -406,7 +408,9 @@ test('packages glTF dependencies after an actionable error and converts units an
     bytes.toString('utf8', 20, 20 + bytes.readUInt32LE(12)),
   );
   expect(model.asset.copyright).toBe('Fixture Artist');
-  expect(model.buffers[0].uri).toContain('data:');
+  expect(model.buffers[0].uri).toBeUndefined();
+  const binaryOffset = 20 + bytes.readUInt32LE(12);
+  expect(bytes.subarray(binaryOffset + 8)).toEqual(bin.buffer);
   expect(model.nodes.at(-1)).toMatchObject({
     scale: [0.01, 0.01, 0.01],
     translation: [-0.5, -0.2, 0],

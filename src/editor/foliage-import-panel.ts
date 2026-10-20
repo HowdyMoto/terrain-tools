@@ -1,5 +1,11 @@
 import * as THREE from 'three';
 import type { TerrainProject } from '../core/types';
+import { MODEL_SIZE_LABEL } from '../core/model-limits';
+import {
+  MAX_PROJECT_ASSET_BYTES,
+  projectAssetBytes,
+  assertProjectCapacity,
+} from '../core/project-package';
 import type { DecodedModel } from '../render/model-loader';
 import { checkSignal } from '../render/resources';
 import { ImportPreview } from './import-preview';
@@ -14,6 +20,7 @@ import {
   modelDataURL,
   writeModelDocument,
   transformModel,
+  ModelDependencyError,
 } from './foliage-import';
 import type {
   ModelDocument,
@@ -46,8 +53,10 @@ export function showFoliageImport(
     'Preview your plants, check their size, then turn them into a paintable brush.',
     `
     <div class="import-body"><div class="import-inputs"><fieldset>
-    <div class="import-drop" id="foliage-drop"><strong>Drop models and their textures here</strong><span>GLB, or glTF + BIN + textures · up to 30 MB per prepared model</span><div><label class="file-picker">Choose files<input id="foliage-files" type="file" multiple accept=".glb,.gltf,.bin,.png,.jpg,.jpeg,.webp"/></label><label class="file-picker secondary">Choose folder<input id="foliage-folder" type="file" multiple webkitdirectory/></label></div></div>
+    <div class="import-drop" id="foliage-drop"><strong>Drop a model folder or GLB here</strong><span>GLB, or glTF + BIN + textures · up to ${MODEL_SIZE_LABEL} per prepared model</span><div><label class="file-picker">Choose files<input id="foliage-files" type="file" multiple accept=".glb,.gltf,.bin,.png,.jpg,.jpeg,.webp,.ktx2"/></label><label class="file-picker secondary">Choose model folder<input id="foliage-folder" type="file" multiple webkitdirectory/></label></div></div>
     <p class="field-note">Choose files together for a batch. Use Choose folder for glTF assets with nested texture folders. Models are imported as static meshes; source files stay untouched.</p>
+    <div id="foliage-dependencies" class="import-review" hidden><p>A glTF needs its companion BIN and textures. Your selected model is kept here; add its missing files, or choose its complete folder.</p><button type="button" id="foliage-locate-folder" class="text-button">Locate model folder</button></div>
+    <p class="field-note">${fileSize(MAX_PROJECT_ASSET_BYTES - projectAssetBytes(project))} available in this project's embedded asset budget. Large sources keep their original geometry and textures.</p>
     <div id="foliage-sources" class="import-sources"><p class="import-empty">Each model becomes a randomly selected variant. Select a row to inspect its geometry and materials.</p></div>
     <div class="import-settings"><label class="field"><span>Import into</span><select id="foliage-import-mode"><option value="new">New foliage brush</option><option value="add">Add variants to ${esc(brush.name)}</option><option value="replace">Replace selected model in ${esc(brush.name)}</option></select></label>
     <label class="field"><span>Brush name</span><input id="foliage-import-name" maxlength="120" value="Imported foliage"/></label>
@@ -63,6 +72,7 @@ export function showFoliageImport(
     selected = 0,
     preview: ImportPreview | undefined,
     decoded: DecodedModel | undefined;
+  let pendingFiles: File[] = [];
   let previewEpoch = 0,
     loading = false;
   const scale = () =>
@@ -175,6 +185,18 @@ export function showFoliageImport(
   };
   const receive = async (files: File[]) => {
     if (!files.length || loading) return;
+    if (
+      !files.some((file) => /\.(glb|gltf)$/i.test(file.name)) &&
+      pendingFiles.length
+    )
+      files = Array.from(
+        new Map(
+          [...pendingFiles, ...files].map((file) => [
+            file.webkitRelativePath || file.name,
+            file,
+          ]),
+        ).values(),
+      );
     loading = true;
     ui.busy(true);
     q<HTMLButtonElement>('.import-apply').disabled = true;
@@ -189,9 +211,9 @@ export function showFoliageImport(
         throw new Error(
           'Choose up to 32 models per import. Use Choose files to select a smaller batch.',
         );
-      if (files.reduce((sum, f) => sum + f.size, 0) > 128_000_000)
+      if (files.reduce((sum, f) => sum + f.size, 0) > MAX_PROJECT_ASSET_BYTES)
         throw new Error(
-          'Select a batch under 128 MB. Split large folders into smaller imports.',
+          'Select a batch under 384 MiB. Split large folders into smaller imports.',
         );
       for (const file of roots) {
         ui.status(
@@ -200,6 +222,20 @@ export function showFoliageImport(
         const document = await bundleModel(file, files, ui.signal);
         const buffer = writeModelDocument(document),
           data = modelDataURL(buffer);
+        const candidate = { ...project, assets: { ...project.assets } };
+        let temporaryId = 0;
+        for (const model of [...models, ...added, { name: file.name, data }]) {
+          while (Object.hasOwn(candidate.assets, `import-${temporaryId}`))
+            temporaryId++;
+          candidate.assets[`import-${temporaryId++}`] = {
+            name: model.name,
+            data: model.data,
+          };
+        }
+        assertProjectCapacity(candidate);
+        ui.status(
+          `Decoding geometry and textures for ${file.name} (${added.length + 1}/${roots.length})…`,
+        );
         preview ??= await ImportPreview.create(
           q('#foliage-preview'),
           ui.signal,
@@ -244,6 +280,8 @@ export function showFoliageImport(
           120,
         );
       models.push(...added);
+      pendingFiles = [];
+      q('#foliage-dependencies').hidden = true;
       renderList();
       loading = false;
       ui.busy(false);
@@ -251,21 +289,37 @@ export function showFoliageImport(
       await selectModel(models.length - added.length);
     } catch (error) {
       if (!ui.signal.aborted) {
+        const dependencyError = error instanceof ModelDependencyError;
+        pendingFiles = dependencyError ? files : [];
+        q('#foliage-dependencies').hidden = !dependencyError;
         loading = false;
         ui.busy(false);
         update();
         ui.status(
           'Could not add files: ' +
             String(error) +
-            ' Include missing files and choose the batch again.',
+            (dependencyError
+              ? ' Add the missing files or use Locate model folder to retry.'
+              : ''),
           true,
         );
       }
     }
   };
-  bindFileDrop(q('#foliage-drop'), q('#foliage-files'), (files) => {
-    void receive(files);
-  });
+  bindFileDrop(
+    q('#foliage-drop'),
+    q('#foliage-files'),
+    (files) => {
+      void receive(files);
+    },
+    {
+      signal: ui.signal,
+      onError: (error) =>
+        ui.status('Could not read model folder: ' + String(error), true),
+    },
+  );
+  q('#foliage-locate-folder').onclick = () =>
+    q<HTMLInputElement>('#foliage-folder').click();
   q<HTMLInputElement>('#foliage-folder').onchange = (e) => {
     const input = e.target as HTMLInputElement;
     void receive(Array.from(input.files ?? []));
@@ -294,18 +348,25 @@ export function showFoliageImport(
         targetBrush,
         targetModel,
       };
-      const plants = models.map((model) => {
+      const plants: ImportedPlant[] = [];
+      for (const model of models) {
+        ui.status(
+          `Preparing ${model.name} (${plants.length + 1}/${models.length})…`,
+        );
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
+        checkSignal(ui.signal);
         const center = model.bounds.getCenter(new THREE.Vector3());
         const offset: [number, number, number] = ground()
           ? [-center.x, -model.bounds.min.y, -center.z]
           : [0, 0, 0];
         const size = model.bounds.getSize(new THREE.Vector3());
-        return {
+        plants.push({
           name: model.name,
           data: transformModel(model.document, scale(), offset),
           width: Math.max(size.x, size.z) * scale(),
-        };
-      });
+        });
+      }
+      checkSignal(ui.signal);
       if (await apply(plants, options, ui.signal)) ui.close();
       else
         ui.status('Cancelled. Your previous brushes and plants are unchanged.');

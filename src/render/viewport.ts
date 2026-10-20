@@ -55,6 +55,8 @@ import { TerrainScene } from '../runtime/terrain-scene';
 import { createModelDecoder } from './model-loader';
 import type { TerrainRegion } from '../runtime/terrain-scene';
 import type { RigidBody } from '@dimforge/rapier3d-compat';
+export type ViewportLoadStage = 'lighting' | 'terrain' | 'shaders' | 'water';
+type LoadProgress = (stage: ViewportLoadStage) => Promise<void>;
 export class Viewport {
   renderer: WebGPURenderer;
   readonly gpuRenderer: string;
@@ -347,6 +349,7 @@ export class Viewport {
     p: TerrainProject,
     materials = true,
     signal?: AbortSignal,
+    onProgress?: LoadProgress,
   ): Promise<PreparedViewport> {
     let environment: PreparedEnvironment | undefined,
       terrain: PreparedTerrain | undefined,
@@ -354,15 +357,19 @@ export class Viewport {
       colliders: PreparedColliders | undefined;
     try {
       checkSignal(signal);
+      if (onProgress) await onProgress('lighting');
       environment = await this.lighting.prepare(p.environment);
       checkSignal(signal);
+      if (onProgress) await onProgress('terrain');
       terrain = await this.content.prepareLoad(p, materials, signal);
+      if (onProgress) await onProgress('shaders');
       await this.preflightSurface(
         terrain.value.geometry.value.meshes,
         terrain.value.material,
         [terrain.value.foliage.value, terrain.value.props],
       );
       checkSignal(signal);
+      if (onProgress) await onProgress('water');
       if (p.water) {
         this.lighting.prepareWater();
         await this.content.waterSystem.prepareGPU(
@@ -434,13 +441,23 @@ export class Viewport {
     this.loading?.abort();
     this.loading = undefined;
   }
-  async load(p: TerrainProject, materials = true, signal?: AbortSignal) {
+  async load(
+    p: TerrainProject,
+    materials = true,
+    signal?: AbortSignal,
+    onProgress?: LoadProgress,
+  ) {
     this.cancelLoad();
     const { controller, unlink } = linkedController(signal);
     this.loading = controller;
     let prepared: PreparedViewport | undefined;
     try {
-      prepared = await this.prepareLoad(p, materials, controller.signal);
+      prepared = await this.prepareLoad(
+        p,
+        materials,
+        controller.signal,
+        onProgress,
+      );
       checkSignal(controller.signal);
       if (this.loading !== controller) throw cancelled();
       this.loading = undefined;
@@ -829,6 +846,13 @@ export class Viewport {
         dab.dose,
       );
     }
+  }
+  /** Keep startup covered until the current camera's first view finishes on the GPU. */
+  async present() {
+    const queue = gpuDevice(this.renderer).queue;
+    await queue.onSubmittedWorkDone();
+    this.frame();
+    await queue.onSubmittedWorkDone();
   }
   private frame() {
     // While the GPU is busy, return to the event loop so mouse input can update

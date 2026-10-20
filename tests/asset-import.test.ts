@@ -170,9 +170,8 @@ describe('foliage import preparation', () => {
       new File([new Uint8Array([1, 2])], 'leaf.png'),
     ];
     const document = await bundleModel(source, files);
-    expect(document.json.buffers![0].uri).toContain(
-      'data:application/octet-stream;base64,',
-    );
+    expect(document.json.buffers![0].uri).toBeUndefined();
+    expect(Array.from(document.chunks[0].bytes)).toEqual([0, 0, 0, 0]);
     expect(document.json.images![0].uri).toContain('data:image/png;base64,');
     const data = transformModel(document, 0.01, [-3, -5, 2]);
     const bytes = Uint8Array.from(atob(data.split(',')[1]), (c) =>
@@ -212,6 +211,32 @@ describe('foliage import preparation', () => {
     });
     new DataView(valid).setUint32(12, 9999, true);
     expect(() => readModelDocument(valid)).toThrow('chunk length');
+  });
+  it('resolves nested folder paths and pads binary payloads without changing buffer views or source files', async () => {
+    const json = modelJSON();
+    json.buffers[0].byteLength = 3;
+    const source = new File([JSON.stringify(json)], 'plant.gltf');
+    const bin = new File([new Uint8Array([7, 8, 9, 100])], 'plant.bin');
+    const image = new File([new Uint8Array([11, 12])], 'leaf.png');
+    for (const [file, path] of [
+      [source, 'package/model/plant.gltf'],
+      [bin, 'package/model/meshes/plant.bin'],
+      [image, 'package/model/textures/leaf.png'],
+    ] as const)
+      Object.defineProperty(file, 'webkitRelativePath', { value: path });
+    const document = await bundleModel(source, [source, bin, image]);
+    const decoded = readModelDocument(writeModelDocument(document));
+    expect(Array.from(decoded.chunks[0].bytes)).toEqual([7, 8, 9, 0]);
+    expect(decoded.json.buffers![0]).toEqual({ byteLength: 3 });
+    expect(decoded.json.images![0].uri).toContain('data:image/png;base64,');
+    expect(JSON.parse(await source.text())).toEqual(json);
+    const short = new File([new Uint8Array([7, 8])], 'plant.bin');
+    Object.defineProperty(short, 'webkitRelativePath', {
+      value: bin.webkitRelativePath,
+    });
+    await expect(bundleModel(source, [source, short, image])).rejects.toThrow(
+      'Truncated geometry',
+    );
   });
   it('stages new brushes, mixtures and explicit replacements without changing the document', () => {
     const project = createProject(32, 64),

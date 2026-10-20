@@ -1732,6 +1732,102 @@ dialog > p {
   border-radius: 4px;
 }
 
+dialog#startup-loading {
+  width: min(440px, calc(100vw - 40px));
+  box-sizing: border-box;
+  padding: 32px;
+  border: 1px solid #4b5c50;
+  border-radius: 12px;
+  background: var(--panel);
+  color: #c4ccca;
+  box-shadow: 0 24px 100px #0009;
+}
+#startup-loading::backdrop {
+  background: #08110dbb;
+}
+#startup-loading h1 {
+  margin: 10px 0 24px;
+  font-size: 24px;
+}
+.startup-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.startup-spinner {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: startup-spin 900ms linear infinite;
+}
+@keyframes startup-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+#startup-loading progress {
+  display: block;
+  width: 100%;
+  height: 8px;
+  margin: 16px 0 12px;
+  appearance: none;
+  border: none;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--field);
+  accent-color: var(--accent);
+}
+#startup-loading progress::-webkit-progress-bar {
+  background: var(--field);
+}
+#startup-loading progress::-webkit-progress-value {
+  background: var(--accent);
+  border-radius: 8px;
+}
+#startup-loading progress::-moz-progress-bar {
+  background: var(--accent);
+}
+.startup-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #9cafa3;
+  font-size: 11px;
+}
+#startup-loading > p {
+  margin: 24px 0 0;
+  color: #9cafa3;
+  line-height: 1.6;
+  font-size: 12px;
+}
+.startup-failed .startup-spinner,
+.startup-failed progress,
+.startup-failed .startup-meta {
+  display: none !important;
+}
+.startup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+.startup-actions button {
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .startup-spinner {
+    animation: none;
+  }
+}
+
 .prop-field-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

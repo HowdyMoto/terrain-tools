@@ -18,6 +18,7 @@ Portable [sculpt presets](SCULPTING.md#reuse-sculpt-presets) use `.sculpt.json` 
 | -------------------------------- | ----------------------------------------------------------------- |
 | Native `.terrain` file           | 512 MiB                                                           |
 | Distinct embedded asset payloads | 384 MiB, checked before asset imports commit                      |
+| Individual prepared model GLB    | 320 MiB, for Props and Foliage                                    |
 | Native metadata                  | 64 MiB                                                            |
 | Terrain scene GLB                | 1 GiB total; 128 MiB JSON chunk                                   |
 | Legacy JSON input file           | 384 MiB                                                           |
@@ -25,7 +26,9 @@ Portable [sculpt presets](SCULPTING.md#reuse-sculpt-presets) use `.sculpt.json` 
 | Portable foliage brush JSON      | 100 MB                                                            |
 | Portable sculpt preset JSON      | 8 MiB; custom alpha up to 512 × 512 samples                       |
 
-The asset allowance leaves room for editable metadata and maximum supported terrain/alpha buffers. Individual editor imports retain their existing limits: 30 MB per GLB, 20 MB per surface map, and 32 MB per HDR. These file limits do not guarantee a GPU or process-memory budget. The package writer checks the document schema before producing a file, and failed or oversized imports leave the current scene and history intact.
+The asset allowance leaves room for editable metadata and maximum supported terrain/alpha buffers. Individual source imports allow 320 MiB per prepared GLB, 256 MiB per surface map (up to 16 megapixels), and 32 MB per HDR/EXR environment. Foliage selection batches may total 384 MiB, including glTF dependencies. These file limits do not guarantee a GPU or process-memory budget. The package writer checks the document schema before producing a file, and failed or oversized imports leave the current scene and history intact.
+
+Model admission is shared by import, document validation, rendering and package reload. Native base64 codecs (with bounded fallbacks) avoid full-size temporary binary strings during model decoding and package writing. Authoring documents still hold embedded model strings in memory, so the 320 MiB ceiling is deliberate; multi-gigabyte sources and collections need a future linked/binary asset store. Native `.terrain` packages avoid the separate string-size limits of legacy JSON exports and portable foliage brush files.
 
 ## Core API
 

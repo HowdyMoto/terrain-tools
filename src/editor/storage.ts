@@ -81,10 +81,44 @@ export function download(
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-export const readDataUrl = (file: File) =>
+export const readDataUrl = (
+  file: File,
+  signal?: AbortSignal,
+  progress?: (fraction: number) => void,
+) =>
   new Promise<string>((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(
+        signal.reason ?? new DOMException('Import cancelled.', 'AbortError'),
+      );
+      return;
+    }
     const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error);
+    const abort = () => {
+      reader.abort();
+      cleanup();
+      reject(
+        signal?.reason ?? new DOMException('Import cancelled.', 'AbortError'),
+      );
+    };
+    const cleanup = () => signal?.removeEventListener('abort', abort);
+    reader.onload = () => {
+      cleanup();
+      resolve(String(reader.result));
+    };
+    reader.onerror = () => {
+      cleanup();
+      reject(reader.error);
+    };
+    reader.onabort = () => {
+      cleanup();
+      reject(
+        signal?.reason ?? new DOMException('Import cancelled.', 'AbortError'),
+      );
+    };
+    reader.onprogress = (event) => {
+      if (event.lengthComputable) progress?.(event.loaded / event.total);
+    };
+    signal?.addEventListener('abort', abort, { once: true });
     reader.readAsDataURL(file);
   });

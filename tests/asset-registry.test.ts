@@ -146,7 +146,9 @@ describe('shared world asset leases', () => {
     await b.load(b.project, false);
     const ga = (a.foliage.children[0] as THREE.Mesh).geometry,
       gb = (b.foliage.children[0] as THREE.Mesh).geometry;
-    expect(ga).toBe(gb);
+    expect(ga).not.toBe(gb);
+    expect(ga.getAttribute('position')).toBe(gb.getAttribute('position'));
+    expect(ga.index).toBe(gb.index);
     const freed = vi.fn();
     gb.addEventListener('dispose', freed);
     a.dispose();
