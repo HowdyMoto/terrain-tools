@@ -421,7 +421,7 @@ export class TerrainFoliage extends THREE.Group {
               new THREE.InstancedMesh(geometry, normal.color, count),
             );
             mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-            registerFoliageBatch(mesh, attributes);
+            registerFoliageBatch(mesh, attributes, this.uniforms);
             mesh.customDepthMaterial = normal.depth;
             mesh.customDistanceMaterial = normal.distance;
             mesh.castShadow = mesh.receiveShadow = true;

@@ -342,6 +342,9 @@ test('separates environment tabs and saves independent model contact settings th
   );
   await expect(page.locator('#save-state')).toHaveText('Saved locally');
   await page.reload();
+  await expect(page.locator('#app')).not.toHaveAttribute('inert', {
+    timeout: 60000,
+  });
   await expect(page.locator('#project-name')).toHaveValue(changed.name);
   await page.locator('[data-tab="foliage"]').click();
   await (await inspectorControl(page, '#brush-select')).selectOption('0');
@@ -454,6 +457,9 @@ test('legacy brush authoring preserves data, ids and selection on failure withou
   expect(await save(page, info, 'redone')).toEqual(changed);
   await expect(page.locator('#save-state')).toHaveText('Saved locally');
   await page.reload();
+  await expect(page.locator('#app')).not.toHaveAttribute('inert', {
+    timeout: 60000,
+  });
   await expect(page.locator('#project-name')).toHaveValue(changed.name);
   expect(await save(page, info, 'reopened')).toEqual(changed);
   expect(state.errors).toEqual([]);
@@ -585,6 +591,9 @@ test('population, clearing, model removal and detailed response edits recover th
   expect(await save(page, info, 'population-redone')).toEqual(populated);
   await expect(page.locator('#save-state')).toHaveText('Saved locally');
   await page.reload();
+  await expect(page.locator('#app')).not.toHaveAttribute('inert', {
+    timeout: 60000,
+  });
   await expect(page.locator('#project-name')).toHaveValue(populated.name);
   expect(await save(page, info, 'reopened')).toEqual(populated);
   // Painting into an empty brush must enable Clear without rebuilding the inspector.

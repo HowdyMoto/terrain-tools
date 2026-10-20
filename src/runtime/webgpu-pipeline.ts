@@ -44,7 +44,6 @@ import {
   mrt,
   normalView,
   packNormalToRGB,
-  velocity,
   nodeObject,
   convertToTexture,
   rtt,
@@ -55,6 +54,8 @@ import { traa } from 'three/addons/tsl/display/TRAANode.js';
 import type { EnvironmentSettings } from '../core/environment';
 import { TerrainWater } from './water';
 import { terrainIndirect } from '../render/node-lighting';
+import { beginFoliageMotionFrame } from '../render/foliage-motion';
+import { TerrainVelocityNode } from '../render/native-velocity';
 
 /** Contracts: all intermediate color is linear HDR; depth is native WebGPU
  * [0,1]. Only RenderPipeline owns display conversion. Targets own their textures;
@@ -219,7 +220,7 @@ class TerrainPass extends PassNode {
   }
 }
 
-function terrainOutputs() {
+function terrainOutputs(velocity: TerrainVelocityNode) {
   const indirect = Fn((builder) => {
     const material = builder.material as import('three').MeshStandardMaterial;
     return material.isMeshStandardMaterial ? terrainIndirect : vec3(0);
@@ -232,9 +233,18 @@ function terrainOutputs() {
   });
 }
 
-const outputGraphs = new WeakMap<WebGPURenderer, ReturnType<typeof mrt>>();
+const outputGraphs = new WeakMap<
+  WebGPURenderer,
+  {
+    outputs: ReturnType<typeof mrt>;
+    velocity: TerrainVelocityNode;
+  }
+>();
 
 export class WebGPUPipeline {
+  private motionFrame = 0;
+  private motionEpoch = {};
+  private velocity: TerrainVelocityNode;
   private pass?: TerrainPass;
   private post?: RenderPipeline;
   private effects: { dispose(): void }[] = [];
@@ -251,9 +261,14 @@ export class WebGPUPipeline {
     // Water materials retain these bindings across post-processing rebuilds.
     // Keep the capture alive until the entire environment is retired.
     this.water = new WaterCapture(renderer);
-    let outputs = outputGraphs.get(renderer);
-    if (!outputs) outputGraphs.set(renderer, (outputs = terrainOutputs()));
-    this.outputs = outputs;
+    let graph = outputGraphs.get(renderer);
+    if (!graph) {
+      const velocity = new TerrainVelocityNode();
+      graph = { outputs: terrainOutputs(velocity), velocity };
+      outputGraphs.set(renderer, graph);
+    }
+    this.outputs = graph.outputs;
+    this.velocity = graph.velocity;
   }
   reset() {
     this.key = '';
@@ -377,7 +392,10 @@ export class WebGPUPipeline {
           );
         }
       }
-      this.post = new RenderPipeline(this.renderer, nodeObject(result));
+      this.post = new RenderPipeline(
+        this.renderer,
+        nodeObject(result).context({ velocity: this.velocity }),
+      );
     }
     if (this.occlusion && settings.ambientOcclusion) {
       this.occlusion.radius.value = settings.ambientOcclusion.radius;
@@ -390,25 +408,43 @@ export class WebGPUPipeline {
     const projection = camera.projectionMatrix.clone(),
       inverse = camera.projectionMatrixInverse.clone();
     const view = camera.view ? { ...camera.view } : null;
+    // PerspectiveCamera.setViewOffset also mutates aspect. TRAA can use its
+    // 1x1 bootstrap target before the first resize; restoring only the matrix
+    // leaves later unjittered projections built with the wrong aspect ratio.
+    const perspective = camera as PerspectiveCamera;
+    const aspect = perspective.isPerspectiveCamera
+      ? perspective.aspect
+      : undefined;
     const matrixWorldAutoUpdate = scene.matrixWorldAutoUpdate;
+    const endMotionFrame = beginFoliageMotionFrame(this.renderer, {
+      serial: ++this.motionFrame,
+      epoch: this.motionEpoch,
+    });
     try {
       // Opaque capture, water and cascades render the same scene repeatedly.
       // Update transforms once per composed frame, respecting host ownership.
       if (matrixWorldAutoUpdate) scene.updateMatrixWorld();
       scene.matrixWorldAutoUpdate = false;
       this.post.render();
+    } catch (error) {
+      // A partial composition must not become valid deformation history.
+      this.motionEpoch = {};
+      throw error;
     } finally {
+      endMotionFrame();
       scene.matrixWorldAutoUpdate = matrixWorldAutoUpdate;
       this.renderer.toneMapping = toneMapping;
       this.renderer.outputColorSpace = colorSpace;
       this.renderer.xr.enabled = xrEnabled;
-      velocity.setProjectionMatrix(null);
+      this.velocity.setProjectionMatrix(null);
       camera.view = view;
+      if (aspect !== undefined) perspective.aspect = aspect;
       camera.projectionMatrix.copy(projection);
       camera.projectionMatrixInverse.copy(inverse);
     }
   }
   private releasePasses() {
+    this.motionEpoch = {};
     this.effects.forEach((effect) => effect.dispose());
     this.effects = [];
     this.occlusion = undefined;

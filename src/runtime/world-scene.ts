@@ -12,6 +12,7 @@ import { WorldAssets } from './world-assets';
 import { modelMemory } from './asset-memory';
 import { checkSignal } from '../render/resources';
 import { webOceanGPUBytes } from './web-ocean/simulation';
+import { foliageMotionReservation } from '../render/native-foliage';
 
 export interface WorldColliders {
   /** Prepared colliders remain disabled until their rendered tile is admitted. */
@@ -116,12 +117,18 @@ export class TerrainWorldScene extends THREE.Group {
                 });
             });
             const measured = modelMemory(parts);
-            let instanceBytes = 0;
+            let instanceBytes = 0,
+              motionCPUBytes = 0,
+              motionGPUBytes = 0;
             terrain.traverse((object) => {
-              if (object instanceof THREE.InstancedMesh)
+              if (object instanceof THREE.InstancedMesh) {
                 instanceBytes +=
                   object.instanceMatrix.array.byteLength +
                   (object.instanceColor?.array.byteLength ?? 0);
+                const motion = foliageMotionReservation(object);
+                motionCPUBytes += motion.cpuBytes;
+                motionGPUBytes += motion.gpuBytes;
+              }
             });
             // Conservative per-tile accounting also includes shared visible mesh buffers;
             // registry counters separately report unique imported assets/surface arrays.
@@ -136,6 +143,7 @@ export class TerrainWorldScene extends THREE.Group {
               value: { descriptor, terrain, lod, collision },
               cpuBytes:
                 measured.cpuBytes +
+                motionCPUBytes +
                 instanceBytes +
                 (lod?.memoryBytes.cpuBytes ?? 0) +
                 waterBytes +
@@ -145,6 +153,7 @@ export class TerrainWorldScene extends THREE.Group {
                 (collision?.cpuBytes ?? 0),
               gpuBytes:
                 measured.gpuBytes +
+                motionGPUBytes +
                 instanceBytes +
                 (lod?.memoryBytes.gpuBytes ?? 0) +
                 waterBytes +
