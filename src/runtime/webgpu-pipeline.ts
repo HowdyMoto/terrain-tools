@@ -46,7 +46,6 @@ import {
   output,
   mrt,
   normalView,
-  packNormalToRGB,
   nodeObject,
   convertToTexture,
   rtt,
@@ -67,6 +66,7 @@ import { temporalHistoryConfidence } from '../render/temporal-history';
 export const terrainPassContract = {
   color: 'linear-srgb-hdr',
   depth: 'webgpu-zero-to-one',
+  normal: 'signed-view-space',
   velocity: 'xy-ndc-motion-alpha-history-confidence',
   outputs: ['output', 'normal', 'indirect', 'velocity'],
   displayOwner: 'post-processing',
@@ -232,7 +232,9 @@ function terrainOutputs(velocity: TerrainVelocityNode) {
   })();
   return mrt({
     output,
-    normal: packNormalToRGB(normalView),
+    // GTAO r186 consumes signed view normals directly. RGBA16F preserves them;
+    // packing into [0,1] tilts the AO normal and causes camera-dependent shading.
+    normal: normalView,
     indirect: vec4(indirect, 1),
     velocity: vec4(
       nodeObject(velocity) as unknown as Node<'vec2'>,

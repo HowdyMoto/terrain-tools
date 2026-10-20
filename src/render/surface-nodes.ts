@@ -9,7 +9,7 @@ import {
   positionLocal,
   positionGeometry,
   normalLocal,
-  modelNormalMatrix,
+  transformNormalToView,
   vec2,
   vec3,
   vec4,
@@ -436,7 +436,7 @@ function terrainGraph(
       1,
     ),
     metalnessNode: surface.orm.b.clamp(0, 1),
-    normalNode: normalize(modelNormalMatrix.mul(surface.normal)),
+    normalNode: normalize(transformNormalToView(surface.normal)),
     aoNode: surface.orm.r,
     // Caustic visibility is supplied by the connected-water field.
     terrainCausticNode: max(0, caustic.add(1)),

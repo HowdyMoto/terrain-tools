@@ -10,6 +10,8 @@ The world reference ground uses generated color textures. Its periodic normal/he
 
 Stationary foliage now separates temporal history from leaf coverage and uses exact per-instance fade flags, reducing tree pixel swimming in both original-mesh and generated-tree modes. See [stability behavior and validation](docs/FOLIAGE.md#motion-and-temporal-stabilization).
 
+Terrain sunlight and contact shading now use consistent view-space normals, fixing the ground turning dark from aerial camera angles. See [lighting checks and before/after captures](docs/ENVIRONMENT.md#natural-sunlight-and-forest-quality).
+
 **Water:** open **Water**, enable **Show ocean**, and set **Water height (m)** for an ocean at sea level, independent ponds/lakes, adjustable swells, depth-dependent clarity, reflections and detailed shoreline foam. See the [water guide and current limits](docs/WATER.md) and [complete system design](docs/WATER-DESIGN.md).
 
 **Rendering:** the editor, import previews, `/runtime.html`, and `/world.html` use native **WebGPU**. Terrain, vegetation, shadows, atmosphere, water and PBR baking use node shaders. Startup rejects a WebGL fallback and explains recovery if WebGPU is unavailable. Existing project files need no conversion. The optional optimized world profile meets the local RTX 5060/1080p target in two full traversals: **38.9–43.9 FPS, 33.4–33.5 ms frame p95 and 117–217 ms worst intervals**, with one unfinished GPU frame. A fully resident forest records 30.5 FPS / 33.5 ms p95. Default mesh foliage still misses the p95 target. Optional canopy shade/bounce improves spatial indirect lighting. See [performance evidence and limits](docs/PERFORMANCE.md) and [WebGPU integration](docs/WEBGPU.md).

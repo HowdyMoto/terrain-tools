@@ -179,17 +179,73 @@ for (const profile of ['', '?impostors&wide-clusters']) {
         if (delta > 3) changed++;
       }
     const channels = samples[0].length * (samples.length - 1);
+    const hdr = await page.evaluate(async () => {
+      const a = window.worldExample,
+        pipeline = a.environment.gpuPipeline;
+      const temporal = pipeline.effects.find((effect) => effect.isTRAANode);
+      const raw = temporal.beautyNode.renderTarget;
+      const filtered = pipeline.effects
+        .filter((effect) => effect.isRTTNode)
+        .at(-1).renderTarget;
+      const width = raw.width,
+        height = raw.height;
+      const left = Math.ceil(width * 0.4);
+      // RGBA16F full rows are aligned for the fixed 1440px viewport. Compare
+      // the actual mixed temporal result before sharpening/tone conversion to
+      // its same-frame jittered input, rather than imposing an exposure limit.
+      const half = (x) => {
+        const exponent = (x >> 10) & 31,
+          mantissa = x & 1023;
+        return (
+          (x & 32768 ? -1 : 1) *
+          (exponent === 0
+            ? mantissa * 2 ** -24
+            : (1 + mantissa / 1024) * 2 ** (exponent - 15))
+        );
+      };
+      let previous,
+        count = 0;
+      const sums = [0, 0];
+      for (let f = 0; f < 12; f++) {
+        a.environment.render(a.camera);
+        await a.renderer.backend.device.queue.onSubmittedWorkDone();
+        const images = await Promise.all(
+          [raw, filtered].map((target) =>
+            a.renderer.readRenderTargetPixelsAsync(target, 0, 0, width, height),
+          ),
+        );
+        if (previous) {
+          for (let y = 0; y < height; y += 2)
+            for (let x = left; x < width; x += 2)
+              for (let c = 0; c < 3; c++) {
+                const i = (y * width + x) * 4 + c;
+                for (let k = 0; k < 2; k++)
+                  sums[k] += Math.abs(
+                    half(images[k][i]) - half(previous[k][i]),
+                  );
+                count++;
+              }
+        }
+        previous = images;
+      }
+      return {
+        rawMeanDelta: sums[0] / count,
+        filteredMeanDelta: sums[1] / count,
+        retainedVariation: sums[1] / sums[0],
+      };
+    });
     const stationary = {
       meanDelta: difference / channels,
       changedFraction: changed / channels,
+      hdr,
     };
     console.log('Stationary foliage:', stationary);
     await info.attach('stationary-foliage.json', {
       body: JSON.stringify(stationary),
       contentType: 'application/json',
     });
-    expect(stationary.meanDelta).toBeLessThan(1.5);
-    expect(stationary.changedFraction).toBeLessThan(0.05);
+    expect(hdr.rawMeanDelta).toBeGreaterThan(0.001);
+    expect(hdr.retainedVariation).toBeLessThan(0.25);
     await page.evaluate(() => window.worldExample.dispose());
     expect(errors).toEqual([]);
     await info.attach('world-webgpu-correctness', {
