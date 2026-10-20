@@ -18,7 +18,7 @@
     "src/physics/rapier.ts": "44f5c4adb25d4334fe6a6f13d71d5218fc0be5bc4c091bce58eb8940703f0222",
     "public/runtime-assets/manifest.json": "137e8a0d896e7de319a2d3c5b69fe96de4db93c833a4b24911f4924fe198b409"
   },
-  "sourceNote": "Production sources remained frozen throughout all four accepted windows. The example comparison links and final test/documentation edits followed timing; the runtime and world entry module hashes are unchanged.",
+  "sourceNote": "Production sources remained frozen throughout all four accepted windows. Comparison links and final tests/documentation followed timing. The post-timing ownership hardening below only snapshots the caller registry once at construction; the render/frame path is unchanged.",
   "environment": {
     "os": "Windows",
     "node": "v24.18.1",
@@ -59517,5 +59517,21 @@
       "meetsStreamingResponsiveness": true,
       "meets30FPS": true
     }
-  ]
+  ],
+  "postTimingHardening": {
+    "commit": "205da46de046c681ee684b70e5c3d28665ec8b0a",
+    "note": "Copy host atlas registries at construction so later caller-map edits cannot bypass the fixed reservation or affect later tile preparation. Initial registries used by timing were never mutated; the frame/render path and all other production source files are unchanged.",
+    "changedProductionFile": "src/runtime/world-scene.ts",
+    "sourceSHA256": "a78862fc53baf18568cac3cb70249539308caf35a90744c50d830ca25a27e76b",
+    "runtimeSHA256": "a0cf1494f65560520475b2d5a387eb94a33113160092d92a64020f60ed383cea",
+    "checks": {
+      "unitTests": 362,
+      "unitFiles": 54,
+      "build": true,
+      "typecheck": true,
+      "lint": true,
+      "nativeWorldProfilesPassed": 2,
+      "nativeRenderingErrors": []
+    }
+  }
 }
