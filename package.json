@@ -27,6 +27,7 @@
     "benchmark": "node scripts/benchmark.mjs",
     "benchmark:erosion": "node scripts/benchmark-erosion.mjs",
     "benchmark:foliage": "node scripts/benchmark-foliage.mjs",
+    "benchmark:foliage-motion": "node scripts/benchmark-foliage-motion.mjs",
     "benchmark:history": "node scripts/benchmark-history.mjs",
     "benchmark:persistence": "node scripts/benchmark-persistence.mjs",
     "build:example:upland": "node scripts/build-upland-example.mjs",

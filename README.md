@@ -39,6 +39,7 @@ npm run benchmark     # CPU geometry/collision/contact benchmarks (build first)
 npm run benchmark:erosion # CPU weathering at 128, 256 and 512 cells (build first)
 npm run benchmark:surfaces # GPU cost of optional texture variation (build runtime first)
 npm run benchmark:foliage # Browser full-detail/LOD comparison (build first)
+npm run benchmark:foliage-motion # Native 1080p fern motion/history cost (build first)
 npm run benchmark:foliage -- --count=50000 --shadows --fade=0.25 # Include cross-fades
 npm run benchmark:history # Retained CPU memory and undo/redo timings (build first)
 npm run benchmark:edit-preview -- --count=50000 # Stroke preview startup and retained buffers
@@ -49,6 +50,8 @@ npm run format        # Format source, tests, and documentation
 ```
 
 For timing without screenshots, run `npm run benchmark:world -- --no-captures --output=test-results/world-timing.json`. The output directory must already exist (the harness creates `test-results`). Reports include wall-clock submission FPS and frame-time percentiles; close other GPU workloads and run benchmarks sequentially. See [performance evidence and measurement limits](docs/PERFORMANCE.md).
+
+`npm run benchmark:foliage-motion` starts its own preview on port 5197 (`-- --port=5198` overrides it), renders 400 checked-in CC0 ferns with LODs, shadows, water capture, GTAO and temporal stabilization, and writes `.qa/foliage-motion-benchmark.json`. To compare two builds, first copy the baseline `lib/` outside the generated build directory, rebuild, then pass `-- --baseline-lib=.qa/baseline/lib --output=.qa/motion-comparison.json`. It runs baseline/current/current/baseline sequentially. Install the local video helper with `npx playwright install ffmpeg` before using `--capture`; capture runs record separate videos and are excluded from performance evidence. See [scope and measurements](docs/PERFORMANCE.md#foliage-motion-history--19-october-2026).
 
 Browser tests currently use installed Google Chrome and serve the production build on port 5175. Run the build first. For other environments, install Playwright Chromium with `npx playwright install --with-deps chromium`. Linux CI installs `mesa-vulkan-drivers`, `vulkan-tools` and `xvfb`, and runs full Chromium with a software Vulkan display and explicit SwiftShader WebGPU adapter. These results are not hardware performance evidence.
 
@@ -116,6 +119,8 @@ To reproduce the mouse/GPU measurement with an external content project, start `
 For outdoor lighting, start with **Light → Sun → Lighting preset → Natural sunlight · fine shadows**, then tune solar time and exposure. It enables three camera-following shadow cascades, indirect contact shading and temporal foliage stabilization. **Light → View → Foliage detail recovery** adjusts contrast after temporal smoothing (0–1, default 0.25). The WebGPU scene pass supplies depth, normals, indirect light and velocity to the compositor. **Foliage → Effects → Leaf lighting** adds shadowed translucency to selected leaf materials, with absorption/tint controls and smooth cutout edges. Dense scenes can use 2048 px per cascade and a shorter shadow reach. See [forest lighting guidance and current limits](docs/ENVIRONMENT.md#natural-sunlight-and-forest-quality).
 
 After building, run the rendering/recovery checks with `npm run test:browser -- tests/browser/cascaded-sun.spec.mjs tests/browser/ambient-occlusion.spec.mjs tests/browser/depth-prepass.spec.mjs tests/browser/temporal-aa.spec.mjs tests/browser/forest-lighting-recovery.spec.mjs tests/browser/foliage-shading.spec.mjs`. The external Pine Forest and Namaqualand studies keep their artwork and project-specific builders outside the codebase; see [content projects](docs/CONTENT-PROJECTS.md).
+
+Native foliage now supplies previous wind/contact deformation and ID-matched instance transforms to temporal stabilization. Fresh and cross-fading cutouts reduce stale history; camera projection/aspect and histories survive pause, resize and explicit teleport resets. No new authoring option or project migration is needed. See [foliage motion behavior and limits](docs/FOLIAGE.md#motion-and-temporal-stabilization).
 
 To profile one of those external scenes, run `npm run build:runtime`, then `node scripts/benchmark-forest.mjs "C:/path/to/content-project/exports/scene.terrain" .qa/forest-render.json`. The script uses the `original` or `trail` viewpoint in the parent content project's `content-manifest.json`, launches its own local server and Chrome profile, requires the RTX 5060, and records 1080p GPU pass timings after warm-up. An optional third argument selects a preserved runtime build inside this workspace for comparison. See [measurement scope](docs/PERFORMANCE.md#forest-rendering-on-the-rtx-5060). The separate walk benchmark above measures actual editor input delivery and GPU completion.
 

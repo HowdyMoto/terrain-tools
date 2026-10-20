@@ -2,6 +2,46 @@
 
 The editor and interactive runtime examples use native WebGPU. The first optimization pass removes repeated shader construction and reduces native streaming stalls; steady 30 FPS remains a separate acceptance target. Other measurements are **WebGL baselines** unless explicitly marked otherwise. See [WebGPU scope](WEBGPU.md). `benchmark:surfaces`, `benchmark:foliage` and `benchmark-forest.mjs` still exercise explicit legacy WebGL paths.
 
+## Foliage motion history — 19 October 2026
+
+Native vegetation now evaluates previous wind/contact deformation and ID-matched instance placement, with reactive fresh/LOD coverage. A stable camera projection binding, frame-scoped camera/object history, and restoration of perspective aspect fix motion caused by jitter and temporal pipeline rebuilds. The prior renderer compared animated leaves against an undeformed rest pose. These corrections are automatic when native temporal stabilization is used; [behavior and limits](FOLIAGE.md#motion-and-temporal-stabilization) describe runtime integration.
+
+The bounded comparison uses **400 checked-in CC0 Poly Haven ferns**, 213,144 selected triangles in six batches at the sampled final view, LOD transitions, layered terrain, shadows, Standard ocean capture, GTAO and TRAA at **1920 × 1080**. It runs baseline/current/current/baseline, with 30 warmup frames and 120 recorded frames per trial, on Windows Chrome 155 / Node 24.18.1 / RTX 5060 Laptop GPU, driver 617.42. The GPU was idle before the run. No build, correctness suite, encoder or other benchmark ran concurrently. Source/build fingerprints and raw samples are in the [report](benchmarks/foliage-motion-performance-2026-10-19.json).
+
+| Metric                                           | Baseline trial range | Corrected trial range |
+| ------------------------------------------------ | -------------------- | --------------------- |
+| Median GPU render time                           | 4.26 ms              | 4.13–4.19 ms          |
+| GPU p95                                          | 4.46–10.62 ms        | 4.98–5.18 ms          |
+| Median CPU update/submission                     | 3.0–3.4 ms           | 3.3–3.6 ms            |
+| CPU p95                                          | 5.4–6.8 ms           | 5.8–6.6 ms            |
+| Frame interval p95                               | 33.4 ms              | 33.4–33.5 ms          |
+| Tracked renderer GPU bytes                       | 225,282,775          | 225,475,600           |
+| Mean RGB error against the paused MSAA reference | 7.11 / 255           | 6.13–6.18 / 255       |
+| Mean RGB error at reference edges                | 31.37 / 255          | 22.58–22.95 / 255     |
+
+This shows better reference agreement without a measurable median GPU cost increase in this fixture, plus about **0.18 MiB** tracked GPU storage. The approximately 0.1 ms median GPU difference is within run/clock variability; it is not an optimization claim. CPU medians suggest roughly 0.25 ms added work at this population, with overlapping tails. GPU timestamps cover the composed passes. Frame intervals include RAF and timestamp-resolution overhead, and the short run does not establish sustained 30 FPS in a full forest. Renderer bytes exclude CPU histories, browser/driver allocations and source assets.
+
+The image metric compares the final temporal view, with one paused pose draw, against four warmed paused non-temporal MSAA frames with matching intended projection. It includes the combined motion, projection and history corrections; it is not an isolated ghosting metric or a physically correct reference. See the [baseline](benchmarks/foliage-motion-before-2026-10-19.png) and [corrected](benchmarks/foliage-motion-after-2026-10-19.png) documentation captures. Separate local before/after WebM recordings and extracted moving frames were inspected; they are excluded from performance timing. Fine leaf aliasing and temporal softness remain visible.
+
+Current matrix/contact/fade and previous matrix/contact/validity occupy two packed instance streams (152 bytes per instance on the GPU). Static wind-only frames do not repack these buffers. Streaming admission conservatively adds 88 GPU bytes and 352 CPU bytes per capacity slot, plus 1 KiB per batch, beyond existing matrix accounting. Some geometry accounting can include these bytes again; these are admission reservations for one view, not an exact heap measurement. Extra views require host budgeting. Teardown returned all tracked renderer bytes to zero in all four trials.
+
+After `npm run build`, run `npm run benchmark:foliage-motion`. For a comparison, save the baseline `lib/` first, rebuild the candidate, then run:
+
+```sh
+npm run benchmark:foliage-motion -- --baseline-lib=.qa/baseline/lib --output=.qa/motion-comparison.json
+npx playwright install ffmpeg
+npm run benchmark:foliage-motion -- --baseline-lib=.qa/baseline/lib --capture --output=.qa/motion-visuals.json
+```
+
+The finalized harness owns preview port 5197 (`--port=5198` overrides it), validates the native adapter, and separates screenshots/readback/video from timed rendering. The recorded timing used the existing local asset server on port 5186 with both SDKs served through fixed file routes; the subsequent separate video run verified the owned-preview path. This does not affect the SDK source/build hashes or asset contents.
+
+Validation passed build/type checks, lint, all **329 unit tests** and **15 distinct targeted Chrome scenarios**. The analytic probe measured 0.01579285 NDC wind velocity against 0.01580310 expected, and zero motion when paused. The fern fixture measured zero paused opaque motion and at most 1.2e-7 NDC after teleport/resize settling. Tangents/vertex colors compile within the default device limits, tracked GPU resources return to zero, and shared shadow buffers survive caster removal. Recovery retains exact document/history assertions through injected failure, successful retry, undo and reload. Two existing reload checks were updated to wait for startup readiness before reading the project name; their initial five-second name checks fired while loading was still active. The two retries passed. Linux/software, other devices, dense banana/jacaranda populations and the full browser suite were not rerun.
+
+```sh
+npm test -- --maxWorkers=4 --testTimeout=15000
+npm run test:browser -- tests/browser/foliage-motion.spec.mjs tests/browser/foliage-batching.spec.mjs tests/browser/foliage-crossfade.spec.mjs tests/browser/foliage-recovery.spec.mjs tests/browser/webgpu.spec.mjs tests/browser/webgpu-world.spec.mjs tests/browser/webgpu-device-loss.spec.mjs tests/browser/web-ocean.spec.mjs
+```
+
 ## Optional spectral ocean — 19 October 2026
 
 The web-ocean-derived provider adds six native GPU FFT cascades and persistent foam on the existing renderer device. Its simulation allocation reservation is **13.17 MiB Balanced** or **84.67 MiB High**, including buffers and simulation texture mipmaps. These values exclude scene captures, terrain masks, geometry and the existing shared pore texture. Synchronized world tiles share matching simulations, while conservative residency reservations still charge per tile. Independent clocks and animation rates use separate histories.
