@@ -17,7 +17,7 @@ export class RetainedShaderCache extends Map<number, ProgramState> {
   private bytes = 0;
   hits = 0;
   constructor(
-    readonly maxPrograms = 32,
+    readonly maxPrograms = 64,
     readonly maxBytes = 8 * 1024 ** 2,
   ) {
     super();

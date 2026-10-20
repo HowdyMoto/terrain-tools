@@ -24,7 +24,7 @@ Three is pinned to 0.186.1: older r180 generated invalid WGSL for array texture 
 
 ## Streamed shader preparation and impostors
 
-Generated runtime programs can survive an interval with no resident instances, within a 32-unused-program / 8 MiB source-text LRU. The adapter excludes arbitrary bake/third-party graphs and releases its cache at renderer disposal; source bytes are not total node-graph or driver memory. Standard water retains one draw-relative graph identity across dry intervals while releasing its placeholder GPU resources at zero users.
+Generated runtime programs can survive an interval with no resident instances, within a 64-unused-program / 8 MiB source-text LRU. The adapter excludes arbitrary bake/third-party graphs and releases its cache at renderer disposal; source bytes are not total node-graph or driver memory. Standard water retains one draw-relative graph identity across dry intervals while releasing its placeholder GPU resources at zero users.
 
 Camera/leaf history invalidation seeds existing temporal buffers and retains the scene pass. The opaque capture uses a consistent MRT context, preserving reactive HDR alpha. Optional water staging compiles in the overlay's actual target/MRT **and nested render depth**, with a stable builder view while live frames continue. Target/MRT/visibility state restores before asynchronous waits. This is isolated in `render/prepare-geometry.ts` and pinned to Three 0.186.1; cancellation/retry and zero new water builds on admission have native regressions. The world example stages water by default, without warming all foliage/terrain variants before admission.
 

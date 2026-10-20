@@ -177,7 +177,7 @@ test('camera history resets retain compiled native scene programs and seed fresh
   expect(result.difference).toBe(0);
   expect(result.replacementBuilds).toBe(0);
   expect(result.cached.hits).toBeGreaterThan(0);
-  expect(result.cached.retainedPrograms).toBeLessThanOrEqual(32);
+  expect(result.cached.retainedPrograms).toBeLessThanOrEqual(64);
   expect(result.cached.retainedSourceBytes).toBeLessThanOrEqual(8 * 1024 ** 2);
   expect(result.disposedCache.programs).toBe(0);
   expect(result.replacementColor[2]).toBeGreaterThan(
