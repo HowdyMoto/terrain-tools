@@ -59,6 +59,7 @@ import { TerrainWater } from './water';
 import { terrainIndirect } from '../render/node-lighting';
 import { beginFoliageMotionFrame } from '../render/foliage-motion';
 import { TerrainVelocityNode } from '../render/native-velocity';
+import { temporalHistoryConfidence } from '../render/temporal-history';
 
 /** Contracts: all intermediate color is linear HDR; depth is native WebGPU
  * [0,1]. Only RenderPipeline owns display conversion. Targets own their textures;
@@ -66,6 +67,7 @@ import { TerrainVelocityNode } from '../render/native-velocity';
 export const terrainPassContract = {
   color: 'linear-srgb-hdr',
   depth: 'webgpu-zero-to-one',
+  velocity: 'xy-ndc-motion-alpha-history-confidence',
   outputs: ['output', 'normal', 'indirect', 'velocity'],
   displayOwner: 'post-processing',
 } as const;
@@ -232,7 +234,11 @@ function terrainOutputs(velocity: TerrainVelocityNode) {
     output,
     normal: packNormalToRGB(normalView),
     indirect: vec4(indirect, 1),
-    velocity,
+    velocity: vec4(
+      nodeObject(velocity) as unknown as Node<'vec2'>,
+      0,
+      temporalHistoryConfidence,
+    ),
   });
 }
 
@@ -465,7 +471,11 @@ export class WebGPUPipeline {
           }
         )._historyRenderTarget;
         this.renderer.initRenderTarget(history);
-        result = mix(nodeObject(result), temporal, color.a);
+        result = mix(
+          nodeObject(result),
+          temporal,
+          this.pass.getTextureNode('velocity').a,
+        );
         {
           const sharpenInput = convertToTexture(result);
           if (sharpenInput.isRTTNode) this.effects.push(sharpenInput);

@@ -1,0 +1,50 @@
+{
+  "date": "2026-10-20",
+  "browser": "Chrome 155, Windows",
+  "device": "RTX 5060 Laptop GPU selected by scripts/chrome-gpu.mjs",
+  "baseline": "7eee256",
+  "scope": "Visual stability diagnostic, not an FPS benchmark. World example; 1280x720; camera (415,referenceHeight+69,606). Allow streaming/LOD settling, stop simulation/wind, warm 48 temporal frames, compare eight consecutive screenshots. Right 780x720 pixels exclude HUD. Each scene is frozen during sampling; wind phase at freeze can differ between runs.",
+  "metric": "Mean absolute RGB 8-bit channel difference across adjacent frames; changedFraction counts channel differences >3.",
+  "before": [
+    {
+      "profile": "mesh",
+      "meanDelta": 5.4774872812372815,
+      "changedFraction": 0.19781737552570886,
+      "max": 141
+    },
+    {
+      "profile": "impostor",
+      "meanDelta": 5.416291123999457,
+      "changedFraction": 0.19565374440374442,
+      "max": 147
+    }
+  ],
+  "after": [
+    {
+      "profile": "mesh",
+      "meanDelta": 0.3143503256003256,
+      "changedFraction": 0.008183675892009225,
+      "max": 62
+    },
+    {
+      "profile": "impostor",
+      "meanDelta": 0.33015550807217475,
+      "changedFraction": 0.009109517026183693,
+      "max": 76
+    }
+  ],
+  "implementation": "Separate history confidence in existing velocity alpha; exact flat per-instance fade/validity; resting impostor views accumulate, moving/zoomed/reset/skipped views reject conservatively.",
+  "sources": {
+    "src/render/temporal-history.ts": "7aadf618a53b6bd0e2b140d62c7d360b6ee69b0723619dd061cd70cb946b060e",
+    "src/runtime/foliage-nodes.ts": "827536c915c22cd1a293755cf604e2bad1f389052a5922730f4b65c1df1c1ff5",
+    "src/runtime/foliage-impostor.ts": "c676b4d37d318a9da3cee2e0c001cfdc6ff892cbc9812f9d192fc731d0d5916a",
+    "src/runtime/webgpu-pipeline.ts": "1951b658e4ca24282bcf9d90931ab059fd674537b03a2eac68ee7ca1bd2a8c91"
+  },
+  "limits": "Residual subpixel, atlas and GTAO variation remains. No FPS rebenchmark, full browser suite, or other-GPU validation.",
+  "settings": {
+    "temporalAA": true,
+    "temporalSharpness": 0,
+    "ambientOcclusion": true,
+    "shadows": true
+  }
+}

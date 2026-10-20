@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import sharp from 'sharp';
 
 for (const profile of ['', '?impostors&wide-clusters']) {
   test(`native WebGPU streams prepared forest and coast, then releases the world (${profile ? 'generated distant trees' : 'mesh foliage'})`, async ({
@@ -128,6 +129,67 @@ for (const profile of ['', '?impostors&wide-clusters']) {
         path: info.outputPath('webgpu-' + name + '.png'),
       });
     }
+    // Freeze simulation, not anti-aliasing. Leaf coverage must converge while
+    // the temporal jitter sequence continues, including after an aerial move.
+    await page.evaluate(async () => {
+      const a = window.worldExample;
+      a.renderer.setAnimationLoop(null);
+      await a.renderer.backend.device.queue.onSubmittedWorkDone();
+      for (let i = 0; i < 90; i++) {
+        if (i < 30) a.world.update(a.camera, 1 / 30, innerHeight);
+        a.environment.updateCamera(a.camera);
+        a.environment.render(a.camera);
+        await a.renderer.backend.device.queue.onSubmittedWorkDone();
+      }
+    });
+    const samples = [];
+    const viewport = page.viewportSize();
+    const left = Math.ceil(viewport.width * 0.4);
+    for (let i = 0; i < 8; i++) {
+      await page.evaluate(async () => {
+        const a = window.worldExample;
+        a.environment.render(a.camera);
+        await a.renderer.backend.device.queue.onSubmittedWorkDone();
+      });
+      const png = await page.screenshot();
+      if (i === 0 || i === 7)
+        await info.attach('stationary-frame-' + i, {
+          body: png,
+          contentType: 'image/png',
+        });
+      samples.push(
+        await sharp(png)
+          .extract({
+            left,
+            top: 0,
+            width: viewport.width - left,
+            height: viewport.height,
+          })
+          .removeAlpha()
+          .raw()
+          .toBuffer(),
+      );
+    }
+    let difference = 0,
+      changed = 0;
+    for (let f = 1; f < samples.length; f++)
+      for (let i = 0; i < samples[f].length; i++) {
+        const delta = Math.abs(samples[f][i] - samples[f - 1][i]);
+        difference += delta;
+        if (delta > 3) changed++;
+      }
+    const channels = samples[0].length * (samples.length - 1);
+    const stationary = {
+      meanDelta: difference / channels,
+      changedFraction: changed / channels,
+    };
+    console.log('Stationary foliage:', stationary);
+    await info.attach('stationary-foliage.json', {
+      body: JSON.stringify(stationary),
+      contentType: 'application/json',
+    });
+    expect(stationary.meanDelta).toBeLessThan(1.5);
+    expect(stationary.changedFraction).toBeLessThan(0.05);
     await page.evaluate(() => window.worldExample.dispose());
     expect(errors).toEqual([]);
     await info.attach('world-webgpu-correctness', {

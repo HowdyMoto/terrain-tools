@@ -61,7 +61,10 @@ import {
 } from '../render/native-foliage';
 
 type N = Node<'vec3'>;
-const windGraphs = new Map<string, { positionNode: Node; outputNode: Node }>();
+const windGraphs = new Map<
+  string,
+  { positionNode: Node; terrainHistoryNode: Node }
+>();
 const windMaterialUniforms = materialNodeUniforms('terrainWindUniforms');
 const fadeGraphs = new WeakMap<() => boolean, Node>();
 const leafGraphs = new Map<string, Record<string, unknown>>();
@@ -409,7 +412,7 @@ export function configureWindNodes(
   })();
   const graph = {
     positionNode,
-    outputNode: Fn((builder: NodeBuilder) => {
+    terrainHistoryNode: Fn((builder: NodeBuilder) => {
       if (
         !builder.geometry.hasAttribute(foliagePreviousStateAttribute) ||
         !(
@@ -417,14 +420,16 @@ export function configureWindNodes(
         ).needsPreviousData() ||
         builder.material.transparent
       )
-        return output;
+        return output.a;
       let history: Node<'float'> = varying(
         attribute(foliagePreviousStateAttribute, 'vec2').y,
-      );
+      ).setInterpolation('flat');
       if (builder.geometry.hasAttribute('terrainFade')) {
+        // These bounds belong to an instance, not the leaf surface. Perspective
+        // interpolation can turn a settled 1 into <1 and reject history forever.
         const fade = varying(
           attribute(foliageCurrentStateAttribute, 'vec4').yzw,
-        );
+        ).setInterpolation('flat');
         history = history.mul(
           select(
             fade.x.greaterThan(0).or(fade.y.lessThan(1)),
@@ -433,9 +438,9 @@ export function configureWindNodes(
           ),
         );
       }
-      // The native compositor already uses HDR alpha as temporal history weight.
       // Fresh/cross-fading cutouts should not inherit unrelated old coverage.
-      return vec4(output.rgb, output.a.mul(history));
+      // Keep this separate from the alpha used for smooth leaf coverage.
+      return history;
     })(),
   };
   windGraphs.set(graphKey, graph);
@@ -452,7 +457,7 @@ export function configureFadeNodes(material: Material, enabled: () => boolean) {
         builder.geometry.hasAttribute(foliageCurrentStateAttribute)
           ? attribute(foliageCurrentStateAttribute, 'vec4').yzw
           : attribute('terrainFade', 'vec3'),
-      );
+      ).setInterpolation('flat');
       const noise = fract(
         fract(
           dot(floor(screenCoordinate.xy), vec2(0.06711056, 0.00583715)).add(

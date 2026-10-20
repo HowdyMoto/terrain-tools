@@ -21,7 +21,6 @@ import {
   modelWorldMatrix,
   cameraViewMatrix,
   cameraProjectionMatrix,
-  output,
   fract,
   floor,
   screenCoordinate,
@@ -34,6 +33,10 @@ import {
   impostorBlend,
 } from '../render/impostor-nodes';
 import { configureLeafNodes } from './foliage-nodes';
+import {
+  impostorViewConfidence,
+  type HistoryMaterial,
+} from '../render/temporal-history';
 import type { FoliageSubsurface } from '../core/foliage-shading';
 import type { ModelPart } from '../render/models';
 import { checkSignal } from '../render/resources';
@@ -478,13 +481,11 @@ export function configureImpostorMaterial(
     normalNode: normalize(cameraViewMatrix.mul(vec4(n, 0)).xyz),
     roughnessNode: properties.r,
     metalnessNode: properties.g,
-    // Card-view changes do not have geometry motion vectors. Reject old coverage.
-    outputNode: vec4(
-      output.rgb,
-      output.a
-        .mul(varying(attribute('terrainPreviousState', 'vec2').y))
-        .mul(0.1),
-    ),
+    // Retain transition/fresh-instance rejection, but let resting cards accumulate.
+    terrainHistoryNode: (
+      (material as HistoryMaterial).terrainHistoryNode ??
+      varying(attribute('terrainPreviousState', 'vec2').y)
+    ).mul(impostorViewConfidence),
   };
   // Depth is reconstructed along each baked view ray, including shadow cameras.
   const reconstructed = positionWorld.add(

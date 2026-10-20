@@ -14,7 +14,8 @@ test('native foliage velocity follows wind and contact, freezes when paused and 
   });
   const result = await page.evaluate(async () => {
     const THREE = await import('three');
-    const { mrt, output, velocity } = await import('three/tsl');
+    const { mrt, output, velocity, vec4, Fn, float } =
+      await import('three/tsl');
     const { createProject, editFoliageModels } =
       await import('/__runtime_test/lib/core.js');
     const { TerrainScene, createTerrainRenderer, rendererDescription } =
@@ -35,6 +36,8 @@ test('native foliage velocity follows wind and contact, freezes when paused and 
       wind: 1,
       alignToNormal: false,
       flexibility: { source: 'height', start: 0, end: 1, exponent: 1 },
+      lods: [{ model: 'grass', distance: 30, density: 1 }],
+      lodFadeDuration: 0.3,
     });
     project.foliage.push({
       id: 1,
@@ -119,7 +122,10 @@ test('native foliage velocity follows wind and contact, freezes when paused and 
     });
     target.textures[0].name = 'output';
     target.textures[1].name = 'velocity';
-    const outputs = mrt({ output, velocity });
+    const confidence = Fn(
+      (builder) => builder.material.terrainHistoryNode ?? float(1),
+    )();
+    const outputs = mrt({ output, velocity: vec4(velocity, 0, confidence) });
     const samples = [];
     const draw = async (dt, configure) => {
       await new Promise(requestAnimationFrame);
@@ -149,18 +155,21 @@ test('native foliage velocity follows wind and contact, freezes when paused and 
       let vx = 0,
         vy = 0,
         alpha = 0,
+        coverage = 0,
         count = 0;
       for (let i = 0; i < pixels.length; i += 4)
         if (THREE.DataUtils.fromHalfFloat(pixels[i + 1]) > 0.1) {
           vx += THREE.DataUtils.fromHalfFloat(vectors[i]);
           vy += THREE.DataUtils.fromHalfFloat(vectors[i + 1]);
-          alpha += THREE.DataUtils.fromHalfFloat(pixels[i + 3]);
+          alpha += THREE.DataUtils.fromHalfFloat(vectors[i + 3]);
+          coverage += THREE.DataUtils.fromHalfFloat(pixels[i + 3]);
           count++;
         }
       const sample = {
         vx: vx / count,
         vy: vy / count,
         alpha: alpha / count,
+        coverage: coverage / count,
         count,
       };
       samples.push(sample);
@@ -218,6 +227,7 @@ test('native foliage velocity follows wind and contact, freezes when paused and 
   expect(result.validation).toEqual([]);
   expect(result.initial.count).toBeGreaterThan(1000);
   expect(result.initial.alpha).toBe(0);
+  expect(result.initial.coverage).toBe(1);
   expect(result.moving.alpha).toBe(1);
   expect(result.moving.vx).toBeCloseTo(result.expectedVx, 4);
   expect(Math.abs(result.moving.vy)).toBeLessThan(0.0001);

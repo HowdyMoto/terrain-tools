@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { FoliageMotionHistory } from '../src/render/foliage-motion';
+import { NodeFrame, PerspectiveCamera } from 'three/webgpu';
+import type { WebGPURenderer } from 'three/webgpu';
+import {
+  FoliageMotionHistory,
+  beginFoliageMotionFrame,
+} from '../src/render/foliage-motion';
+import { impostorViewConfidence } from '../src/render/temporal-history';
 
 const matrices = (...positions: number[]) => {
   const data = new Float32Array(positions.length * 16);
@@ -11,6 +17,50 @@ const matrices = (...positions: number[]) => {
 };
 const wind = (time: number) => [time, 2, 1.5, 0.4, 1, 0];
 describe('foliage rendered motion history', () => {
+  it('accumulates resting impostor views without mistaking jitter for camera motion', () => {
+    const renderer = {} as WebGPURenderer;
+    const camera = new PerspectiveCamera(55, 16 / 9, 0.1, 500);
+    camera.position.set(0, 10, 80);
+    camera.updateMatrixWorld();
+    const frame = new NodeFrame();
+    frame.renderer = renderer;
+    frame.camera = camera;
+    const epoch = {};
+    const sample = (serial: number, revision = epoch) => {
+      const end = beginFoliageMotionFrame(frame.renderer as WebGPURenderer, {
+        serial,
+        epoch: revision,
+      });
+      try {
+        impostorViewConfidence.update(frame);
+        return impostorViewConfidence.value;
+      } finally {
+        end();
+      }
+    };
+    expect(sample(1)).toBe(0.1);
+    expect(sample(2)).toBe(1);
+    camera.setViewOffset(1280, 720, 0.3, -0.2, 1280, 720);
+    expect(sample(3)).toBe(1);
+    expect(sample(3)).toBe(1); // Auxiliary draws share the composed snapshot.
+    camera.position.x += 1;
+    camera.updateMatrixWorld();
+    expect(sample(4)).toBe(0.1);
+    expect(sample(5)).toBe(1);
+    camera.zoom = 2;
+    camera.updateProjectionMatrix();
+    expect(sample(6)).toBe(0.1);
+    expect(sample(7)).toBe(1);
+    expect(sample(9)).toBe(0.1); // A skipped view cannot inherit stale coverage.
+    expect(sample(10)).toBe(1);
+    expect(sample(11, {})).toBe(0.1);
+    frame.camera = new PerspectiveCamera();
+    expect(sample(12)).toBe(0.1);
+    expect(sample(13)).toBe(1);
+    frame.renderer = {} as WebGPURenderer;
+    // A different renderer has an independent history even for this camera.
+    expect(sample(14)).toBe(0.1);
+  });
   it('matches compacted plants by ID and rejects newly appearing coverage', () => {
     const history = new FoliageMotionHistory(3),
       epoch = {};
