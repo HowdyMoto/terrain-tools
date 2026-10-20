@@ -100,94 +100,100 @@ it('clusters distant tree draws while preserving IDs, transforms, fades, shadows
   scene.dispose();
 });
 
-it('preserves full primary and intermediate draws through contact, reanchoring, rollback and rebuild', () => {
-  const p = createProject(16, 128);
-  p.heights.fill(0);
-  p.foliage = [];
-  const model = editFoliageModels(p.brushes[0], [])[0];
-  Object.assign(model, {
-    model: 'pine',
-    alignToNormal: true,
-    lods: [{ model: 'pine-low', distance: 50, density: 0.7 }],
-    lodFadeDuration: 0.25,
-    cullDistance: 240,
-    flexibility: { source: 'height', start: 0.3, end: 1, exponent: 2 },
-    interaction: { enabled: true, radius: 5, recovery: 0.4 },
-    crush: 1,
-  });
-  for (let z = -56; z <= 56; z += 8)
-    for (let x = -56; x <= 56; x += 8)
-      p.foliage.push({
-        id: p.nextId++,
-        brushId: p.brushes[0].id,
-        modelId: model.id,
-        x,
-        z,
-        scale: 1,
-        rotation: (x - z) * 0.1,
-      });
-  const reference = new TerrainScene(p, { foliageClusters: false });
-  const clustered = new TerrainScene(p, { foliageClusters: { nearby: true } });
-  const camera = new THREE.PerspectiveCamera();
-  const records = (scene: TerrainScene) => {
-    const records: string[] = [];
-    for (const mesh of scene.foliage.children as THREE.InstancedMesh[]) {
-      if (!mesh.visible || !mesh.count) continue;
-      const contact = mesh.geometry.getAttribute('terrainContact');
-      const fade = mesh.geometry.getAttribute('terrainFade');
-      mesh.userData.instanceIds.forEach((id: number, slot: number) => {
-        records.push(
-          JSON.stringify([
-            id,
-            mesh.userData.lodLevel,
-            mesh.geometry.index!.count,
-            Array.from(
-              mesh.instanceMatrix.array.subarray(slot * 16, slot * 16 + 16),
-            ),
-            contact?.getX(slot),
-            fade && [fade.getX(slot), fade.getY(slot), fade.getZ(slot)],
-          ]),
-        );
-      });
-    }
-    return records.sort();
-  };
-  try {
-    reference.rebuildFoliage();
-    clustered.rebuildFoliage();
-    const levels = new Set(
-      (clustered.foliage.children as THREE.InstancedMesh[])
-        .filter((mesh) => mesh.userData.clustered)
-        .map((mesh) => mesh.userData.lodLevel),
-    );
-    expect(levels).toEqual(new Set([0, 1]));
-    for (const z of [0, 80, 150, 500, -20]) {
-      camera.position.set(0, 3, z);
-      for (let i = 0; i < 12; i++) {
-        const contacts = i < 4 ? [{ x: 8, z: 0, radius: 8, strength: 1 }] : [];
-        reference.update(1 / 30, contacts, camera);
-        clustered.update(1 / 30, contacts, camera);
-        expect(records(clustered)).toEqual(records(reference));
+it.each([64, 128] as const)(
+  'preserves full primary and intermediate draws through contact, reanchoring, rollback and rebuild in %i m cells',
+  (cellSize) => {
+    const p = createProject(16, 128);
+    p.heights.fill(0);
+    p.foliage = [];
+    const model = editFoliageModels(p.brushes[0], [])[0];
+    Object.assign(model, {
+      model: 'pine',
+      alignToNormal: true,
+      lods: [{ model: 'pine-low', distance: 50, density: 0.7 }],
+      lodFadeDuration: 0.25,
+      cullDistance: 240,
+      flexibility: { source: 'height', start: 0.3, end: 1, exponent: 2 },
+      interaction: { enabled: true, radius: 5, recovery: 0.4 },
+      crush: 1,
+    });
+    for (let z = -56; z <= 56; z += 8)
+      for (let x = -56; x <= 56; x += 8)
+        p.foliage.push({
+          id: p.nextId++,
+          brushId: p.brushes[0].id,
+          modelId: model.id,
+          x,
+          z,
+          scale: 1,
+          rotation: (x - z) * 0.1,
+        });
+    const reference = new TerrainScene(p, { foliageClusters: false });
+    const clustered = new TerrainScene(p, {
+      foliageClusters: { nearby: true, nearbyCellSize: cellSize },
+    });
+    const camera = new THREE.PerspectiveCamera();
+    const records = (scene: TerrainScene) => {
+      const records: string[] = [];
+      for (const mesh of scene.foliage.children as THREE.InstancedMesh[]) {
+        if (!mesh.visible || !mesh.count) continue;
+        const contact = mesh.geometry.getAttribute('terrainContact');
+        const fade = mesh.geometry.getAttribute('terrainFade');
+        mesh.userData.instanceIds.forEach((id: number, slot: number) => {
+          records.push(
+            JSON.stringify([
+              id,
+              mesh.userData.lodLevel,
+              mesh.geometry.index!.count,
+              Array.from(
+                mesh.instanceMatrix.array.subarray(slot * 16, slot * 16 + 16),
+              ),
+              contact?.getX(slot),
+              fade && [fade.getX(slot), fade.getY(slot), fade.getZ(slot)],
+            ]),
+          );
+        });
       }
+      return records.sort();
+    };
+    try {
+      reference.rebuildFoliage();
+      clustered.rebuildFoliage();
+      const levels = new Set(
+        (clustered.foliage.children as THREE.InstancedMesh[])
+          .filter((mesh) => mesh.userData.clustered)
+          .map((mesh) => mesh.userData.lodLevel),
+      );
+      expect(levels).toEqual(new Set([0, 1]));
+      for (const z of [0, 80, 150, 500, -20]) {
+        camera.position.set(0, 3, z);
+        for (let i = 0; i < 12; i++) {
+          const contacts =
+            i < 4 ? [{ x: 8, z: 0, radius: 8, strength: 1 }] : [];
+          reference.update(1 / 30, contacts, camera);
+          clustered.update(1 / 30, contacts, camera);
+          expect(records(clustered)).toEqual(records(reference));
+        }
+      }
+      p.heights.fill(3);
+      for (const scene of [reference, clustered])
+        scene.reanchorFoliage({ minX: -64, maxX: 64, minZ: -64, maxZ: 64 });
+      expect(records(clustered)).toEqual(records(reference));
+      const before = records(clustered),
+        next = structuredClone(p);
+      next.foliage.splice(0, 50);
+      const edit = clustered.foliage.beginEdit(next);
+      edit.rollback();
+      expect(records(clustered)).toEqual(before);
+      for (const scene of [reference, clustered]) scene.foliage.rebuild(next);
+      for (const scene of [reference, clustered]) scene.update(1, [], camera);
+      expect(records(clustered)).toEqual(records(reference));
+    } finally {
+      reference.dispose();
+      clustered.dispose();
     }
-    p.heights.fill(3);
-    for (const scene of [reference, clustered])
-      scene.reanchorFoliage({ minX: -64, maxX: 64, minZ: -64, maxZ: 64 });
-    expect(records(clustered)).toEqual(records(reference));
-    const before = records(clustered),
-      next = structuredClone(p);
-    next.foliage.splice(0, 50);
-    const edit = clustered.foliage.beginEdit(next);
-    edit.rollback();
-    expect(records(clustered)).toEqual(before);
-    for (const scene of [reference, clustered]) scene.foliage.rebuild(next);
-    for (const scene of [reference, clustered]) scene.update(1, [], camera);
-    expect(records(clustered)).toEqual(records(reference));
-  } finally {
-    reference.dispose();
-    clustered.dispose();
-  }
-});
+  },
+);
 
 it('does not rescan retained source buffers on settled wind-only frames', () => {
   const p = createProject(8, 128);

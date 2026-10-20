@@ -91,6 +91,8 @@ try {
   const parameters = new URLSearchParams();
   if (process.argv.includes('--full-detail')) parameters.set('full-detail', '');
   if (nearClusters) parameters.set('near-clusters', '');
+  if (process.argv.includes('--wide-clusters'))
+    parameters.set('wide-clusters', '');
   if (process.argv.includes('--impostors')) parameters.set('impostors', '');
   if (process.argv.includes('--no-water-prewarm'))
     parameters.set('no-water-prewarm', '');
@@ -115,6 +117,9 @@ try {
     waterPrewarm:
       window.worldExample.preparationConfiguration?.waterGPU ?? false,
     nearClusters: !!window.worldExample.world.options.foliageClusters?.nearby,
+    nearbyCellSize: window.worldExample.world.options.foliageClusters?.nearby
+      ? (window.worldExample.world.options.foliageClusters.nearbyCellSize ?? 64)
+      : null,
     stats: window.worldExample.world.stats,
     failures: [...window.worldExample.world.streaming.errors].map(([k, e]) => [
       k,
@@ -239,6 +244,7 @@ try {
       maxResidentTiles: 12,
       mode: steady ? 'resident-views' : 'streaming-traversal',
       nearClusters: initial.nearClusters,
+      nearbyCellSize: initial.nearbyCellSize,
       laps,
       secondsPerView: seconds,
       proceduralTileSource: true,

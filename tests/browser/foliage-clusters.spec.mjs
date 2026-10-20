@@ -78,9 +78,11 @@ test('CC0 near and distant tree clusters preserve wind, cutout shadows and pixel
     const reference = [],
       runs = [],
       comparisons = [];
-    for (const clustered of [false, true]) {
+    for (const clustered of [false, 64, 128]) {
       const terrain = new TerrainScene(p, {
-        foliageClusters: clustered ? { nearby: true } : false,
+        foliageClusters: clustered
+          ? { nearby: true, nearbyCellSize: clustered }
+          : false,
       });
       await terrain.load();
       const scene = new THREE.Scene();
@@ -156,12 +158,17 @@ test('CC0 near and distant tree clusters preserve wind, cutout shadows and pixel
   });
   expect(errors).toEqual([]);
   expect(result.validation).toEqual([]);
-  expect(result.runs[1].stats[0].batches).toBeLessThan(
-    result.runs[0].stats[0].batches / 2,
-  );
-  expect(result.runs[1].stats[0].triangles).toBe(
-    result.runs[0].stats[0].triangles,
-  );
+  expect(result.runs).toHaveLength(3);
+  expect(result.comparisons).toHaveLength(8);
+  for (const run of result.runs.slice(1)) {
+    expect(run.stats[0].batches).toBeLessThan(
+      result.runs[0].stats[0].batches / 2,
+    );
+    for (const [index, stats] of run.stats.entries()) {
+      expect(stats.triangles).toBe(result.runs[0].stats[index].triangles);
+      expect(stats.instances).toBe(result.runs[0].stats[index].instances);
+    }
+  }
   expect(result.comparisons.every((image) => image.mean < 0.05)).toBe(true);
   expect(result.cleanup).toBe(0);
 });

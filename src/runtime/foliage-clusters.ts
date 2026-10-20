@@ -19,6 +19,9 @@ export interface FoliageClusterOptions {
   /** Also group primary/intermediate draws in 64 m cells. Extra source buffers
    * remain resident and larger cells reduce culling precision. Default: false. */
   nearby?: boolean;
+  /** Metres for primary/intermediate draw cells. Larger cells trade culling
+   * precision for fewer submissions. Default: 64. */
+  nearbyCellSize?: 64 | 128;
 }
 interface Cluster {
   sources: FoliageClusterSource[];
@@ -42,6 +45,8 @@ export class FoliageDrawClusters {
     own: <T extends { dispose(): void }>(resource: T) => T,
     options: FoliageClusterOptions = {},
   ) {
+    if (![64, 128].includes(options.nearbyCellSize ?? 64))
+      throw new Error('Nearby foliage draw cells must be 64 or 128 metres.');
     const materials = new Map<
       THREE.Material | THREE.Material[],
       Map<THREE.BufferGeometry, Map<string, FoliageClusterSource[]>>
@@ -75,7 +80,7 @@ export class FoliageDrawClusters {
       const cellSize =
         mesh.userData.lodLevel >= 2 && mesh.userData.lodDistance >= 96
           ? 128
-          : 64;
+          : (options.nearbyCellSize ?? 64);
       const key =
         cellSize +
         ':' +

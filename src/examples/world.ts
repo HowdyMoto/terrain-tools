@@ -121,8 +121,16 @@ const world = new TerrainWorldScene(referenceWorld, {
   ),
   foliageClusters: new URLSearchParams(location.search).has('unclustered')
     ? false
-    : new URLSearchParams(location.search).has('near-clusters')
-      ? { nearby: true }
+    : new URLSearchParams(location.search).has('near-clusters') ||
+        new URLSearchParams(location.search).has('wide-clusters')
+      ? {
+          nearby: true,
+          nearbyCellSize: new URLSearchParams(location.search).has(
+            'wide-clusters',
+          )
+            ? 128
+            : 64,
+        }
       : true,
   terrainPreparation: new URLSearchParams(location.search).has('main-thread')
     ? 'main'
@@ -353,7 +361,9 @@ function draw(now: number) {
         renderer: {
           ...renderer.info.memory,
           submittedTriangles: renderer.info.render.triangles,
-          calls: renderer.info.render.calls,
+          drawCalls: renderer.info.render.drawCalls,
+          frameRenderCalls: renderer.info.render.frameCalls,
+          cumulativeRenderCalls: renderer.info.render.calls,
         },
         heap: (
           performance as Performance & { memory?: { usedJSHeapSize: number } }
