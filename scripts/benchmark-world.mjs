@@ -92,6 +92,8 @@ try {
   if (process.argv.includes('--full-detail')) parameters.set('full-detail', '');
   if (nearClusters) parameters.set('near-clusters', '');
   if (process.argv.includes('--impostors')) parameters.set('impostors', '');
+  if (process.argv.includes('--no-water-prewarm'))
+    parameters.set('no-water-prewarm', '');
   if (process.argv.includes('--eager-instances'))
     parameters.set('eager-instances', '');
   await page.goto(
@@ -107,7 +109,11 @@ try {
     entryScripts: [...document.scripts]
       .map((script) => script.src)
       .filter(Boolean),
-    prewarm: !!window.worldExample.world.options.prepareGPU,
+    prewarm:
+      window.worldExample.preparationConfiguration?.fullGPU ??
+      !!window.worldExample.world.options.prepareGPU,
+    waterPrewarm:
+      window.worldExample.preparationConfiguration?.waterGPU ?? false,
     nearClusters: !!window.worldExample.world.options.foliageClusters?.nearby,
     stats: window.worldExample.world.stats,
     failures: [...window.worldExample.world.streaming.errors].map(([k, e]) => [
@@ -244,6 +250,7 @@ try {
     initialBuild: {
       entryScripts: initial.entryScripts,
       prewarm: initial.prewarm,
+      waterPrewarm: initial.waterPrewarm,
     },
     measurementWallMs,
     averageFPS: raw.cpu.length / (measurementWallMs / 1000),

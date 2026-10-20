@@ -711,6 +711,18 @@ export class TerrainEnvironment {
     this.waterPass ??= new WaterPass(renderer);
     this.waterPass.prepare();
   }
+  /** Stage streamed water shader/pipeline preparation before visual/collision admission.
+   * Render the host environment once first; no-op on explicit WebGL hosts. */
+  stageWater(
+    water: import('./water').TerrainWater,
+    camera: THREE.Camera,
+    signal: AbortSignal,
+  ) {
+    return (
+      this.gpuPipeline?.prepareWater(this.scene, camera, water, signal) ??
+      Promise.resolve()
+    );
+  }
   invalidateHistory() {
     this.prepared?.temporal?.reset();
     this.gpuPipeline?.reset();

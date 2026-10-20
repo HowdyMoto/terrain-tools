@@ -476,14 +476,24 @@ export class TerrainFoliage extends THREE.Group {
             );
             const box = baseGeometry.boundingBox!,
               pivot = root ?? 0;
-            const radius = Math.hypot(
-              Math.max(Math.abs(box.min.x), Math.abs(box.max.x)),
-              Math.max(
-                Math.abs(box.min.y - pivot),
-                Math.abs(box.max.y - pivot),
-              ),
-              Math.max(Math.abs(box.min.z), Math.abs(box.max.z)),
+            const impostorSphere = baseGeometry.getAttribute(
+              'terrainImpostorSphere',
             );
+            const radius = impostorSphere
+              ? Math.hypot(
+                  impostorSphere.getX(0),
+                  impostorSphere.getY(0) - pivot,
+                  impostorSphere.getZ(0),
+                ) +
+                Math.SQRT2 * impostorSphere.getW(0)
+              : Math.hypot(
+                  Math.max(Math.abs(box.min.x), Math.abs(box.max.x)),
+                  Math.max(
+                    Math.abs(box.min.y - pivot),
+                    Math.abs(box.max.y - pivot),
+                  ),
+                  Math.max(Math.abs(box.min.z), Math.abs(box.max.z)),
+                );
             const mesh = this.own(
               new THREE.InstancedMesh(
                 geometry,

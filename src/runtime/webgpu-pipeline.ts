@@ -1,3 +1,6 @@
+import { validateGPU } from '../render/renderer';
+import { compileInRenderContext } from '../render/prepare-geometry';
+import { checkSignal } from '../render/resources';
 import {
   RenderTarget,
   DepthTexture,
@@ -68,6 +71,7 @@ export const terrainPassContract = {
 } as const;
 
 class WaterCapture {
+  callDepth = 2;
   readonly target = new RenderTarget(1, 1, {
     type: HalfFloatType,
     count: 4,
@@ -118,6 +122,8 @@ class WaterCapture {
         waters.push(o);
     });
     const r = this.renderer;
+    this.callDepth =
+      (r as WebGPURenderer & { _callDepth: number })._callDepth + 1;
     const target = r.getRenderTarget()!,
       autoClear = r.autoClear,
       background = scene.background;
@@ -241,6 +247,7 @@ const outputGraphs = new WeakMap<
 export class WebGPUPipeline {
   private motionFrame = 0;
   private historyReset = true;
+  private compilation = Promise.resolve();
   private motionEpoch = {};
   private velocity: TerrainVelocityNode;
   private pass?: TerrainPass;
@@ -267,6 +274,56 @@ export class WebGPUPipeline {
     }
     this.outputs = graph.outputs;
     this.velocity = graph.velocity;
+  }
+  /** Prepares expensive water programs in the actual overlay MRT before tile
+   * admission. Existing scene frames continue while native pipelines compile. */
+  prepareWater(
+    scene: Scene,
+    camera: Camera,
+    water: TerrainWater,
+    signal: AbortSignal,
+  ) {
+    const operation = this.compilation
+      .catch(() => {})
+      .then(async () => {
+        checkSignal(signal);
+        if (!this.pass || !water.surfaces.length) return;
+        const target = this.pass.renderTarget;
+        const size = this.renderer.getDrawingBufferSize(new Vector2());
+        water.capture(
+          this.water.target.texture,
+          this.water.target.depthTexture!,
+          size,
+          camera,
+          true,
+        );
+        for (const mesh of water.surfaces) {
+          checkSignal(signal);
+          await validateGPU(this.renderer, () => {
+            const visible = mesh.visible,
+              culling = mesh.frustumCulled;
+            try {
+              mesh.visible = true;
+              mesh.frustumCulled = false;
+              return compileInRenderContext(
+                this.renderer,
+                mesh,
+                camera,
+                scene,
+                target,
+                this.outputs,
+                signal,
+                this.water.callDepth,
+              );
+            } finally {
+              mesh.visible = visible;
+              mesh.frustumCulled = culling;
+            }
+          });
+        }
+      });
+    this.compilation = operation;
+    return operation;
   }
   reset() {
     // Teleports invalidate history, not the render graph or compiled scene programs.

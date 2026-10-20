@@ -22,6 +22,14 @@ The reusable runtime still accepts an explicit WebGLRenderer for existing applic
 
 Three is pinned to 0.186.1: older r180 generated invalid WGSL for array texture sampling with explicit gradients, which terrain needs. The current dependency includes that upstream fix. Type declarations use @types/three 0.186.0 and @webgpu/types 0.1.64. See the [official renderer guide](https://threejs.org/manual/pages/webgpurenderer) and [node post-processing guide](https://threejs.org/manual/pages/webgpu-postprocessing.html).
 
+## Streamed shader preparation and impostors
+
+Generated runtime programs can survive an interval with no resident instances, within a 32-unused-program / 8 MiB source-text LRU. The adapter excludes arbitrary bake/third-party graphs and releases its cache at renderer disposal; source bytes are not total node-graph or driver memory. Standard water retains one draw-relative graph identity across dry intervals while releasing its placeholder GPU resources at zero users.
+
+Camera/leaf history invalidation seeds existing temporal buffers and retains the scene pass. The opaque capture uses a consistent MRT context, preserving reactive HDR alpha. Optional water staging compiles in the overlay's actual target/MRT **and nested render depth**, with a stable builder view while live frames continue. Target/MRT/visibility state restores before asynchronous waits. This is isolated in `render/prepare-geometry.ts` and pinned to Three 0.186.1; cancellation/retry and zero new water builds on admission have native regressions. The world example stages water by default, without warming all foliage/terrain variants before admission.
+
+Automatic impostors capture existing models, then orient only two quads (four triangles) to selected atlas views in the vertex shader. Albedo is sRGB; normal/depth and roughness/metalness/leaf-mask channels are numeric. Camera and shadow passes select views independently. Close meshes/export data remain complete. [Foliage documentation](FOLIAGE.md#generate-distant-tree-impostors) explains budgets, ownership and fidelity limits. Atlas bytes reserve once per world rather than disappearing from accounting when maps are sampled by custom nodes.
+
 ## Verification
 
 Run `npm ci`, `npm run lint`, `npm test`, and `npm run build`. Then:

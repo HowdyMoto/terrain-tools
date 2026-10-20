@@ -193,7 +193,7 @@ The bundled Poly Haven foliage and alpha maps retain their [CC0 1.0 license](ass
 Automatic-impostor and streaming checks (after `npm ci` and `npm run build`):
 
 ```sh
-npm run test:browser -- tests/browser/foliage-impostor.spec.mjs tests/browser/temporal-reset.spec.mjs
+npm run test:browser -- tests/browser/foliage-impostor.spec.mjs tests/browser/temporal-reset.spec.mjs tests/browser/water-staging.spec.mjs
 npm run benchmark:world -- --impostors --no-captures --output=.qa/world-impostors.json
 npm run benchmark:world -- --eager-instances --no-captures --output=.qa/world-eager.json
 ```

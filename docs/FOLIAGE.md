@@ -6,7 +6,7 @@ The Foliage inspector opens on **Paint**, with radius, density, spacing, surface
 
 No new art is required. The native runtime can generate relightable distant representations from an already loaded static tree using `bakeFoliageImpostor(parts, options)`. `/world.html?impostors` automatically prepares the bundled CC0 pine; its progress is shown before the world opens. This is an opt-in runtime prototype; editor preview/apply controls are tracked in #17.
 
-The default bake captures eight azimuths and five elevations (-30 to +90 degrees) into sRGB albedo/coverage, model-space normal/depth and roughness/metalness/leaf-mask atlases. It submits 80 triangles per tree, selects and dithers between the closest views independently for the camera and shadow cameras, and reconstructs depth. Scene lighting, roughness and leaf transmission remain dynamic. This differs from draw grouping, which retains all original triangles.
+The default bake captures eight azimuths and five elevations (-30 to +90 degrees) into sRGB albedo/coverage, model-space normal/depth and roughness/metalness/leaf-mask atlases. It submits four triangles per tree, orients two cards to the closest capture views and dithers between them independently for the camera and shadow cameras, and reconstructs depth. Scene lighting, roughness and leaf transmission remain dynamic. This differs from draw grouping, which retains all original triangles.
 
 ```ts
 import { bakeFoliageImpostor, TerrainScene } from 'terrain-tools/three';
@@ -33,7 +33,7 @@ candidate.dispose();
 impostor.dispose();
 ```
 
-Models need an authored LOD to replace; primary geometry is never substituted. Density, culling, placements and stable IDs retain their authored settings. A 256-pixel, eight-azimuth bake uses **30 MiB for its three atlases**, excluding geometry and driver allocations. Options support 128/256/512 pixels and 8/16 azimuths; `maxBytes` defaults to 64 MiB and rejects larger requests before rendering. Higher settings can require an explicit larger budget. Hosts own atlas lifetime and must rebuild after source geometry, material tint or baked material-selection changes. Do not dispose a bake while a scene still borrows it.
+Models need an authored LOD to replace; primary geometry is never substituted. Density, culling, placements and stable IDs retain their authored settings. A 256-pixel, eight-azimuth bake uses **30 MiB for its three atlases**, excluding geometry and driver allocations. Options support 128/256/512 pixels and 8/16 azimuths; `maxBytes` defaults to 64 MiB and rejects larger requests before rendering. Higher settings can require an explicit larger budget. World admission counts shared atlas bytes once, including the numeric maps used only by shaders. Hosts own atlas lifetime and must rebuild after source geometry, material tint or baked material-selection changes. Do not dispose a bake while a scene still borrows it.
 
 Cancellation, allocation failure and progress-handler errors release the candidate; renderer target/MRT/clear state is restored before every asynchronous wait. Bakes and projects remain separate: generated atlases are runtime resources, not new checked-in project art, and original model credits remain authoritative. The pine reference uses the existing [CC0 source and author acknowledgments](../public/foliage/photoreal/CREDITS.txt).
 

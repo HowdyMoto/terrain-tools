@@ -1,12 +1,9 @@
 import * as THREE from 'three';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
-import type { WebGPURenderer, ArrayNode, Node } from 'three/webgpu';
+import type { WebGPURenderer, Node } from 'three/webgpu';
 import {
   Fn,
-  vec3,
   vec4,
-  float,
-  uv,
   texture,
   materialColor,
   materialOpacity,
@@ -21,18 +18,21 @@ import {
   normalize,
   mat3,
   mat4,
-  cameraPosition,
   modelWorldMatrix,
   cameraViewMatrix,
   cameraProjectionMatrix,
   output,
-  element,
   fract,
   floor,
   screenCoordinate,
   vec2,
   vertexColor,
 } from 'three/tsl';
+import {
+  impostorUV,
+  impostorFacing,
+  impostorBlend,
+} from '../render/impostor-nodes';
 import { configureLeafNodes } from './foliage-nodes';
 import type { FoliageSubsurface } from '../core/foliage-shading';
 import type { ModelPart } from '../render/models';
@@ -313,33 +313,25 @@ export async function bakeFoliageImpostor(
     const positions: number[] = [],
       normals: number[] = [],
       texcoords: number[] = [],
-      ids: number[] = [],
+      corners: number[] = [],
+      spheres: number[] = [],
       indices: number[] = [];
-    directions.forEach((v, index) => {
-      const row = Math.floor(index / azimuths),
-        col = index % azimuths;
+    for (let layer = 0; layer < 2; layer++) {
       for (const [x, y] of [
         [-1, -1],
         [1, -1],
         [1, 1],
         [-1, 1],
       ]) {
-        const p = center
-          .clone()
-          .addScaledVector(v.right, x * radius)
-          .addScaledVector(v.up, y * radius);
-        positions.push(p.x, p.y, p.z);
-        normals.push(v.direction.x, v.direction.y, v.direction.z);
-        // Half-texel gutters keep bilinear sampling inside this view.
-        texcoords.push(
-          (col * resolution + 0.5 + (x + 1) * 0.5 * (resolution - 1)) / width,
-          (row * resolution + 0.5 + (1 - y) * 0.5 * (resolution - 1)) / height,
-        );
-        ids.push(index);
+        positions.push(center.x + x * radius, center.y + y * radius, center.z);
+        normals.push(0, 0, 1);
+        texcoords.push((x + 1) / 2, (1 - y) / 2);
+        corners.push(x, y, layer, resolution);
+        spheres.push(center.x, center.y, center.z, radius);
       }
-      const n = index * 4;
+      const n = layer * 4;
       indices.push(n, n + 1, n + 2, n, n + 2, n + 3);
-    });
+    }
     geometry = new THREE.BufferGeometry();
     geometry.setAttribute(
       'position',
@@ -351,8 +343,16 @@ export async function bakeFoliageImpostor(
     );
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute(texcoords, 2));
     geometry.setAttribute(
-      'terrainImpostorView',
-      new THREE.Float32BufferAttribute(ids, 1),
+      'terrainImpostorCorner',
+      new THREE.Float32BufferAttribute(corners, 4),
+    );
+    geometry.setAttribute(
+      'terrainImpostorSphere',
+      new THREE.Float32BufferAttribute(spheres, 4),
+    );
+    geometry.setAttribute(
+      'terrainImpostorAzimuths',
+      new THREE.Float32BufferAttribute(new Array(8).fill(azimuths), 1),
     );
     geometry.setIndex(indices);
     geometry.computeBoundingBox();
@@ -400,7 +400,10 @@ export async function bakeFoliageImpostor(
         captures.delete(part);
         ownedGeometry.dispose();
         ownedMaterial.dispose();
-        textures.forEach((t) => t.dispose());
+        textures.forEach((t) => {
+          t.dispose();
+          t.image.data = new Uint8Array(0);
+        });
       },
     };
     adopted = true;
@@ -437,9 +440,10 @@ export function configureImpostorMaterial(
   const cached = graphs.get(key);
   const properties = (capture.propertyNode ??= texture(
     capture.properties,
-    uv(),
+    impostorUV,
   ));
   if (cached) {
+    if (material instanceof THREE.MeshStandardMaterial) material.map = null;
     Object.assign(material, cached);
     if (subsurface) configureLeafNodes(material, subsurface, properties.b);
     return;
@@ -447,64 +451,45 @@ export function configureImpostorMaterial(
   const column = (i: number) => attribute(foliageMatrixAttribute + i, 'vec4');
   const matrix = mat4(column(0), column(1), column(2), column(3));
   const world = modelWorldMatrix.mul(matrix);
-  const direction = normalize(
-    cameraPosition.sub(world.mul(vec4(0, 0, 0, 1)).xyz),
-  );
   const basis = mat3(world);
-  const localDirection = normalize(
-    vec3(
-      dot(element(world as unknown as ArrayNode<'vec4'>, 0).xyz, direction),
-      dot(element(world as unknown as ArrayNode<'vec4'>, 1).xyz, direction),
-      dot(element(world as unknown as ArrayNode<'vec4'>, 2).xyz, direction),
-    ),
-  );
-  const selected = Fn(() => {
-    const best = float(-2).toVar(),
-      second = float(-2).toVar(),
-      index = float(0).toVar(),
-      nextIndex = float(0).toVar();
-    capture.directions.forEach((v, i) => {
-      const score = dot(localDirection, vec3(v.direction));
-      const first = score.greaterThan(best).toVar();
-      const runnerUp = score.greaterThan(second).toVar();
-      nextIndex.assign(
-        first.select(index, runnerUp.select(float(i), nextIndex)),
-      );
-      second.assign(first.select(best, second.max(score)));
-      index.assign(first.select(float(i), index));
-      best.assign(best.max(score));
-    });
-    const weight = float(1)
-      .sub(second)
-      .div(float(2).sub(best).sub(second).max(0.00001))
-      .clamp(0, 1);
-    return vec3(index, nextIndex, weight);
-  })();
-  const view = varying(selected);
-  const id = varying(attribute('terrainImpostorView', 'float'));
   const noise = fract(
     fract(dot(floor(screenCoordinate.xy), vec2(0.06711056, 0.00583715))).mul(
       52.9829189,
     ),
   );
-  const mask = id
-    .equal(view.x)
-    .and(noise.lessThan(view.z))
-    .or(id.equal(view.y).and(noise.greaterThanEqual(view.z)));
-  const normalDepth = texture(capture.normalDepth, uv());
+  const mask = impostorBlend.x
+    .lessThan(0.5)
+    .and(noise.lessThan(impostorBlend.y))
+    .or(
+      impostorBlend.x
+        .greaterThan(0.5)
+        .and(noise.greaterThanEqual(impostorBlend.y)),
+    );
+  const normalDepth = texture(capture.normalDepth, impostorUV);
   const n = normalize(basis.mul(normalDepth.xyz.mul(2).sub(1)));
+  const albedo = texture(
+    (part.material as THREE.MeshStandardMaterial).map!,
+    impostorUV,
+  );
+  if (material instanceof THREE.MeshStandardMaterial) material.map = null;
   const graph = {
+    colorNode: albedo,
     maskNode: previousMask ? mask.and(previousMask) : mask,
     normalNode: normalize(cameraViewMatrix.mul(vec4(n, 0)).xyz),
     roughnessNode: properties.r,
     metalnessNode: properties.g,
     // Card-view changes do not have geometry motion vectors. Reject old coverage.
-    outputNode: vec4(output.rgb, output.a.mul(0.1)),
+    outputNode: vec4(
+      output.rgb,
+      output.a
+        .mul(varying(attribute('terrainPreviousState', 'vec2').y))
+        .mul(0.1),
+    ),
   };
   // Depth is reconstructed along each baked view ray, including shadow cameras.
   const reconstructed = positionWorld.add(
     basis
-      .mul(varying(attribute('normal', 'vec3')))
+      .mul(impostorFacing)
       .mul(normalDepth.a.sub(0.5).mul(capture.radius * 2)),
   );
   const clip = cameraProjectionMatrix

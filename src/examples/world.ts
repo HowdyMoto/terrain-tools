@@ -127,55 +127,57 @@ const world = new TerrainWorldScene(referenceWorld, {
   terrainPreparation: new URLSearchParams(location.search).has('main-thread')
     ? 'main'
     : 'worker',
-  prepareGPU: new URLSearchParams(location.search).has('prewarm')
-    ? (terrain, signal) => {
-        const task = warmup
-          .catch(() => {})
-          .then(async () => {
-            const draws: {
-              mesh: THREE.Mesh;
-              visible: boolean;
-              culling: boolean;
-              count?: number;
-            }[] = [];
-            terrain.traverse((object) => {
-              if (!(object instanceof THREE.Mesh)) return;
-              if (object.userData.clusteredSource) return;
-              draws.push({
-                mesh: object,
-                visible: object.visible,
-                culling: object.frustumCulled,
-                count:
-                  object instanceof THREE.InstancedMesh
-                    ? object.count
-                    : undefined,
-              });
-              object.frustumCulled = false;
-              if (
-                object instanceof THREE.InstancedMesh &&
-                object.instanceMatrix.count
-              ) {
-                object.visible = true;
-                object.count = Math.max(1, object.count);
-              }
+  prepareGPU: async (terrain, signal) => {
+    if (!new URLSearchParams(location.search).has('no-water-prewarm'))
+      await environment.stageWater(terrain.waterSystem, camera, signal);
+    if (new URLSearchParams(location.search).has('prewarm')) {
+      const task = warmup
+        .catch(() => {})
+        .then(async () => {
+          const draws: {
+            mesh: THREE.Mesh;
+            visible: boolean;
+            culling: boolean;
+            count?: number;
+          }[] = [];
+          terrain.traverse((object) => {
+            if (!(object instanceof THREE.Mesh)) return;
+            if (object.userData.clusteredSource) return;
+            draws.push({
+              mesh: object,
+              visible: object.visible,
+              culling: object.frustumCulled,
+              count:
+                object instanceof THREE.InstancedMesh
+                  ? object.count
+                  : undefined,
             });
-            try {
-              signal.throwIfAborted();
-              await renderer.compileAsync(terrain, camera, scene);
-              signal.throwIfAborted();
-            } finally {
-              for (const { mesh, visible, culling, count } of draws) {
-                mesh.visible = visible;
-                mesh.frustumCulled = culling;
-                if (count !== undefined)
-                  (mesh as THREE.InstancedMesh).count = count;
-              }
+            object.frustumCulled = false;
+            if (
+              object instanceof THREE.InstancedMesh &&
+              object.instanceMatrix.count
+            ) {
+              object.visible = true;
+              object.count = Math.max(1, object.count);
             }
           });
-        warmup = task;
-        return task;
-      }
-    : undefined,
+          try {
+            signal.throwIfAborted();
+            await renderer.compileAsync(terrain, camera, scene);
+            signal.throwIfAborted();
+          } finally {
+            for (const { mesh, visible, culling, count } of draws) {
+              mesh.visible = visible;
+              mesh.frustumCulled = culling;
+              if (count !== undefined)
+                (mesh as THREE.InstancedMesh).count = count;
+            }
+          }
+        });
+      warmup = task;
+      return task;
+    }
+  },
   radius: 340,
   maxResidentTiles: 12,
   maxConcurrentLoads: 2,
@@ -375,6 +377,10 @@ const api = {
   materials,
   adapter,
   preparation,
+  preparationConfiguration: {
+    fullGPU: new URLSearchParams(location.search).has('prewarm'),
+    waterGPU: !new URLSearchParams(location.search).has('no-water-prewarm'),
+  },
   ready: () => {
     camera.updateMatrixWorld();
     world.update(camera, 0, innerHeight);

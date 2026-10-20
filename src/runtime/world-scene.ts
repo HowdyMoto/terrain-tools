@@ -65,6 +65,7 @@ export class TerrainWorldScene extends THREE.Group {
   readonly assets: WorldAssets;
   readonly streaming: WorldStreamer<TileView>;
   private readonly ownAssets: boolean;
+  private readonly impostorBytes: number;
   private active = new Map<string, TileView>();
   private viewPosition = new THREE.Vector3();
   private elapsed = 0;
@@ -81,6 +82,23 @@ export class TerrainWorldScene extends THREE.Group {
   ) {
     super();
     this.world = validateTerrainWorld(world);
+    this.impostorBytes = [
+      ...new Set(options.foliageImpostors?.values() ?? []),
+    ].reduce((sum, bake) => sum + bake.memoryBytes, 0);
+    const streamingOptions = {
+      ...options,
+      cpuByteLimit:
+        (options.cpuByteLimit ?? 256 * 1024 ** 2) - this.impostorBytes,
+      gpuByteLimit:
+        (options.gpuByteLimit ?? 512 * 1024 ** 2) - this.impostorBytes,
+    };
+    if (
+      !Number.isSafeInteger(this.impostorBytes) ||
+      this.impostorBytes < 0 ||
+      streamingOptions.cpuByteLimit < 0 ||
+      streamingOptions.gpuByteLimit < 0
+    )
+      throw new Error('Impostor atlases exceed world residency limits.');
     this.assets = options.assets ?? new WorldAssets();
     this.ownAssets = !options.assets;
     if (options.terrainPreparation !== 'main' && typeof Worker !== 'undefined')
@@ -155,7 +173,12 @@ export class TerrainWorldScene extends THREE.Group {
               lod = new TerrainLod(terrain, options.lod);
               terrain.add(lod);
             }
-            if (options.prepareGPU) await options.prepareGPU(terrain, signal);
+            if (options.prepareGPU)
+              await timePreparation(
+                'gpu',
+                () => options.prepareGPU!(terrain, signal),
+                report,
+              );
             checkSignal(signal);
             if (options.collision)
               collision = await timePreparation(
@@ -232,7 +255,7 @@ export class TerrainWorldScene extends THREE.Group {
           }
         },
       },
-      options,
+      streamingOptions,
     );
   }
   /** Load/unload around the camera, admit completed cells, then update foliage and terrain detail. */
@@ -361,8 +384,12 @@ export class TerrainWorldScene extends THREE.Group {
     return [...this.active.values()].map((tile) => tile.terrain);
   }
   get stats() {
+    const streaming = this.streaming.stats;
     return {
-      ...this.streaming.stats,
+      ...streaming,
+      cpuBytes: streaming.cpuBytes + (this.closed ? 0 : this.impostorBytes),
+      gpuBytes: streaming.gpuBytes + (this.closed ? 0 : this.impostorBytes),
+      impostorBytes: this.closed ? 0 : this.impostorBytes,
       assets: this.assets.stats,
       /** Allocated authored draw arrays, including combined clusters; excludes native motion streams. */
       foliageDrawArrayBytes: [...this.active.values()].reduce((sum, tile) => {

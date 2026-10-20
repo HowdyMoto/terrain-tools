@@ -51,6 +51,7 @@ import {
 } from 'three/tsl';
 import type { WindUniforms } from './wind';
 import type { FoliageSubsurface } from '../core/foliage-shading';
+import { impostorVertex } from '../render/impostor-nodes';
 import { materialNodeUniforms } from '../render/node-uniforms';
 import {
   foliageMatrixAttribute,
@@ -354,12 +355,18 @@ export function configureWindNodes(
       matrix = matrix4(columns[0], columns[1], columns[2], columns[3]);
       matrices.set(mesh, matrix);
     }
+    const impostor = builder.geometry.hasAttribute('terrainImpostorCorner')
+      ? impostorVertex(
+          matrix,
+          builder.geometry.getAttribute('terrainImpostorAzimuths').getX(0),
+        )
+      : undefined;
     const tangent = builder.geometry.hasAttribute('tangent');
     const deformed = (root === undefined ? windDeformation : maskedDeformation)(
       {
         m: matrix,
-        sourcePosition: positionGeometry,
-        sourceNormal: normalGeometry,
+        sourcePosition: impostor?.position ?? positionGeometry,
+        sourceNormal: impostor?.normal ?? normalGeometry,
         sourceTangent: tangent ? tangentGeometry.xyz : vec3(1, 0, 0),
         flex:
           root === undefined
@@ -382,7 +389,7 @@ export function configureWindNodes(
         root === undefined ? previousWindPosition : previousMaskedPosition
       )({
         m: attributeMatrix(foliagePreviousAttribute),
-        p: positionGeometry,
+        p: impostor?.position ?? positionGeometry,
         flex:
           root === undefined
             ? float(0)

@@ -267,3 +267,50 @@ it('stages optional GPU work before collision/admission and releases failure or 
   }
   expect(disposed.every(Boolean)).toBe(true);
 });
+
+it('reserves borrowed impostor atlases once per world without disposing host-owned bakes', async () => {
+  const bake = {
+    parts: [],
+    views: 40,
+    memoryBytes: 32 * 1024 ** 2,
+    sourceTriangles: 1000,
+    triangles: 4,
+    dispose: vi.fn(),
+  };
+  const options = {
+    load: async (descriptor: WorldTile) => tile(descriptor, true),
+    radius: 0,
+    maxResidentTiles: 1,
+    materials: false as const,
+    foliageImpostors: new Map([
+      ['pine', bake],
+      ['same-bake', bake],
+    ]),
+  };
+  expect(
+    () =>
+      new TerrainWorldScene(manifest, {
+        ...options,
+        cpuByteLimit: bake.memoryBytes - 1,
+      }),
+  ).toThrow('Impostor atlases exceed');
+  const world = new TerrainWorldScene(manifest, {
+    ...options,
+    cpuByteLimit: 64 * 1024 ** 2,
+    gpuByteLimit: 64 * 1024 ** 2,
+  });
+  world.update(camera(16), 0);
+  await world.whenIdle();
+  expect(world.stats.impostorBytes).toBe(bake.memoryBytes);
+  expect(world.stats.cpuBytes - world.streaming.stats.cpuBytes).toBe(
+    bake.memoryBytes,
+  );
+  expect(world.stats.gpuBytes - world.streaming.stats.gpuBytes).toBe(
+    bake.memoryBytes,
+  );
+  world.dispose();
+  await world.whenIdle();
+  expect(world.stats.cpuBytes).toBe(0);
+  expect(world.stats.gpuBytes).toBe(0);
+  expect(bake.dispose).not.toHaveBeenCalled();
+});

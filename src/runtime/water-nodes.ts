@@ -532,7 +532,9 @@ export function configureWaterNodes(
       graph,
       users: 1,
       release() {
-        if (sharedWaterGraph === shared) sharedWaterGraph = undefined;
+        // Keep the draw-relative graph identity across dry stretches. Its
+        // placeholder GPU resources retire at zero users and can initialize
+        // again; no tile/project is captured by the shared bindings.
         release();
       },
     };
