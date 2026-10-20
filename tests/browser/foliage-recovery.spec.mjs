@@ -10,6 +10,10 @@ import {
 import { decodeDocument } from './fixtures.mjs';
 
 async function save(page, info, name) {
+  // Undo/redo prepares native GPU resources before adopting the new document.
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 30000,
+  });
   const pending = page.waitForEvent('download');
   await page.locator('#save').click();
   const path = info.outputPath(name + '.terrain');
@@ -80,6 +84,13 @@ async function setup(page, info, mixed = false) {
             fail('history');
           return Reflect.construct(target, args, constructor);
         },
+      });
+      // WebGPU indexes vertex formats by constructor identity. Keep arrays
+      // created by the allocation probe consistent with the installed global.
+      Object.defineProperty(Original.prototype, 'constructor', {
+        value: window[name],
+        configurable: true,
+        writable: true,
       });
     }
     const push = Array.prototype.push;
@@ -167,7 +178,9 @@ async function setup(page, info, mixed = false) {
     mimeType: 'application/json',
     buffer: Buffer.from(serializeProject(project)),
   });
-  await expect(page.locator('#project-name')).toHaveValue(project.name);
+  await expect(page.locator('#project-name')).toHaveValue(project.name, {
+    timeout: 30000,
+  });
   await page.locator('#frame').click();
   await page.locator('[data-tab="foliage"]').click();
   await (await inspectorControl(page, '#brush-select')).selectOption('0');
@@ -329,6 +342,9 @@ test('separates environment tabs and saves independent model contact settings th
   );
   await expect(page.locator('#save-state')).toHaveText('Saved locally');
   await page.reload();
+  await expect(page.locator('#app')).not.toHaveAttribute('inert', {
+    timeout: 60000,
+  });
   await expect(page.locator('#project-name')).toHaveValue(changed.name);
   await page.locator('[data-tab="foliage"]').click();
   await (await inspectorControl(page, '#brush-select')).selectOption('0');
@@ -441,6 +457,9 @@ test('legacy brush authoring preserves data, ids and selection on failure withou
   expect(await save(page, info, 'redone')).toEqual(changed);
   await expect(page.locator('#save-state')).toHaveText('Saved locally');
   await page.reload();
+  await expect(page.locator('#app')).not.toHaveAttribute('inert', {
+    timeout: 60000,
+  });
   await expect(page.locator('#project-name')).toHaveValue(changed.name);
   expect(await save(page, info, 'reopened')).toEqual(changed);
   expect(state.errors).toEqual([]);
@@ -545,6 +564,9 @@ test('population, clearing, model removal and detailed response edits recover th
   await page.locator('#redo').click();
   expect(await save(page, info, 'clear-redone')).toEqual(cleared);
   await page.locator('#undo').click();
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 30000,
+  });
   await (await inspectorControl(page, '#populate')).click();
   await expect(page.locator('#toast')).toContainText('instances placed');
   const populated = await save(page, info, 'populated');
@@ -569,6 +591,9 @@ test('population, clearing, model removal and detailed response edits recover th
   expect(await save(page, info, 'population-redone')).toEqual(populated);
   await expect(page.locator('#save-state')).toHaveText('Saved locally');
   await page.reload();
+  await expect(page.locator('#app')).not.toHaveAttribute('inert', {
+    timeout: 60000,
+  });
   await expect(page.locator('#project-name')).toHaveValue(populated.name);
   expect(await save(page, info, 'reopened')).toEqual(populated);
   // Painting into an empty brush must enable Clear without rebuilding the inspector.

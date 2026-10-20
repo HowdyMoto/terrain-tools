@@ -17,12 +17,15 @@ Create directories only when needed. Keep `README.md` entry points and `docs/ROA
 
 ## Build, Test, and Development Commands
 
-Requires Node.js 22.12+ (Node 24 is used for development) and npm. Install locked dependencies with `npm ci`.
+Requires Node.js 22.12+ (Node 24 is used for development), npm, and native WebGPU in Chrome/Edge for the editor and interactive examples. Three 0.186.1, @types/three 0.186.0 and @webgpu/types 0.1.64 are pinned; see README.md for dependency upgrade commands. Install locked dependencies with `npm ci`.
 
 - `npm run dev`: start the local Vite editor; `/runtime.html` is the integration example.
 - `/world.html`: the streamed 2 × 2 km reference with shared compressed assets and optional Rapier integration.
 - `npm run build:assets:runtime`: rebuild the bundled Meshopt/KTX2 pack from checked-in derivatives using pinned WASM/Node tools; ordinary builds do not encode assets.
 - `npm run benchmark:world`: sustained 1080p traversal/teleport benchmark after building; requires the RTX 5060 unless explicitly passed `--allow-other-gpu`.
+- `npm run benchmark:foliage-motion`: bounded native 1080p fern motion/history comparison after building; owns preview port 5197 (`-- --port=5198` overrides it). Optional `-- --baseline-lib=.qa/baseline/lib` compares a saved baseline build. Run it separately from builds, browser tests, other benchmarks and video capture. `npx playwright install ffmpeg` installs the local helper for separate `--capture` runs.
+- `npm run benchmark:foliage-selection`: CPU-only foliage update/LOD scaling and instance-buffer reservations at 1k/10k/50k plants after building; owns port 5199. Supports `-- --baseline-lib=.qa/baseline/lib`. This creates no renderer and does not measure FPS.
+- `npm run benchmark:terrain-lod`: CPU-only source terrain LOD preparation with Node type stripping; supports `-- --baseline=.qa/terrain-lod-before.ts` for a saved standalone source copy. No build/browser needed; not an FPS measurement.
 - `npm run typecheck`: strict TypeScript checks.
 - `npm run lint`: ESLint recommended JavaScript/TypeScript checks for production code in `src/`; Prettier handles formatting.
 - `npm test`: full Vitest suite.
@@ -31,6 +34,7 @@ Requires Node.js 22.12+ (Node 24 is used for development) and npm. Install locke
 - `npm run build:assets:foliage`: rebuild bundled CC0 GLBs from the local original collection and alpha masks; uses pinned meshoptimizer/sharp dev dependencies. Ordinary builds use the prepared assets. See `docs/FOLIAGE-ASSETS.md`.
 - `npm run test:browser`: Playwright against the production build (run `npm run build` first).
 - `npm run test:browser -- tests/browser/settings-recovery.spec.mjs`: one browser test file.
+- `npm run test:browser -- tests/browser/webgpu.spec.mjs tests/browser/webgpu-world.spec.mjs`: native shader, PBR export and prepared-world checks.
 - `npm run format` / `npm run format:check`: write/check Prettier formatting.
 
 Browser tests use installed Google Chrome on Windows and port 5175. `scripts/chrome-gpu.mjs` reads DXGI adapters through built-in PowerShell/.NET and selects the RTX 5060 when present for the temporary test profile; it does not change user graphics settings. See `playwright.config.ts` before running on another platform. Benchmark commands and their required builds are documented in `README.md`.

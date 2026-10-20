@@ -53,7 +53,7 @@ const changed = (a: PropInstance, b: PropInstance) =>
 export class PropTools {
   readonly controls: TransformControls;
   private proxy = new THREE.Object3D();
-  private outline = new THREE.LineLoop(
+  private outline = new THREE.Line(
     new THREE.BufferGeometry(),
     new THREE.LineBasicMaterial({
       color: '#e4cc8b',
@@ -87,7 +87,7 @@ export class PropTools {
     this.outline.frustumCulled = false;
     this.outline.geometry.setAttribute(
       'position',
-      new THREE.BufferAttribute(new Float32Array(96 * 3), 3),
+      new THREE.BufferAttribute(new Float32Array(97 * 3), 3),
     );
     this.box.name = 'Selected prop bounds';
     this.box.renderOrder = 19;
@@ -224,6 +224,12 @@ export class PropTools {
         heightAt(this.project!, point.x, point.z) + 0.18,
         point.z,
       ),
+    );
+    attribute.setXYZ(
+      96,
+      attribute.getX(0),
+      attribute.getY(0),
+      attribute.getZ(0),
     );
     attribute.needsUpdate = true;
   }

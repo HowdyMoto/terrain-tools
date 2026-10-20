@@ -1,11 +1,33 @@
 import * as THREE from 'three';
+import type { WebGPURenderer } from 'three/webgpu';
+import { createTerrainRenderer } from '../render/renderer';
+import { checkSignal } from '../render/resources';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { DecodedModel } from '../render/model-loader';
 import { createModelDecoder } from '../render/model-loader';
 
 /** Neutral, isolated asset inspection. Caller owns model resources and surface textures. */
 export class ImportPreview {
-  private renderer: THREE.WebGLRenderer;
+  private static pending = new WeakMap<HTMLElement, Promise<ImportPreview>>();
+  static create(host: HTMLElement, signal?: AbortSignal) {
+    let pending = this.pending.get(host);
+    if (!pending) {
+      pending = (async () => {
+        let renderer: WebGPURenderer | undefined;
+        try {
+          renderer = await createTerrainRenderer();
+          checkSignal(signal);
+          return new ImportPreview(host, renderer);
+        } catch (error) {
+          renderer?.dispose();
+          this.pending.delete(host);
+          throw error;
+        }
+      })();
+      this.pending.set(host, pending);
+    }
+    return pending;
+  }
   private decoder: ReturnType<typeof createModelDecoder>;
   decodeModel(data: string, signal?: AbortSignal) {
     return this.decoder.decode(data, signal);
@@ -16,8 +38,10 @@ export class ImportPreview {
   private group = new THREE.Group();
   private observer: ResizeObserver;
   private owned: { dispose(): void }[] = [];
-  constructor(private host: HTMLElement) {
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+  private constructor(
+    private host: HTMLElement,
+    private renderer: WebGPURenderer,
+  ) {
     this.decoder = createModelDecoder(
       this.renderer,
       import.meta.env.BASE_URL + 'basis/',
@@ -129,7 +153,7 @@ export class ImportPreview {
     this.controls.dispose();
     this.reset();
     this.renderer.dispose();
-    this.renderer.forceContextLoss();
+    ImportPreview.pending.delete(this.host);
     this.host.replaceChildren();
   }
 }

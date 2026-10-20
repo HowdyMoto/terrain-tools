@@ -1,0 +1,14 @@
+{
+  "source": "jacaranda_tree_2k.gltf",
+  "binBytes": 208307808,
+  "preparedBytes": 236702216,
+  "imageCount": 9,
+  "previewMs": 4329,
+  "review": "jacaranda_tree_2k · 24.417 × 19.469 × 19.155 m (width × height × depth). 3,863,832 triangles · 3 mesh parts · 236.7 MB. No creator credit embedded in this source. Heavy geometry: add lower-detail models in Distance detail before dense painting. ",
+  "gpu": "Rendering on WebGPU · nvidia blackwell",
+  "binaryPreserved": true,
+  "texturesPreserved": true,
+  "autosaveReload": true,
+  "errors": [],
+  "scope": "One artist-owned model import, preview and persistence. Dense foliage performance is not measured."
+}

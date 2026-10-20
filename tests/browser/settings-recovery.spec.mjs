@@ -39,6 +39,9 @@ async function set(page, id, value) {
     input.dispatchEvent(new Event('input', { bubbles: true }));
     input.dispatchEvent(new Event('change', { bubbles: true }));
   }, value);
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
 }
 async function arm(page, stage) {
   await page.evaluate((stage) => {
@@ -122,6 +125,9 @@ async function setup(page, info, tab = 'light') {
           return Reflect.construct(target, args, constructor);
         },
       });
+      // Native vertex-format lookup keys by constructor identity. Keep our
+      // allocation fault proxy transparent to that lookup.
+      Original.prototype.constructor = window[name];
     }
     const push = Array.prototype.push;
     Array.prototype.push = function (...items) {
@@ -133,8 +139,8 @@ async function setup(page, info, tab = 'light') {
     };
   });
   await page.goto('/');
-  await expect(page.locator('#foliage-count')).not.toHaveText('0', {
-    timeout: 30000,
+  await expect(page.locator('#app')).not.toHaveAttribute('inert', {
+    timeout: 90000,
   });
   const project = createProject(64, 64);
   generateTerrain(project, 'flat');
@@ -151,14 +157,21 @@ async function setup(page, info, tab = 'light') {
     mimeType: 'application/json',
     buffer: Buffer.from(serializeProject(project)),
   });
-  await expect(page.locator('#project-name')).toHaveValue(project.name);
+  await expect(page.locator('#toast')).toHaveText('Project loaded.', {
+    timeout: 60000,
+  });
+  await expect(page.locator('#project-name')).toHaveValue(project.name, {
+    timeout: 60000,
+  });
   await page.locator(`[data-tab="${tab}"]`).click();
   if (tab === 'sculpt')
     await (await inspectorControl(page, '[data-tool="stamp"]')).click();
   await page.locator('#project-name').fill('Redo branch');
   await page.locator('#project-name').press('Tab');
   await page.locator('#undo').click();
-  await expect(page.locator('#project-name')).toHaveValue(project.name);
+  await expect(page.locator('#project-name')).toHaveValue(project.name, {
+    timeout: 60000,
+  });
   await expect(page.locator('#redo')).toBeEnabled();
   await page.locator('#frame').click();
   const baseline = await save(page, info, 'baseline');
@@ -306,6 +319,9 @@ test('light, wind and water edits retain live physics and avoid spatial rebuilds
   expect(await save(page, info, 'redone')).toEqual(changed);
   await expect.poll(() => autosave(page)).toEqual(changed);
   await page.reload();
+  await expect(page.locator('#app')).not.toHaveAttribute('inert', {
+    timeout: 90000,
+  });
   await expect(page.locator('#project-name')).toHaveValue(changed.name);
   expect(await save(page, info, 'reloaded')).toEqual(changed);
   expect(state.errors).toEqual([]);

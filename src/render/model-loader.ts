@@ -1,10 +1,13 @@
 import * as THREE from 'three';
+import type { TerrainRenderer } from './renderer';
 import { validateFlexibilityAttribute } from './foliage-flexibility';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import type { ModelPart } from './models';
 import { checkSignal } from './resources';
+import { base64ToBytes } from '../core/base64';
+import { checkModelDataURL } from '../core/model-limits';
 export interface DecodedModel {
   parts: ModelPart[];
   dispose(): void;
@@ -70,16 +73,15 @@ function dataBytes(data: string) {
   const match = /^data:([^,]*?),(.*)$/s.exec(data);
   if (!match) throw new Error('Models must embed their data.');
   const base64 = match[1].endsWith(';base64');
-  const text = base64 ? atob(match[2]) : decodeURIComponent(match[2]);
   const bytes = base64
-    ? Uint8Array.from(text, (character) => character.charCodeAt(0))
-    : new TextEncoder().encode(text);
+    ? base64ToBytes(match[2])
+    : new TextEncoder().encode(decodeURIComponent(match[2]));
   return { bytes, mime: match[1].split(';')[0] || 'application/octet-stream' };
 }
 
 /** Own one per renderer. Disposal rejects late results and drains active workers. */
 export function createModelDecoder(
-  renderer: THREE.WebGLRenderer,
+  renderer: TerrainRenderer,
   transcoderPath = '/basis/',
 ) {
   const textures = new KTX2Loader()
@@ -118,10 +120,9 @@ async function parseModel(
   textures?: KTX2Loader,
 ): Promise<DecodedModel> {
   checkSignal(signal);
-  if (data.length > 120_000_000) throw new Error('GLB must be under 30 MB.');
+  checkModelDataURL(data);
   const { bytes } = dataBytes(data);
-  if (bytes.byteLength > 30_000_000)
-    throw new Error('GLB must be under 30 MB.');
+  checkSignal(signal);
   const resources = new ModelResources(),
     manager = new THREE.LoadingManager();
   const created = new Map<string, string>(),

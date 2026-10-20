@@ -4,6 +4,7 @@ import { createProject, serializeProject } from 'terrain-tools';
 import { decodeDocument } from './fixtures.mjs';
 import { inspectorControl } from './inspector-controls.mjs';
 
+test.setTimeout(180000);
 async function setup(page) {
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
@@ -16,8 +17,8 @@ async function setup(page) {
       errors.push(m.text());
   });
   await page.goto('/');
-  await expect(page.locator('#foliage-count')).not.toHaveText('0', {
-    timeout: 30000,
+  await expect(page.locator('#app')).not.toHaveAttribute('inert', {
+    timeout: 90000,
   });
   const p = createProject(64, 96);
   p.name = 'Water coast';
@@ -36,7 +37,12 @@ async function setup(page) {
     mimeType: 'application/json',
     buffer: Buffer.from(serializeProject(p)),
   });
-  await expect(page.locator('#project-name')).toHaveValue(p.name);
+  await expect(page.locator('#toast')).toHaveText('Project loaded.', {
+    timeout: 60000,
+  });
+  await expect(page.locator('#project-name')).toHaveValue(p.name, {
+    timeout: 60000,
+  });
   await page.locator('#frame').click();
   await page.locator('[data-tab="water"]').click();
   return errors;
@@ -49,8 +55,14 @@ async function value(page, id, value) {
     el.dispatchEvent(new Event('input', { bubbles: true }));
     el.dispatchEvent(new Event('change', { bubbles: true }));
   }, value);
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
 }
 async function save(page, info, name) {
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   const pending = page.waitForEvent('download');
   await page.locator('#save').click();
   const path = info.outputPath(name + '.terrain');
@@ -79,10 +91,16 @@ test('ocean optics, multiple bodies, native round trip and undo', async ({
   expect((await save(page, info, 'browsed')).data).toEqual(legacy.data);
   await page.getByRole('checkbox', { name: 'Show ocean', exact: true }).check();
   await expect(page.locator('#water-body')).toBeVisible();
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   await page
     .getByRole('spinbutton', { name: 'Water height (m)', exact: true })
     .fill('1');
   await page.locator('#water-sea-level').press('Tab');
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   await page.locator('#undo').click();
   await expect(page.locator('#water-sea-level')).toHaveValue(
     String(legacy.data.view.waterLevel),
@@ -163,24 +181,39 @@ test('failed GPU water preparation preserves the document and redo, then retries
   page,
 }, info) => {
   await page.addInitScript(() => {
-    const original = WebGL2RenderingContext.prototype.texStorage2D;
-    WebGL2RenderingContext.prototype.texStorage2D = function (...args) {
-      if (window.failWaterFoam && args[2] === this.RGBA8 && args[3] === 1024) {
+    const original = GPUDevice.prototype.createTexture;
+    GPUDevice.prototype.createTexture = function (descriptor) {
+      const width = descriptor.size.width ?? descriptor.size[0];
+      if (
+        window.failWaterFoam &&
+        descriptor.format === 'rgba8unorm' &&
+        width === 1024
+      ) {
         window.failWaterFoam = false;
         window.waterFaults = (window.waterFaults || 0) + 1;
         throw new Error('Injected water texture foam allocation failure');
       }
-      if (window.failWaterShore && args[2] === this.RGBA32F && args[3] === 65) {
+      if (
+        window.failWaterShore &&
+        descriptor.format === 'rgba32float' &&
+        width === 65
+      ) {
         window.failWaterShore = false;
         window.waterFaults = (window.waterFaults || 0) + 1;
         throw new Error('Injected water texture shoreline allocation failure');
       }
-      if (window.failWater && args[2] === this.R32F && args[3] === 65) {
+      if (
+        window.failWater &&
+        descriptor.format === 'r32float' &&
+        width === 65
+      ) {
         window.failWater = false;
         window.waterFaults = (window.waterFaults || 0) + 1;
-        throw new Error('Injected water texture allocation failure');
+        // A real asynchronous validation failure inside the preparation scope.
+        // JavaScript succeeds; popErrorScope must reject the candidate.
+        this.createBuffer({ size: 4, usage: 0 }).destroy();
       }
-      return original.apply(this, args);
+      return original.call(this, descriptor);
     };
   });
   const errors = await setup(page);
@@ -212,11 +245,17 @@ test('failed GPU water preparation preserves the document and redo, then retries
   await expect(page.locator('#water')).not.toBeChecked();
   await page.locator('#water').check();
   await expect(page.locator('#water-body')).toBeVisible();
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   await page.locator('#undo').click();
   await expect(page.locator('#water')).not.toBeChecked();
   expect((await save(page, info, 'undo-enable')).data).toEqual(before.data);
   await page.locator('#redo').click();
   await expect(page.locator('#water-body')).toBeVisible();
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   await expect(page.locator('#water')).toBeChecked();
   await (await inspectorControl(page, '#water-add-ellipse')).click();
   const box = await page.locator('#viewport canvas').boundingBox();

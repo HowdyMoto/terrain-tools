@@ -92,6 +92,13 @@ async function setup(page, info) {
           return Reflect.construct(target, args, constructor);
         },
       });
+      // WebGPU indexes vertex formats by constructor identity. Keep arrays
+      // created by the allocation probe consistent with the installed global.
+      Object.defineProperty(Original.prototype, 'constructor', {
+        value: window[name],
+        configurable: true,
+        writable: true,
+      });
     }
     const entries = Object.entries;
     Object.entries = function (value) {

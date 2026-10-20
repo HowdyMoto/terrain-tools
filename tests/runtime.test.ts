@@ -261,12 +261,14 @@ it('renders each mixture model with independent wind and contact response', () =
     (m) => m.userData.model === 'grass',
   ) as THREE.InstancedMesh;
   expect((rock.material as THREE.Material).customProgramCacheKey()).toMatch(
-    /-0$/,
+    /-0(?:\||$)/,
   );
   expect((grass.material as THREE.Material).customProgramCacheKey()).toMatch(
-    /-1.5$/,
+    /-1.5(?:\||$)/,
   );
-  expect(grass.customDepthMaterial!.customProgramCacheKey()).toMatch(/-1.5$/);
+  expect(grass.customDepthMaterial!.customProgramCacheKey()).toMatch(
+    /-1.5(?:\||$)/,
+  );
   const rockMatrix = rock.instanceMatrix.array.slice(),
     grassMatrix = grass.instanceMatrix.array.slice();
   scene.update(1 / 60, [{ x: 2, z: 1, radius: 5, strength: 1 }]);

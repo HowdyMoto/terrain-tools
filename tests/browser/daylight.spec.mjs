@@ -17,9 +17,15 @@ async function set(page, id, value) {
     input.dispatchEvent(new Event('input', { bubbles: true }));
     input.dispatchEvent(new Event('change', { bubbles: true }));
   }, value);
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   await expect(page.locator('#save-state')).toHaveText('Saved locally');
 }
 async function save(page, info, name) {
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   const pending = page.waitForEvent('download');
   await page.locator('#save').click();
   const path = info.outputPath(name + '.terrain');
@@ -92,35 +98,29 @@ async function setup(page) {
     });
     const textures = new Set();
     window.daylightTextures = textures;
-    for (const api of [
-      WebGLRenderingContext.prototype,
-      WebGL2RenderingContext.prototype,
-    ]) {
-      const draw = api.drawElements,
-        create = api.createTexture,
-        dispose = api.deleteTexture;
-      api.drawElements = function (...args) {
-        if (window.daylightFault === 'capture') {
-          window.daylightFault = undefined;
-          window.caughtDaylightFault = 'capture';
-          throw new Error('Injected daylight capture failure');
-        }
-        return Reflect.apply(draw, this, args);
-      };
-      api.createTexture = function (...args) {
-        const value = Reflect.apply(create, this, args);
-        textures.add(value);
-        return value;
-      };
-      api.deleteTexture = function (texture) {
-        textures.delete(texture);
-        return Reflect.apply(dispose, this, [texture]);
-      };
-    }
+    const create = GPUDevice.prototype.createTexture;
+    GPUDevice.prototype.createTexture = function (descriptor) {
+      if (
+        window.daylightFault === 'capture' &&
+        descriptor.label === 'PMREM.cubeUv'
+      ) {
+        window.daylightFault = undefined;
+        window.caughtDaylightFault = 'capture';
+        throw new Error('Injected daylight capture failure');
+      }
+      const value = create.call(this, descriptor);
+      textures.add(value);
+      return value;
+    };
+    const destroy = GPUTexture.prototype.destroy;
+    GPUTexture.prototype.destroy = function () {
+      textures.delete(this);
+      return destroy.call(this);
+    };
   });
   await page.goto('/');
-  await expect(page.locator('#foliage-count')).not.toHaveText('0', {
-    timeout: 30000,
+  await expect(page.locator('#app')).not.toHaveAttribute('inert', {
+    timeout: 90000,
   });
   const project = createProject(64, 64);
   generateTerrain(project, 'island');
@@ -138,7 +138,9 @@ async function setup(page) {
     mimeType: 'application/json',
     buffer: Buffer.from(serializeProject(project)),
   });
-  await expect(page.locator('#project-name')).toHaveValue(project.name);
+  await expect(page.locator('#project-name')).toHaveValue(project.name, {
+    timeout: 60000,
+  });
   await page.locator('[data-tab=light]').click();
   await page.locator('#frame').click();
   await expect(page.locator('#save-state')).toHaveText('Saved locally');
@@ -182,12 +184,15 @@ test('authors atmospheric times, plays without history churn, pauses, exports an
   const textureCount = await page.evaluate(() => window.daylightTextures.size);
   const clock = await page.locator('#daylight-time').inputValue();
   await expect
-    .poll(async () => {
-      const now = await page.locator('#daylight-time').inputValue();
-      const [h, m] = now.split(':').map(Number),
-        [beforeH, beforeM] = clock.split(':').map(Number);
-      return (h * 60 + m - beforeH * 60 - beforeM + 1440) % 1440;
-    })
+    .poll(
+      async () => {
+        const now = await page.locator('#daylight-time').inputValue();
+        const [h, m] = now.split(':').map(Number),
+          [beforeH, beforeM] = clock.split(':').map(Number);
+        return (h * 60 + m - beforeH * 60 - beforeM + 1440) % 1440;
+      },
+      { timeout: 20000 },
+    )
     .toBeGreaterThan(240);
   expect(await page.locator('#undo').getAttribute('title')).toBe(undo);
   expect(await autosave(page)).toEqual(playing);
@@ -205,17 +210,26 @@ test('authors atmospheric times, plays without history churn, pauses, exports an
     beforePlay.environment.timeOfDay.hour,
   );
   await page.locator('#undo').click();
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   await expect(page.locator('#daylight-play')).toHaveAttribute(
     'aria-pressed',
     'true',
   );
   await page.locator('#redo').click();
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   await expect(page.locator('#daylight-play')).toHaveAttribute(
     'aria-pressed',
     'false',
   );
   expect(await save(page, info, 'redone')).toEqual(paused);
   await page.reload();
+  await expect(page.locator('#app')).not.toHaveAttribute('inert', {
+    timeout: 90000,
+  });
   await expect(page.locator('#project-name')).toHaveValue(paused.name);
   await page.locator('[data-tab=light]').click();
   expect(await save(page, info, 'reloaded')).toEqual(paused);
@@ -224,7 +238,9 @@ test('authors atmospheric times, plays without history churn, pauses, exports an
   const path = info.outputPath('daylight.glb');
   await (await download).saveAs(path);
   await page.locator('#file-open').setInputFiles(path);
-  await expect(page.locator('#toast')).toHaveText('Project loaded.');
+  await expect(page.locator('#toast')).toHaveText('Project loaded.', {
+    timeout: 60000,
+  });
   expect(await save(page, info, 'glb-restored')).toEqual(paused);
   const runtime = await context.newPage();
   runtime.on('pageerror', (error) => errors.push(error.message));
@@ -236,7 +252,9 @@ test('authors atmospheric times, plays without history churn, pauses, exports an
       errors.push(message.text());
   });
   await runtime.goto('/runtime.html');
-  await expect(runtime.locator('#status')).toContainText('foliage instances');
+  await expect(runtime.locator('#status')).toContainText('foliage instances', {
+    timeout: 60000,
+  });
   await runtime.locator('#open-project').setInputFiles(path);
   await expect(runtime.locator('#status')).toContainText(
     'Daylight verification',
@@ -263,11 +281,14 @@ test('authors atmospheric times, plays without history churn, pauses, exports an
 test('failed GPU sky capture or history preparation preserves pixels, resources and redo, then retries', async ({
   page,
 }, info) => {
-  test.setTimeout(90000);
+  test.setTimeout(240000);
   const errors = await setup(page);
   await page.locator('#project-name').fill('Redo branch');
   await page.locator('#project-name').press('Tab');
   await page.locator('#undo').click();
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   await expect(page.locator('#project-name')).toHaveValue(
     'Daylight verification',
   );
@@ -304,9 +325,15 @@ test('failed GPU sky capture or history preparation preserves pixels, resources 
   const enabled = await save(page, info, 'retried');
   expect(enabled.environment.timeOfDay.enabled).toBe(true);
   await page.locator('#undo').click();
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   await expect(page.locator('#daylight-enabled')).not.toBeChecked();
   expect(await save(page, info, 'undone')).toEqual(baseline);
   await page.locator('#redo').click();
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   await expect(page.locator('#daylight-enabled')).toBeChecked();
   expect(await save(page, info, 'redone')).toEqual(enabled);
   const activePixels = await pixels(page),
@@ -330,6 +357,9 @@ test('failed GPU sky capture or history preparation preserves pixels, resources 
   await page.locator('[data-solar-hour="0"]').click();
   await expect(page.locator('#daylight-time')).toHaveValue('00:00');
   await page.locator('#undo').click();
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   expect(await save(page, info, 'active-retry-undone')).toEqual(enabled);
   expect(errors).toEqual([]);
 });
@@ -370,6 +400,9 @@ test('switches between an animated sky and retained EXR illumination, with recov
     imported.environment.image,
   );
   await page.locator('#undo').click();
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   expect(await save(page, info, 'undone')).toEqual(dynamic);
   await (
     await inspectorControl(page, '#environment-preset')

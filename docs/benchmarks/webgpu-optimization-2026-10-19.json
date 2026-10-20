@@ -1,0 +1,162 @@
+{
+  "date": "2026-10-19T23:41:39.033Z",
+  "hardware": {
+    "gpu": "WebGPU \u00c2\u00b7 NVIDIA GeForce RTX 5060 Laptop GPU",
+    "browser": "155.0.8059.82",
+    "driver": "617.42",
+    "viewport": [1920, 1080]
+  },
+  "source": {
+    "baseCommit": "a2ace3fa30889ab4d0d72f5e65504b3ea237e6c2",
+    "state": "Current uncommitted working tree; rendering source SHA-256 below. The isolated 35.72 FPS measurement predates the final deferred shadow-override disposal fix. The current-code retest below was contended by iRacing; it is not a clean performance comparison.",
+    "sha256": {
+      "src/render/native-foliage.ts": "76ff24811f33ffdf9e7ff20ef7410bbef5cc3433631556d80b0c6697108aaf33",
+      "src/render/native-terrain-lod.ts": "04a2e137301884cc77656d990f19773fbfa2c3ea0368b2331532e3dddf7ed0e3",
+      "src/render/native-shadows.ts": "845794b09d97e55aebccda3bbeb1cfc2bde16b85dd816837539d231a5b6a1b8e",
+      "src/render/node-lighting.ts": "280d071c375288c8d1e42e46b3b4713ae8157a12b5a22154756aabdb0b6dcfc5",
+      "src/render/node-uniforms.ts": "d2cdd69bf8741cb3491f1185154ccec11fca9caadddb2046e1b087825732f126",
+      "src/render/shared-geometry.ts": "98bf8c392f70f796d8e7b73bcf26c2bf1f085d76118e2fd7d9ccf9358ee3c13e",
+      "src/render/surface-nodes.ts": "645d266d889674fc796131a09eb553cb656f39b73c7790c5332e545cc3ca31be",
+      "src/render/foliage-flexibility.ts": "4291f69ab88a028fc46a293ab70ea992cdea59462db9cbc1f4874215c93421ae",
+      "src/runtime/foliage.ts": "5cca5cf7b5d0550a7ece1ce03d305b0016104d066138a121c9395cefbd70ab10",
+      "src/runtime/foliage-nodes.ts": "6b69c7be05a8185d14f03a91c4e8f0dc84b73cb04a21eb496e7ffbf4d3cb250a",
+      "src/runtime/terrain-lod.ts": "043a2fcbbecb0630a138d968132ec8026d3e7690460c37d8ad3c82408400db09",
+      "src/runtime/webgpu-pipeline.ts": "aa545dc0afcdfb6437d454433cd41ead82da0d6b4c7f1ff80661a40553f984e8"
+    }
+  },
+  "method": {
+    "command": "npm run benchmark:world -- --no-captures --output=docs/benchmarks/world-webgpu-optimized-2026-10-19.json",
+    "route": "3 laps, forest/open/coast, 12 seconds per view, including final streaming completion.",
+    "isolation": "Fresh temporary headless Chrome profile on RTX 5060; no concurrent browser tests, builds, encoders or benchmark runs during the accepted run. Ordinary desktop/background activity not eliminated.",
+    "harnessSha256": "7dac5915fd9f6641711b33435dc15c384acec8e65cbfe1ea054b6b90911241d7",
+    "timing": "Frame interval percentiles exclude the first sample, which begins before recording. Average FPS counts submitted frames over the browser-clock recording window, including final tile loading. This is not display scanout or GPU completion rate."
+  },
+  "before": {
+    "report": "world-webgpu-2026-10-19.json",
+    "fps": 0.14652315212325848,
+    "frameMs": {
+      "samples": 29,
+      "p50": 84.89999999999418,
+      "p95": 28751.5,
+      "p99": 51090.600000000006,
+      "max": 51090.600000000006
+    }
+  },
+  "after": {
+    "report": "world-webgpu-optimized-2026-10-19.json",
+    "fps": 35.71607019594936,
+    "durationMs": 108074.60000002384,
+    "submittedFrames": 3860,
+    "frameMs": {
+      "samples": 3859,
+      "p50": 12.19999999999709,
+      "p95": 54.80000000000291,
+      "p99": 242.3000000000029,
+      "max": 1200
+    },
+    "cpuMs": {
+      "samples": 3860,
+      "p50": 11.199999988079071,
+      "p95": 50.19999998807907,
+      "p99": 114.70000004768372,
+      "max": 859.3000000119209
+    },
+    "framesOver1000ms": 2,
+    "meets30FPS": false,
+    "errors": [],
+    "cleanup": {
+      "stats": {
+        "residentTiles": 0,
+        "loadingTiles": 0,
+        "queuedTiles": 0,
+        "failedTiles": 0,
+        "cpuBytes": 0,
+        "gpuBytes": 0,
+        "assets": {
+          "encodedBytes": 0,
+          "cpuBytes": 0,
+          "gpuBytes": 0,
+          "stagingBytes": 0,
+          "pending": 0,
+          "active": 0,
+          "cached": 0,
+          "peak": {
+            "cpuBytes": 218217196,
+            "gpuBytes": 167252632,
+            "stagingBytes": 221829716
+          },
+          "hashingBytes": 0,
+          "peakHashingBytes": 58407992
+        },
+        "selectedTerrainTriangles": 0,
+        "fullTerrainTriangles": 0
+      },
+      "renderer": {
+        "attributes": 0,
+        "attributesSize": 0,
+        "geometries": 0,
+        "indexAttributes": 0,
+        "indexAttributesSize": 0,
+        "indirectStorageAttributes": 0,
+        "indirectStorageAttributesSize": 0,
+        "programs": 0,
+        "programsSize": 0,
+        "readbackBuffers": 0,
+        "readbackBuffersSize": 0,
+        "renderTargets": 0,
+        "storageAttributes": 0,
+        "storageAttributesSize": 0,
+        "textures": 0,
+        "texturesSize": 0,
+        "uniformBuffers": 0,
+        "uniformBuffersSize": 0,
+        "total": 0
+      }
+    }
+  },
+  "profiling": {
+    "original": "Cold forest/open CPU sampling: about 204.6 s (82.5%) in node shader building, including 143.1 s in shadow rendering. Synchronous GPU pipeline-creation calls accounted for only a small part; this does not measure asynchronous driver work.",
+    "shaderProbe": "After removing opaque shadow surface evaluation, cold-forest main terrain shader builds still numbered 44. Shared graph plus attribute-based terrain geomorph reduced this to one.",
+    "warm": "An intermediate 8.45 s warmed-forest profile located remaining CPU costs in shadow material/geometry keys, matrix updates and draw submission. The final pass adds stable shadow overrides and one transform update per composed frame."
+  },
+  "changes": [
+    "Share materials across spatial foliage batches; drive stable LOD fade shaders with attributes.",
+    "Use geometry-owned native instance attributes and per-renderer proxies.",
+    "Share terrain graphs per texture-array set with independent material/shore values and attribute-based native geomorph.",
+    "Exclude opaque surface evaluation from shadow alpha.",
+    "Keep shadow overrides stable per material/light; update transforms once per composed frame.",
+    "Defer override disposal until source dispose listeners complete, preventing duplicate cleanup of shared shadow buffers."
+  ],
+  "verification": {
+    "finalTargetedBrowserTests": 13,
+    "unitTests": 321,
+    "build": true,
+    "lint": true,
+    "browser": "Targeted RTX Chrome: native composition/baking/GLB export/resize/resource cycles; unavailable GPU; prepared world streaming/unloading; 50 foliage batches, independent matrix updates and two renderers; independent tile palettes/morphs, WebGL silhouette parity and surviving-tile disposal; complementary LOD cutouts/directional and six-face point shadows; leaf transmission on both backends; repeated live shadow-caster removal; foliage/surface failure injection, retry, undo/redo and persistence.",
+    "scope": "Not a full browser-suite rerun. Dense populations of the supplied high-polygon banana asset, editor FPS, input latency, Linux/software and other hardware were not benchmarked in this pass."
+  },
+  "excluded": "Short prototype timings and a final attempt interrupted to remove overlap with a finishing browser test are excluded.",
+  "limits": [
+    "Submitted traversal FPS is not physical display rate or warmed stationary/editor FPS.",
+    "The original native run skipped route phases due to stalls; requested route is the same but executed camera samples differ.",
+    "The pre-port WebGL renderer has different Three/shading/compositing implementations; this is not an API speed comparison.",
+    "GPU timestamp coverage differs between backends; no cross-backend GPU-time claim.",
+    "Steady 30 FPS remains unproven unless the frame-time acceptance flag passes.",
+    "Private Three r186 adapters need review on dependency upgrades.",
+    "The isolated optimized run predates the final shadow-disposal correction; current code has correctness coverage but its retest was contended by iRacing."
+  ],
+  "currentCodeRetest": {
+    "report": "world-webgpu-contended-2026-10-19.json",
+    "fps": 24.1566676936204,
+    "frameMs": {
+      "samples": 2610,
+      "p50": 30,
+      "p95": 115.39999999999418,
+      "p99": 357.6999999999971,
+      "max": 2345.4000000000087
+    },
+    "errors": [],
+    "limitation": "iRacingSim64DX11 was active after this run. Post-run RTX utilization was 68%, and iRacing consumed 2.77 CPU seconds in an approximately one-second sample. It was not terminated. This final-code timing is confounded by external CPU/GPU work and must not replace an idle-system comparison.",
+    "cleanRetestPending": true
+  }
+}

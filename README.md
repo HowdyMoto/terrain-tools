@@ -8,9 +8,11 @@ The engine audit is tracked as [prioritized GitHub issues](https://github.com/Ho
 
 **Water:** open **Water**, enable **Show ocean**, and set **Water height (m)** for an ocean at sea level, independent ponds/lakes, adjustable swells, depth-dependent clarity, reflections and detailed shoreline foam. See the [water guide and current limits](docs/WATER.md) and [complete system design](docs/WATER-DESIGN.md).
 
+**Rendering:** the editor, import previews, `/runtime.html`, and `/world.html` use native **WebGPU**. Terrain, vegetation, shadows, atmosphere, water and PBR baking use node shaders. Startup rejects a WebGL fallback and explains recovery if WebGPU is unavailable. Existing project files need no conversion. The first optimization pass raises measured native traversal FPS from 0.147 to 35.72 on the RTX 5060 at 1080p; frame-time spikes still miss steady 30 FPS. See [performance evidence](docs/PERFORMANCE.md) and [WebGPU integration and validation](docs/WEBGPU.md). That isolated measurement predates the final shadow-cleanup correction; its final-code retest was contended by iRacing, so a clean repeat remains pending.
+
 ## Run locally
 
-Requires Node.js 22.12+ (Node 24 is used for development), npm, and a browser with WebGL 2.
+Requires Node.js 22.12+ (Node 24 is used for development), npm, and current Chrome or Edge with native WebGPU and hardware acceleration. Serve over localhost or HTTPS.
 
 ```sh
 git clone https://github.com/HowdyMoto/terrain-tools.git
@@ -20,6 +22,8 @@ npm run dev
 ```
 
 Open the Local URL printed by Vite. The standalone integration example is at `/runtime.html`. If port 5173 is already occupied, Vite selects the next port. Projects stay on your computer; no account or backend is required. The interface uses system font fallbacks if online fonts are unavailable.
+
+Startup shows a loading modal with an animated indicator, completed-stage progress and default-brush download counts. It stays open until the first scene frame finishes. The bar measures loading stages rather than estimated time; startup errors offer Reload and a download of the locally saved project.
 
 ```sh
 npm run typecheck     # TypeScript checks
@@ -35,6 +39,9 @@ npm run benchmark     # CPU geometry/collision/contact benchmarks (build first)
 npm run benchmark:erosion # CPU weathering at 128, 256 and 512 cells (build first)
 npm run benchmark:surfaces # GPU cost of optional texture variation (build runtime first)
 npm run benchmark:foliage # Browser full-detail/LOD comparison (build first)
+npm run benchmark:foliage-motion # Native 1080p fern motion/history cost (build first)
+npm run benchmark:foliage-selection # CPU LOD scaling and instance reservations (build first)
+npm run benchmark:terrain-lod # CPU terrain LOD preparation (source; Node type stripping)
 npm run benchmark:foliage -- --count=50000 --shadows --fade=0.25 # Include cross-fades
 npm run benchmark:history # Retained CPU memory and undo/redo timings (build first)
 npm run benchmark:edit-preview -- --count=50000 # Stroke preview startup and retained buffers
@@ -44,13 +51,23 @@ npm run test:browser  # Browser integration checks against the production build
 npm run format        # Format source, tests, and documentation
 ```
 
-Browser tests currently use installed Google Chrome and serve the production build on port 5175. Run the build first. For other environments, change the browser channel in `playwright.config.ts` or install Playwright Chromium.
+For timing without screenshots, run `npm run benchmark:world -- --no-captures --output=test-results/world-timing.json`. The output directory must already exist (the harness creates `test-results`). Reports include wall-clock submission FPS and frame-time percentiles; close other GPU workloads and run benchmarks sequentially. See [performance evidence and measurement limits](docs/PERFORMANCE.md).
 
-The editor requests a high-performance GPU. Hover over the FPS counter or green GPU indicator to see the adapter Chrome selected. On Windows laptops, a browser/OS graphics preference can still override that request. Choose the dedicated GPU for Chrome in Windows **Settings → System → Display → Graphics**, then restart Chrome. Automated Windows browser checks and the water benchmark launch a separate temporary profile. Their shared helper uses built-in PowerShell/.NET to read DXGI adapters and explicitly selects the RTX 5060 when present using Chromium's [adapter-selection switch](https://chromium.googlesource.com/chromium/src/+/main/ui/gl/gl_switches.cc). Other hosts retain the high-performance request. No extra package installation is needed, and neither the user profile nor Windows graphics settings are changed. Performance evidence must record the actual adapter.
+`npm run benchmark:foliage-motion` starts its own preview on port 5197 (`-- --port=5198` overrides it), renders 400 checked-in CC0 ferns with LODs, shadows, water capture, GTAO and temporal stabilization, and writes `.qa/foliage-motion-benchmark.json`. To compare two builds, first copy the baseline `lib/` outside the generated build directory, rebuild, then pass `-- --baseline-lib=.qa/baseline/lib --output=.qa/motion-comparison.json`. Optional `--density=0.25` retains 25% of the distant ferns; the default is full density. It runs baseline/current/current/baseline sequentially. Install the local video helper with `npx playwright install ffmpeg` before using `--capture`; capture runs record separate videos and are excluded from performance evidence. See [scope and measurements](docs/PERFORMANCE.md#foliage-motion-history--19-october-2026).
+
+`npm run benchmark:foliage-selection` measures CPU foliage updates at 1,000, 10,000 and 50,000 authored plants, including fades and teleports, and reports reserved instance attributes. It uses built-in geometry and creates no renderer, so its results are not FPS measurements. It owns preview port 5199 (`--port=5200` overrides it), supports the same `--baseline-lib` option, and writes `.qa/foliage-selection.json`. Run benchmarks separately from builds, browser tests and other benchmarks.
+
+`npm run benchmark:terrain-lod` uses Node's `--experimental-strip-types` to measure the source terrain LOD builder on 500 chunks with changing heights. Optional `-- --baseline=.qa/terrain-lod-before.ts` compares a saved standalone copy of `src/core/terrain-lod.ts`, checks exact output hashes, and writes `.qa/terrain-lod-benchmark.json`. No build or browser is needed. This measures CPU preparation, not FPS.
+
+Browser tests currently use installed Google Chrome and serve the production build on port 5175. Run the build first. For other environments, install Playwright Chromium with `npx playwright install --with-deps chromium`. Linux CI installs `mesa-vulkan-drivers`, `vulkan-tools` and `xvfb`, and runs full Chromium with a software Vulkan display and explicit SwiftShader WebGPU adapter. These results are not hardware performance evidence.
+
+The editor requests a high-performance GPU. Hover over the FPS counter or green GPU indicator to see the adapter Chrome selected. On Windows laptops, a browser/OS graphics preference can still override that request. Choose the dedicated GPU for Chrome in Windows **Settings → System → Display → Graphics**, then restart Chrome. Automated Windows browser checks and the water benchmark launch a separate temporary profile. Their shared helper uses built-in PowerShell/.NET to read DXGI adapters and explicitly selects the RTX 5060 when present using Chromium's [adapter-selection switch](https://chromium.googlesource.com/chromium/src/+/main/ui/gl/gl_switches.cc). Other hosts retain the high-performance request. No extra package installation is needed, and neither the user profile nor Windows graphics settings are changed. WebGPU may report only the vendor and architecture for privacy. Performance evidence must record the actual adapter.
 
 Run the navigation checks with `npm run test:browser -- tests/browser/navigation.spec.mjs` after building. If the large unit-test fixtures exceed Vitest’s default five-second limit, use `npm test -- --testTimeout=15000`; see [verification scope](docs/ROADMAP.md#verified-evidence).
 
 ESLint checks `src/` using the recommended JavaScript and TypeScript rules; formatting stays with Prettier. Test/build-script lint coverage is separate remaining work. The pinned lint setup uses `npm install --save-dev --save-exact eslint@10.13.0 @eslint/js@10.0.1 typescript-eslint@8.71.2 globals@17.13.0`; ordinary setup remains `npm ci`. Configuration follows the [typescript-eslint flat-config guide](https://typescript-eslint.io/getting-started/).
+
+Three.js is pinned to 0.186.1, with `@types/three` 0.186.0 and `@webgpu/types` 0.1.64. The upgrade command is `npm install --save-dev --save-exact three@0.186.1 @types/three@0.186.0 @webgpu/types@0.1.64`; normal setup uses the committed lockfile with `npm ci`. The runtime peer requires Three ^0.186.1. This includes the WGSL array-texture gradient fix required by layered terrain.
 
 ## Prepared runtime assets
 
@@ -61,6 +78,8 @@ The compressed runtime pipeline uses pinned development tools: `npm install --sa
 Open **Sculpt → Terrain → Reference landscape → Open upland meadow**, or preview it at `/runtime.html?sample=upland`. The 96 m scene includes generated ground/grass textures, imported foliage with LODs, limestone props, wind, and contact recovery. Its roughly 20 MiB native package embeds all assets; loading is cancellable and undoable. See [the reference guide](docs/REFERENCE-SCENE.md) for reproduction, provenance, and visual limits.
 
 ## Import your own assets
+
+For a downloaded glTF package, use **Choose model folder** or drop its complete folder into the foliage importer. The browser needs the `.gltf`, companion `.bin`, and textures selected together. If files are missing, **Locate model folder** repairs the selection; you can also add missing files without selecting the model again.
 
 Import your own assets through **Foliage → Library → Import foliage assets** or **Surfaces → Maps → Import PBR material**. Both offer multi-file/drop workflows, review before applying, local embedded assets, cancellation and one-step undo. Foliage supports GLB and local glTF dependencies, model previews, unit/pivot correction and explicit new/add/replace destinations. Terrain materials offer Blender, Unreal, Unity Built-in/URP, Unity HDRP and generic OpenGL/DirectX source presets, editable channel conversions, normal conventions and a lit preview. Import extracted PNG, JPEG, WebP, TIFF or TGA texture images; Unity packed smoothness requires PNG/TIFF/TGA alpha. See [foliage import](docs/FOLIAGE.md#import-plants-into-a-brush) and [material import](docs/MATERIALS.md#import-a-complete-texture-set).
 
@@ -89,6 +108,8 @@ The offline asset builder uses pinned development dependencies, installed origin
 
 Right drag orbits, middle drag pans, and scroll zooms. Left drag paints. `Esc` cancels an active sculpt, hole, surface-paint or foliage stroke. Failed stroke preparation restores the committed scene and keeps redo available; successful release makes one undo step. `F` frames terrain; `[` / `]` change brush radius; `Ctrl/Cmd+Z` undoes; `Ctrl/Cmd+Shift+Z` redoes.
 
+**Spectral ocean:** select **Water → Ocean → Ocean rendering → web-ocean · spectral** for six GPU FFT wave cascades, independent swell, choppy displacement and persistent crest whitecaps. **Waves** offers wind speed, fetch, swell direction, seed and Balanced/High detail. Existing clarity, color, shoreline foam and lighting remain available. Ponds/lakes keep the Standard wave model. Adapted from [web-ocean by Maksymilian Dendura](https://github.com/noniv/web-ocean), MIT; [controls, credits and limits](docs/WATER.md#choose-an-ocean-renderer).
+
 **First-person walkthrough:** press `V` or the footprints button to choose a starting position. Point anywhere on the terrain: a person-sized marker and **Walk here** label show the exact location, standing height, and facing direction. Click or press `Enter` to capture the mouse and start there, including on steep slopes. Entry has no slope, water or scenery clearance restrictions. Right drag to orbit and choose a facing direction; pan and zoom also remain available. `V` or `Esc` cancels placement.
 
 Once walking, use `WASD` to move, the mouse to look, and hold `Shift` to run. `V` or `Esc` releases the mouse and restores the editor view you composed before entering. Losing focus also exits safely. **Project → First person → Eye height** sets the camera height above terrain (default **1.8 m**, range 0.1–100 m). This setting is saved with the project and used by the preview and movement; older projects also default to 1.8 m. Walking uses 6 m/s walking and 12 m/s running, follows the rendered terrain triangles, and stops at terrain edges and holes (including prop cutouts). There is no jumping, gravity, walking slope limit, or continuous collision with props, foliage or water. Editing is disabled during placement and capture; navigation does not change your project or undo history. Hotkeys are ignored while typing or using a dialog.
@@ -101,9 +122,11 @@ To reproduce the mouse/GPU measurement with an external content project, start `
 
 **Fullscreen view:** press `Shift+F` or the expand button above the viewport to toggle fullscreen rendering of the 3D view. It works with orbit or first person; the editor panels stay outside fullscreen. `Esc` can also release fullscreen through the browser. If the browser releases mouse capture during a fullscreen change, press `V` and choose a starting spot again. Mouse capture and fullscreen require browser support; failures show a message and leave editing available.
 
-For outdoor lighting, start with **Light → Sun → Lighting preset → Natural sunlight · fine shadows**, then tune solar time and exposure. It enables three camera-following shadow cascades, indirect contact shading and temporal foliage stabilization. **Light → View → Foliage detail recovery** adjusts contrast after temporal smoothing (0–1, default 0.25). The renderer reuses contact-shading depth to avoid shading hidden foliage. **Foliage → Effects → Leaf lighting** adds shadowed translucency to selected leaf materials, with absorption/tint controls and smooth cutout edges. Dense scenes can use 2048 px per cascade and a shorter shadow reach. See [forest lighting guidance and current limits](docs/ENVIRONMENT.md#natural-sunlight-and-forest-quality).
+For outdoor lighting, start with **Light → Sun → Lighting preset → Natural sunlight · fine shadows**, then tune solar time and exposure. It enables three camera-following shadow cascades, indirect contact shading and temporal foliage stabilization. **Light → View → Foliage detail recovery** adjusts contrast after temporal smoothing (0–1, default 0.25). The WebGPU scene pass supplies depth, normals, indirect light and velocity to the compositor. **Foliage → Effects → Leaf lighting** adds shadowed translucency to selected leaf materials, with absorption/tint controls and smooth cutout edges. Dense scenes can use 2048 px per cascade and a shorter shadow reach. See [forest lighting guidance and current limits](docs/ENVIRONMENT.md#natural-sunlight-and-forest-quality).
 
 After building, run the rendering/recovery checks with `npm run test:browser -- tests/browser/cascaded-sun.spec.mjs tests/browser/ambient-occlusion.spec.mjs tests/browser/depth-prepass.spec.mjs tests/browser/temporal-aa.spec.mjs tests/browser/forest-lighting-recovery.spec.mjs tests/browser/foliage-shading.spec.mjs`. The external Pine Forest and Namaqualand studies keep their artwork and project-specific builders outside the codebase; see [content projects](docs/CONTENT-PROJECTS.md).
+
+Native foliage now supplies previous wind/contact deformation and ID-matched instance transforms to temporal stabilization. Fresh and cross-fading cutouts reduce stale history; camera projection/aspect and histories survive pause, resize and explicit teleport resets. No new authoring option or project migration is needed. See [foliage motion behavior and limits](docs/FOLIAGE.md#motion-and-temporal-stabilization).
 
 To profile one of those external scenes, run `npm run build:runtime`, then `node scripts/benchmark-forest.mjs "C:/path/to/content-project/exports/scene.terrain" .qa/forest-render.json`. The script uses the `original` or `trail` viewpoint in the parent content project's `content-manifest.json`, launches its own local server and Chrome profile, requires the RTX 5060, and records 1080p GPU pass timings after warm-up. An optional third argument selects a preserved runtime build inside this workspace for comparison. See [measurement scope](docs/PERFORMANCE.md#forest-rendering-on-the-rtx-5060). The separate walk benchmark above measures actual editor input delivery and GPU completion.
 
@@ -115,7 +138,7 @@ Changes autosave to IndexedDB in the current browser. **Save project** downloads
 
 **Export scene** creates a GLB containing terrain, instanced foliage, props, and water. Its `TERRAIN_tools_project` extension embeds the complete editable project. Open this GLB in Terrain Studio or pass it to `loadTerrain()` to recover the exact material rules/maps, foliage, wind, and interaction settings. Choose **Fast colors** for the small vertex-color presentation, or **PBR** to bake standard base-color, ORM, and normal atlases for ordinary GLB viewers. Both are static presentations; exact layered behavior and wind remain in the toolkit runtime. See [scene export](docs/EXPORT.md) for resolution, memory, and cancellation details. The SDK retains JSON interchange for smaller documents. See [project files and recovery](docs/PROJECT-FILES.md) for migration, limits, and the binary format.
 
-The viewport screenshot button downloads a PNG. Asset inputs accept static GLB (30 MB limit), PNG/JPEG/WebP/TIFF/TGA texture maps (up to 16 megapixels per image and 256 MiB per source file, see [format limits](docs/MATERIALS.md#tiff-and-tga-texture-formats)), and **Radiance HDR / OpenEXR environment panoramas** (2:1, up to 4096 × 2048 and 32 MB; see [supported EXR formats](docs/ENVIRONMENT.md#import-hdr-or-exr-illumination)). Texture arrays are configurable at 256², 512², 1024², or 2048². The project allows 384 MiB of distinct embedded assets; Props and Foliage show usage and offer undoable cleanup of unused models. Procedural vegetation remains available as lightweight fallback art and in the synchronous core `createProject()` API.
+The viewport screenshot button downloads a PNG. Asset inputs accept static GLB (up to **320 MiB per model**, preserving source geometry and textures), PNG/JPEG/WebP/TIFF/TGA texture maps (up to 16 megapixels per image and 256 MiB per source file, see [format limits](docs/MATERIALS.md#tiff-and-tga-texture-formats)), and **Radiance HDR / OpenEXR environment panoramas** (2:1, up to 4096 × 2048 and 32 MB; see [supported EXR formats](docs/ENVIRONMENT.md#import-hdr-or-exr-illumination)). Texture arrays are configurable at 256², 512², 1024², or 2048². The project allows 384 MiB of distinct embedded assets; Props and Foliage show usage and offer undoable cleanup of unused models. Save large models in native `.terrain` projects; [portable brush/legacy JSON limits and memory considerations](docs/PROJECT-FILES.md#limits) remain separate. Procedural vegetation remains available as lightweight fallback art and in the synchronous core `createProject()` API.
 
 ## Architecture
 

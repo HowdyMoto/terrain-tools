@@ -173,8 +173,10 @@ export async function addDefaultFoliage(
   project: TerrainProject,
   kinds: readonly DefaultFoliageKind[],
   signal?: AbortSignal,
+  onProgress?: (completed: number, total: number) => void,
 ) {
   let next = project;
+  let completed = 0;
   const manifest = await loadManifest(signal);
   for (const kind of kinds) {
     const brush = defaultFoliageBrush(kind);
@@ -200,6 +202,7 @@ export async function addDefaultFoliage(
         assets,
       }),
     );
+    onProgress?.(++completed, kinds.length);
   }
   return next;
 }

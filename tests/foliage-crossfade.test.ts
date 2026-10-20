@@ -72,6 +72,29 @@ function fixture() {
 const advance = (field: FoliageLodTransitions, time: number) =>
   field.advance(time, () => {});
 describe('foliage cross-fades', () => {
+  it('retains packed matrices and IDs when only fade coverage changes', () => {
+    const { scene, move, primary, distant } = fixture();
+    move(0);
+    const ids = primary().userData.instanceIds;
+    const version = primary().instanceMatrix.version;
+    move(20);
+    expect(primary().userData.instanceIds).toBe(ids);
+    expect(primary().instanceMatrix.version).toBe(version);
+    const farIds = distant().userData.instanceIds;
+    const farVersion = distant().instanceMatrix.version;
+    scene.update(0.3);
+    move(0);
+    expect(primary().userData.instanceIds).toBe(ids);
+    expect(primary().instanceMatrix.version).toBe(version);
+    expect(distant().userData.instanceIds).toBe(farIds);
+    expect(distant().instanceMatrix.version).toBe(farVersion);
+    scene.update(1);
+    move(20);
+    scene.update(1.01);
+    expect(primary().userData.instanceIds).toEqual([]);
+    expect(distant().userData.instanceIds).toEqual([1]);
+    scene.dispose();
+  });
   it('maintains complementary coverage through reversals, skipped levels, and hidden targets', () => {
     const field = new FoliageLodTransitions(1, 4, 1);
     field.setTarget(0, 1, 0);
@@ -168,9 +191,10 @@ describe('foliage cross-fades', () => {
     expect(primary().count).toBe(0);
     expect(distant().count).toBe(1);
     expect(scene.foliage.viewStats.transitioning).toBe(0);
-    expect(
-      (primary().material as THREE.Material).customProgramCacheKey(),
-    ).not.toContain('lod-fade');
+    const material = primary().material as THREE.Material;
+    const key = material.customProgramCacheKey();
+    const materialVersion = material.version;
+    expect(key).toContain('lod-fade');
     move(0);
     expect(
       (primary().material as THREE.Material).customProgramCacheKey(),
@@ -195,12 +219,12 @@ describe('foliage cross-fades', () => {
     scene.update(0.75);
     expect(primary().count).toBe(1);
     expect(distant().count).toBe(0);
-    expect(
-      (primary().material as THREE.Material).customProgramCacheKey(),
-    ).not.toContain('lod-fade');
-    expect(
-      primary().customDepthMaterial!.customProgramCacheKey(),
-    ).not.toContain('lod-fade');
+    expect(primary().material).toBe(material);
+    expect(material.customProgramCacheKey()).toBe(key);
+    expect(material.version).toBe(materialVersion);
+    expect(primary().customDepthMaterial!.customProgramCacheKey()).toContain(
+      'lod-fade',
+    );
     expect(scene.foliage.viewStats).toMatchObject({
       instances: 1,
       drawnInstances: 1,

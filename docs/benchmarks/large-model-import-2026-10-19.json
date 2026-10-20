@@ -1,0 +1,93 @@
+{
+  "date": "2026-10-19",
+  "change": "Large embedded static GLB imports and persistence",
+  "environment": {
+    "os": "Windows",
+    "browser": "Google Chrome 155.0.8059.82",
+    "gpu": "NVIDIA GeForce RTX 5060 Laptop GPU",
+    "driver": "617.42",
+    "renderer": "Rendering on WebGPU \u00c2\u00b7 nvidia blackwell",
+    "viewport": [1440, 960]
+  },
+  "limits": {
+    "modelBytes": 335544320,
+    "projectDistinctAssetsBytes": 402653184,
+    "nativePackageBytes": 536870912,
+    "foliageSelectedBatchBytes": 402653184
+  },
+  "actualAsset": {
+    "source": "Meshy_AI_a_photorealistic_bana_1017005454_texture.glb",
+    "sourceBytes": 49749016,
+    "savedModelBytes": 49749124,
+    "gpu": "Rendering on WebGPU \u00c2\u00b7 nvidia blackwell",
+    "review": "Meshy_AI_a_photorealistic_bana_1017005454_texture \u00c2\u00b7 1.742 \u00c3\u2014 1.903 \u00c3\u2014 1.868 m (width \u00c3\u2014 height \u00c3\u2014 depth). 1,401,134 triangles \u00c2\u00b7 1 mesh parts \u00c2\u00b7 49.7 MB. No creator credit embedded in this source. Heavy geometry: add lower-detail models in Distance detail before dense painting. ",
+    "previewMs": 1795,
+    "binaryPayloadPreserved": true,
+    "autosaveReload": true,
+    "nativeFileReopen": true,
+    "errors": [],
+    "scope": "One source model preview/import/persistence; not a dense-scene performance benchmark."
+  },
+  "regressionCoverage": [
+    {
+      "fixture": "34 MiB GLB with minimal geometry and unused binary payload",
+      "checks": [
+        "import",
+        "cancel file read without editing history",
+        "injected history failure",
+        "successful retry",
+        "undo/redo",
+        "native file save",
+        "autosave/reload"
+      ],
+      "result": "passed"
+    },
+    {
+      "fixture": "128 MiB GLB with minimal geometry and unused binary payload",
+      "checks": [
+        "foliage review/preview",
+        "create brush",
+        "save native package",
+        "binary payload length and tail",
+        "autosave/reload"
+      ],
+      "result": "passed"
+    },
+    {
+      "fixture": "Existing photoreal foliage and glTF dependency workflows",
+      "checks": [
+        "pending preparation cancellation",
+        "compact importer layout",
+        "multi-model brush import with injected failure/retry and undo",
+        "missing glTF dependency recovery",
+        "unit and pivot conversion"
+      ],
+      "result": "3 tests passed"
+    }
+  ],
+  "validation": {
+    "build": "passed",
+    "lint": "passed",
+    "unitTests": 321,
+    "unitFiles": 44,
+    "largeModelBrowserTests": 3,
+    "existingImportBrowserTests": 3,
+    "browserTestsTotal": 6,
+    "formatting": "passed for changed files"
+  },
+  "commands": [
+    "npm run build",
+    "npm run lint",
+    "npm test -- --maxWorkers=4 --testTimeout=15000",
+    "npm run test:browser -- tests/browser/large-models.spec.mjs",
+    "$env:TERRAIN_TEST_GLB = \"<local artist-owned GLB path>\"; npm run test:browser -- tests/browser/large-models.spec.mjs -g \"artist GLB\"",
+    "npm run test:browser -- tests/browser/asset-import.spec.mjs -g \"imports photoreal|packages glTF|cancels pending foliage\""
+  ],
+  "limitsOfEvidence": [
+    "The 320 MiB boundary is checked without allocating an oversized fixture. The largest full browser persistence fixture was 128 MiB, with minimal GPU geometry.",
+    "Real-asset validation used the supplied 49.75 MB banana tree, with 1,401,134 triangles and three embedded images; its binary geometry/texture chunks retained their SHA-256 hash after import.",
+    "Preview time is one observed import, not a repeatable performance benchmark. Dense instancing, other devices and the complete browser suite were not tested for this change.",
+    "Original art and generated project/screenshot files remain local and are not checked into the source repository.",
+    "Authoring still uses embedded strings. Linked binary storage and multi-gigabyte assets remain future work."
+  ]
+}

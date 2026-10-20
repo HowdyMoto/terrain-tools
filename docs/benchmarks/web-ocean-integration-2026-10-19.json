@@ -1,0 +1,91 @@
+{
+  "date": "2026-10-19",
+  "upstream": {
+    "url": "https://github.com/noniv/web-ocean",
+    "commit": "a07c7fd522ef0a897601c114f927a49d93d95520",
+    "author": "Maksymilian Dendura",
+    "copyright": 2026,
+    "license": "MIT",
+    "included": "FFT, mip and persistent world-space foam WGSL kernels; adapted host integration",
+    "excluded": "Standalone renderer, adaptive mesh, sky, camera, postprocessing, complete anisotropic ocean BRDF and demo assets"
+  },
+  "selection": "Water > Ocean > Ocean rendering > web-ocean \u00b7 spectral",
+  "backend": "Native WebGPU on the existing Three renderer device",
+  "configuration": {
+    "balanced": {
+      "cascades": 6,
+      "fftResolution": 128,
+      "foamResolution": 256,
+      "foamLayers": 2,
+      "foamPingPong": true,
+      "simulationReservationBytes": 13806560
+    },
+    "high": {
+      "cascades": 6,
+      "fftResolution": 256,
+      "foamResolution": 1024,
+      "foamLayers": 2,
+      "foamPingPong": true,
+      "simulationReservationBytes": 88779744
+    }
+  },
+  "memoryScope": "Compute buffers and simulation storage textures including mips. Excludes water geometry, scene captures, terrain masks and shared pore texture. Per-tile reservations are conservative; matching tiles share one provider within the same world clock scope and animation rate.",
+  "validation": {
+    "build": true,
+    "typecheck": true,
+    "eslint": true,
+    "unitTests": 325,
+    "browser": {
+      "distinctScenariosPassed": 13,
+      "finalSpectralScenariosRerun": 3,
+      "coverage": [
+        "Animated native GPU wave fields",
+        "One shared provider across synchronized tiles",
+        "Separate histories for different animation rates",
+        "Surviving lease renders after another tile is disposed",
+        "Zero tracked raw buffer and renderer bytes after teardown",
+        "Coastal sky/refraction/shore composition with an independent pond",
+        "Injected asynchronous GPU failure retains document and redo, then retry succeeds",
+        "Detail/wind settings, switching back to Standard, undo, native save and autosave reload",
+        "Existing ocean/local-body authoring and allocation recovery",
+        "Six compact-inspector scenarios",
+        "Native terrain/foliage/water, PBR export, resize and unavailable-device recovery"
+      ],
+      "logs": [
+        ".qa/web-ocean-compatibility.log",
+        ".qa/web-ocean-browser-release.log"
+      ]
+    },
+    "licenseCopies": "Source, public, dist and lib notice hashes match"
+  },
+  "environment": {
+    "os": "Windows",
+    "browser": "Google Chrome 155",
+    "node": "24.18.1",
+    "gpuSelection": "Dedicated NVIDIA RTX 5060 Laptop GPU through DXGI test launcher"
+  },
+  "commands": [
+    "npm run build",
+    "npm run lint",
+    "npm test -- --maxWorkers=4 --testTimeout=15000",
+    "npm run test:browser -- tests/browser/web-ocean.spec.mjs tests/browser/water.spec.mjs tests/browser/compact-inspector.spec.mjs tests/browser/webgpu.spec.mjs"
+  ],
+  "limits": [
+    "No new FPS or incremental GPU timing measurement",
+    "Dense tropical scene budget and full browser suite not rerun",
+    "Ponds and lakes retain Standard waves",
+    "No physically breaking surf or terrain-derived finite-depth spectrum",
+    "Our existing optics and GGX shading differ from the upstream standalone demo",
+    "Other browsers and GPU vendors not validated"
+  ],
+  "sourceSHA256": {
+    "src/core/water.ts": "9292cfea8fe8d67a0b051770b0ed1cf116ea3a5b2651f39c5aae36122aa58133",
+    "src/editor/water-controls.ts": "67f9c566a3e935bd3bc3328d880ec2a88cd5485d7ce7e8a9b4fe95deabcb27a0",
+    "src/runtime/water.ts": "71508fd25a46e39abee1e9be53705b865ce986e606e30c346340e950e7f6231d",
+    "src/runtime/water-nodes.ts": "b02ca85f37374e0fddc1ed5fa25d3df2c496e61bf0f8c5cbe2c25d66b3731fcd",
+    "src/runtime/web-ocean/simulation.ts": "996536f6a8656af65e91df7afb05e288e3d48f768668dafdd89dc570ed5080c5",
+    "src/runtime/web-ocean/nodes.ts": "0eed986a6467ffb6885c41322f77ab02c2dbc11975beba9569c862827b06ed64",
+    "src/runtime/web-ocean/shaders.ts": "e2f4e8e497b98eaeeb25574c24b8eeeb5ad82f8d58c8eaaa8d5e9e12db6acd73",
+    "src/runtime/world-scene.ts": "0ee228884d27b1dd8ac5c3657fcf0b29817525d5a20fd501985e75f8c5f9ef33"
+  }
+}

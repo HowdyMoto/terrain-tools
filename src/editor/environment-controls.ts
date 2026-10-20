@@ -210,7 +210,10 @@ export function bindEnvironmentControls(
   error: (message: string) => void,
   currentHour?: () => number,
 ) {
-  const settings = () => get() ?? defaultEnvironmentSettings();
+  // Compose rapid edits against the latest requested values while GPU resources
+  // are preparing. The committed document remains unchanged until preparation succeeds.
+  let pending: EnvironmentSettings | undefined;
+  const settings = () => pending ?? get() ?? defaultEnvironmentSettings();
   const apply = (value: EnvironmentSettings, preserveTime = true) => {
     if (
       preserveTime &&
@@ -222,9 +225,15 @@ export function bindEnvironmentControls(
         ...value,
         timeOfDay: { ...value.timeOfDay, hour: currentHour() },
       };
+    pending = value;
     void Promise.resolve()
       .then(() => change(parseEnvironmentSettings(value)))
-      .catch((e) => error(String(e)));
+      .catch((e) => {
+        if (pending === value) {
+          pending = undefined;
+          error(String(e));
+        }
+      });
   };
   bindDaylightControls(
     settings,

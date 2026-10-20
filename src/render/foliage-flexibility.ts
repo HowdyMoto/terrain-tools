@@ -1,3 +1,4 @@
+import { registerSharedGeometry } from './shared-geometry';
 import * as THREE from 'three';
 import type { FoliageFlexibility } from '../core/types';
 
@@ -119,9 +120,13 @@ export function prepareFlexibility(
 /** Separate per-batch instance attributes, sharing immutable model vertex/index storage. */
 export function foliageGeometryView(
   base: THREE.BufferGeometry,
-  attributes: Record<string, THREE.InstancedBufferAttribute>,
+  attributes: Record<
+    string,
+    THREE.BufferAttribute | THREE.InterleavedBufferAttribute
+  >,
 ) {
-  const geometry = new THREE.BufferGeometry();
+  registerSharedGeometry(base);
+  const geometry = new THREE.InstancedBufferGeometry();
   geometry.index = base.index;
   for (const [name, attribute] of Object.entries(base.attributes))
     geometry.setAttribute(name, attribute);

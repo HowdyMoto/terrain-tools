@@ -1,0 +1,97 @@
+{
+  "date": "2026-10-19T22:34:16.121Z",
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 5060 Laptop GPU",
+    "driver": "617.42",
+    "browser": "155.0.8059.82",
+    "node": "24.18.1",
+    "viewport": [
+      1920,
+      1080
+    ],
+    "deviceScaleFactor": 1
+  },
+  "method": {
+    "requestedRoute": "Three laps of forest/open/coast, 12 seconds per view, 20 m/s; wait for final tile loading before stopping.",
+    "sourceAssets": "Identical prepared assets and world-source inputs at both source commits.",
+    "isolation": "Sequential production runs in separate fresh headless Chrome profiles, after iRacing closed; no simultaneous builds/tests/asset encoders. Other desktop/background activity was not eliminated.",
+    "timing": "Submitted frame count divided by browser-clock recording duration. Frame percentiles exclude the first interval, which starts before recording. Not physical display scanout or GPU completion rate.",
+    "captures": false,
+    "harnessSha256": "7dac5915fd9f6641711b33435dc15c384acec8e65cbfe1ea054b6b90911241d7"
+  },
+  "runs": {
+    "webgl": {
+      "sourceCommit": "79924516c1565ece0eefc9d614b5f10b17d72059",
+      "rawReport": "world-webgl-recheck-2026-10-19.json",
+      "averageFPS": 52.62593029841606,
+      "measurementSeconds": 108.08359999996424,
+      "submittedFrames": 5688,
+      "frameMs": {
+        "samples": 5687,
+        "p50": 12.10000000000582,
+        "p95": 54.39999999999418,
+        "p99": 108.90000000000873,
+        "max": 660.7000000000007
+      },
+      "cpuMs": {
+        "samples": 5688,
+        "p50": 10.400000035762787,
+        "p95": 45.5,
+        "p99": 60.60000002384186,
+        "max": 660.1000000238419
+      },
+      "framesOver100ms": 61,
+      "framesOver1000ms": 0,
+      "initialAssetsReadySeconds": 10.4494583,
+      "errors": [],
+      "meets30FPS": false,
+      "residentTilesAtTeardown": 0,
+      "gpuAssetBytesAtTeardown": 0
+    },
+    "webgpu": {
+      "sourceCommit": "a2ace3fa30889ab4d0d72f5e65504b3ea237e6c2",
+      "rawReport": "world-webgpu-2026-10-19.json",
+      "averageFPS": 0.14652315212325848,
+      "measurementSeconds": 204.7458000000119,
+      "submittedFrames": 30,
+      "frameMs": {
+        "samples": 29,
+        "p50": 84.89999999999418,
+        "p95": 28751.5,
+        "p99": 51090.600000000006,
+        "max": 51090.600000000006
+      },
+      "cpuMs": {
+        "samples": 30,
+        "p50": 11.100000023841858,
+        "p95": 28747.099999964237,
+        "p99": 51092.10000002384,
+        "max": 51092.10000002384
+      },
+      "framesOver100ms": 14,
+      "framesOver1000ms": 10,
+      "initialAssetsReadySeconds": 24.4116138,
+      "errors": [],
+      "meets30FPS": false,
+      "residentTilesAtTeardown": 0,
+      "gpuAssetBytesAtTeardown": 0
+    }
+  },
+  "effectiveFPSChangePercent": -99.7215761293104,
+  "supplemental": {
+    "historicalWebGLReport": "world-streaming-2026-10-19.json",
+    "historicalWebGLCadenceFPS": 38.646261341988414,
+    "exploratoryWebGPUReport": "world-webgpu-exploratory-2026-10-19.json",
+    "exploratoryNote": "29 frames, tens-of-seconds stalls, no render/load errors. This earlier harness did not record an independent wall-clock interval and included the warmup-crossing first frame in percentiles; do not use its derived FPS for the primary comparison.",
+    "abortedAttempt": "Initial capture-enabled WebGPU attempt timed out in its screenshot before measurement; excluded."
+  },
+  "conclusion": "Severe native WebGPU implementation regression in streamed-world responsiveness; no speedup established. Both builds fail steady 30 FPS acceptance.",
+  "limits": [
+    "Native stalls skip phases of the wall-time-driven route; this is the same requested traversal, not equal executed camera samples or a successfully rendered three-lap route.",
+    "This is a full implementation comparison: Three and the shading/postprocessing pipelines changed; it does not isolate the graphics API or prove equal image quality.",
+    "The native repeat has only 30 frames and ten GPU timing samples. GPU timestamp distributions are not equivalent cross-backend per-frame coverage; no GPU speedup is claimed.",
+    "Main-thread render/update spans reach 51 seconds and the GPU was often lightly used between observations; shader/pipeline preparation is a suspect, not a profiled root cause.",
+    "This is streaming/teleport responsiveness, not warmed stationary-view FPS, editor FPS or physical input latency.",
+    "Initial readiness covers the world asset idle promise, not completed first-frame shader preparation."
+  ]
+}

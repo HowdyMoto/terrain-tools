@@ -9,6 +9,7 @@ import { parseWaterSettings } from './water';
 import { parseErosionSettings } from './erosion';
 import type { TerrainProject } from './types';
 import { MAX_TEXTURE_DATA_URL_CHARACTERS } from './texture-limits';
+import { checkModelDataURL } from './model-limits';
 
 export const MAX_PROJECT_JSON_CHARACTERS = 100_000_000;
 /** Read larger legacy saves for migration; new large saves use binary packages. */
@@ -216,14 +217,7 @@ export function validateProjectData(
       throw new Error('Model identifier conflicts with a built-in asset.');
     const asset = object(value, 'model asset');
     name(asset.name, 'asset name');
-    if (
-      typeof asset.data !== 'string' ||
-      asset.data.length > 41_000_000 ||
-      !/^data:(model\/gltf-binary|application\/octet-stream);base64,[a-z0-9+/=]+$/i.test(
-        asset.data,
-      )
-    )
-      throw new Error('Models must be embedded binary GLB assets.');
+    checkModelDataURL(asset.data);
   }
   const model = (v: unknown) => {
     if (

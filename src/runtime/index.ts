@@ -1,4 +1,10 @@
 export {
+  createTerrainRenderer,
+  isWebGPU,
+  rendererDescription,
+} from '../render/renderer';
+export type { TerrainRenderer } from '../render/renderer';
+export {
   TerrainEnvironment,
   prepareEnvironment,
   PreparedEnvironment,
@@ -17,6 +23,7 @@ export { modelMemory } from './asset-memory';
 export { createModelDecoder } from '../render/model-loader';
 export type { ModelDecoder, DecodedModel } from '../render/model-loader';
 export { TerrainLod } from './terrain-lod';
+export { webOceanResources } from './web-ocean/simulation';
 export type { TerrainLodOptions } from './terrain-lod';
 export { TerrainWorldScene } from './world-scene';
 export type {

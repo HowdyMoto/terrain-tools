@@ -1,6 +1,8 @@
 import { validateProjectData } from './serialization';
 import type { TerrainProject } from './types';
 import { MAX_TEXTURE_FILE_BYTES } from './texture-limits';
+import { MAX_MODEL_BYTES } from './model-limits';
+import { bytesToBase64, base64ToBytes } from './base64';
 
 export const MAX_PROJECT_ASSET_BYTES = 384 * 1024 * 1024;
 export const MAX_PROJECT_PACKAGE_BYTES = 512 * 1024 * 1024;
@@ -85,19 +87,6 @@ export function assertProjectCapacity(
     );
   return bytes;
 }
-function bytesToBase64(bytes: Uint8Array) {
-  const native = (bytes as Uint8Array & { toBase64?: () => string }).toBase64;
-  if (native) return native.call(bytes);
-  const chunks: string[] = [];
-  const size = 32766; // A multiple of three avoids padding between pieces.
-  for (let at = 0; at < bytes.length; at += size) {
-    const end = Math.min(bytes.length, at + size);
-    let binary = '';
-    for (let i = at; i < end; i++) binary += String.fromCharCode(bytes[i]);
-    chunks.push(btoa(binary));
-  }
-  return chunks.join('');
-}
 /** Reuses immutable asset blobs between saves; clear() releases the cache. */
 export class ProjectPackageWriter {
   private assets = new Map<string, CachedAsset>();
@@ -150,11 +139,9 @@ export class ProjectPackageWriter {
       let cached = this.assets.get(url);
       if (!cached) {
         const info = assetInfo(url);
-        const raw = atob(url.slice(info.prefix.length));
-        if (raw.length !== info.bytes)
+        const bytes = base64ToBytes(url.slice(info.prefix.length));
+        if (bytes.length !== info.bytes)
           throw new Error('Invalid embedded asset length.');
-        const bytes = new Uint8Array(raw.length);
-        for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
         cached = {
           chunk: {
             kind: 'asset',
@@ -317,7 +304,7 @@ export function parseProjectPackage(buffer: ArrayBuffer): TerrainProject {
         typeof chunk.prefix === 'string' &&
         /^data:image\/(png|jpeg|webp);base64,$/i.test(chunk.prefix)
           ? MAX_TEXTURE_FILE_BYTES
-          : 32_000_000;
+          : MAX_MODEL_BYTES;
       if (chunk.bytes > maximum)
         throw new Error('Terrain package asset is too large.');
       assetBytes += chunk.bytes;

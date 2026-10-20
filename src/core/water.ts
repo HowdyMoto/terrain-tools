@@ -41,10 +41,36 @@ export interface WaterBody {
   extent: WaterExtent;
   surface: WaterSurface;
 }
+/** Open-ocean spectral simulation; distances in metres, wind speed in m/s. */
+export interface SpectralOceanSettings {
+  quality: 'balanced' | 'high';
+  windSpeed: number;
+  fetch: number;
+  choppiness: number;
+  whitecaps: number;
+  swellDirection: number;
+  seed: number;
+}
+export function defaultSpectralOceanSettings(): SpectralOceanSettings {
+  return {
+    quality: 'balanced',
+    windSpeed: 8,
+    fetch: 50000,
+    choppiness: 1,
+    whitecaps: 0.8,
+    swellDirection: 35,
+    seed: 1,
+  };
+}
 export interface WaterSettings {
   schemaVersion: 1;
   seaLevel: number;
-  ocean: { enabled: boolean; surface: WaterSurface };
+  ocean: {
+    enabled: boolean;
+    surface: WaterSurface;
+    renderer?: 'standard' | 'web-ocean';
+    spectral?: SpectralOceanSettings;
+  };
   bodies: WaterBody[];
   reflections: boolean;
 }
@@ -236,12 +262,37 @@ export function parseWaterSettings(value: unknown): WaterSettings {
   if (!Array.isArray(w.bodies) || w.bodies.length > 16)
     throw new Error('A project supports up to 16 local water bodies.');
   const ids = new Set<string>();
+  if (
+    ocean.renderer !== undefined &&
+    ocean.renderer !== 'standard' &&
+    ocean.renderer !== 'web-ocean'
+  )
+    throw new Error('Unknown ocean renderer.');
+  let spectral: SpectralOceanSettings | undefined;
+  if (ocean.spectral !== undefined) {
+    const s = record(ocean.spectral);
+    if (s.quality !== 'balanced' && s.quality !== 'high')
+      throw new Error('Invalid spectral ocean quality.');
+    spectral = {
+      quality: s.quality,
+      windSpeed: number(s.windSpeed, 0, 30),
+      fetch: number(s.fetch, 1000, 800000),
+      choppiness: number(s.choppiness, 0, 1.6),
+      whitecaps: number(s.whitecaps, 0, 2),
+      swellDirection: number(s.swellDirection, -360, 360),
+      seed: number(s.seed, 0, 65535),
+    };
+    if (!Number.isInteger(spectral.seed))
+      throw new Error('Ocean seed must be a whole number.');
+  }
   return {
     schemaVersion: 1,
     seaLevel: number(w.seaLevel, -10000, 10000),
     ocean: {
       enabled: bool(ocean.enabled),
       surface: parseSurface(ocean.surface),
+      ...(ocean.renderer !== undefined ? { renderer: ocean.renderer } : {}),
+      ...(spectral ? { spectral } : {}),
     },
     reflections: bool(w.reflections),
     bodies: w.bodies.map((v) => {

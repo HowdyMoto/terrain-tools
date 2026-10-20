@@ -3,6 +3,7 @@ import { runtimePackagePage } from './runtime-package-page.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { inspectorControl } from './inspector-controls.mjs';
 import { createProject, serializeProject } from 'terrain-tools';
+import { seedEditorProject } from './seed-editor-project.mjs';
 // CI uses software rendering. Assert persistent readiness with bounded waits;
 // its speed is independent of the dedicated-GPU quality/performance reports.
 const expect = baseExpect.configure({ timeout: 45000 });
@@ -290,12 +291,13 @@ test('compressed model cancellation and failure preserve a live terrain and allo
 test('editor previews, imports and restores a GPU-compressed foliage GLB', async ({
   page,
 }) => {
-  test.setTimeout(180000);
+  test.setTimeout(process.env.CI ? 420000 : 180000);
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
+  await seedEditorProject(page);
   await page.goto('/');
   await expect(page.locator('#foliage-count')).not.toHaveText('0', {
-    timeout: 60000,
+    timeout: process.env.CI ? 180000 : 60000,
   });
   const p = createProject(32, 64);
   p.name = 'Compressed import fixture';
@@ -306,14 +308,16 @@ test('editor previews, imports and restores a GPU-compressed foliage GLB', async
     mimeType: 'application/json',
     buffer: Buffer.from(serializeProject(p)),
   });
-  await expect(page.locator('#project-name')).toHaveValue(p.name);
+  await expect(page.locator('#project-name')).toHaveValue(p.name, {
+    timeout: 60000,
+  });
   await page.locator('[data-tab=foliage]').click();
   await (await inspectorControl(page, '#import-foliage')).click();
   await page
     .locator('#foliage-files')
     .setInputFiles('public/runtime-assets/ph-fern-a.glb');
   await expect(page.locator('.import-status')).toContainText('1 model ready', {
-    timeout: 30000,
+    timeout: process.env.CI ? 90000 : 30000,
   });
   await expect(page.locator('#foliage-preview canvas')).toBeVisible();
   await page.locator('#foliage-import-name').fill('Compressed fern');
@@ -321,8 +325,14 @@ test('editor previews, imports and restores a GPU-compressed foliage GLB', async
   await expect(page.locator('dialog.asset-import')).toHaveCount(0);
   await expect(page.locator('#brush-name')).toHaveValue('Compressed fern');
   await page.locator('#undo').click();
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 90000,
+  });
   await expect(page.locator('#redo')).toBeEnabled();
   await page.locator('#redo').click();
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 90000,
+  });
   await page
     .locator('#brush-select')
     .selectOption({ label: 'Compressed fern' });

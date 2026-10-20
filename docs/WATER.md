@@ -15,6 +15,23 @@ The inspector has **Shape / Appearance / Waves / Shore** pages. The selected-wat
 
 Within the terrain, the ocean fills only areas connected to a submerged boundary. An isolated below-sea-level depression needs its own water body. Connectivity follows the heightfield cells; visible contact uses the terrain's triangle interpolation. Enabling the ocean adds submerged boundary walls using the terrain material, closing the open edges of the heightfield. These are rendering geometry, not added collision. Beyond the heightfield the seabed is unknown and treated as deep water; a finished offshore landscape still needs authored terrain.
 
+## Choose an ocean renderer
+
+With **Ocean** selected, **Ocean rendering** offers **Standard · lightweight** (the existing directional waves) and **web-ocean · spectral**. Standard remains the default for existing and new projects. The spectral option requires native WebGPU; explicit WebGL runtime hosts must select Standard.
+
+Spectral mode adapts the GPU FFT and persistent foam from [web-ocean](https://github.com/noniv/web-ocean/tree/a07c7fd522ef0a897601c114f927a49d93d95520), by **Maksymilian Dendura**, copyright 2026, MIT. Full notices ship in [source](../src/runtime/web-ocean/LICENSE.txt), the editor at `/licenses/web-ocean-MIT.txt`, and the runtime package at `lib/licenses/web-ocean-MIT.txt`.
+
+In **Waves**, adjust **Wind speed** (metres/second), direction or **Follow world wind direction**, **Choppiness**, and independent **Whitecaps**. **Swell height**, **Swell length** and **Swell direction** control the second spectrum. The height value feeds the spectrum's significant-height parameter; it is not a maximum crest height. Advanced controls expose wind **Fetch** in kilometres and a repeatable **Seed**. Changing these prepares a replacement before committing. **Animation speed** zero freezes the simulation. Appearance presets still set water optics; wind sea strength is controlled by spectral wind/fetch, rather than the Standard wave-height slider.
+
+| Detail   | FFT cascades | Persistent foam             | Simulation allocation reservation |
+| -------- | ------------ | --------------------------- | --------------------------------- |
+| Balanced | Six at 128²  | Two 256² layers, ping-pong  | About 13 MiB                      |
+| High     | Six at 256²  | Two 1024² layers, ping-pong | About 85 MiB                      |
+
+These reservations include compute buffers and simulation textures/mips, excluding the existing scene captures, terrain masks, geometry and shared pore texture. Matched streamed tiles share a simulation on the same renderer/world clock; residency accounting reserves conservatively per tile. Independent scenes keep independent clocks. No per-frame CPU transfer of simulation textures is used.
+
+This mode supplies multi-scale waves and advected, decaying crest foam to our existing water material, including color/visibility, terrain shoreline foam, refraction, sky/scenery reflections and temporal stabilization. It does not import the upstream demo's separate sky, camera, postprocessing, adaptive grid or complete anisotropic sun BRDF. Filtered slope moments broaden our physical material's GGX highlights, and displacement filters to mesh spacing. It is an ocean option; bounded ponds and lakes continue to use Standard waves. It does not simulate breaking beach surf, finite-depth wave propagation or waves around obstacles. Shallow waves fade artistically against the terrain.
+
 ## Make a pond or lake
 
 In **Shape**, **Place pond** creates an ellipse where you click terrain. Its initial level is 0.8 m above the clicked ground. Adjust center X/Z, radii and rotation in Shape. Set **Water height (m)** above the pages to change this pond's elevation independently of the ocean. A visible outline helps identify the selected extent. Duplicate creates a separate body at the same position; move its center or edit its outline to separate it.
@@ -29,7 +46,7 @@ While sculpting, the terrain height used by water updates with the brush. Connec
 
 `npm run build` then `npm run benchmark:water-preview` reproduces the CPU comparison at 128, 256 and 512 cells. The recorded 512-cell case improves from 22.52 to 1.76 ms median per regional preview, with 20.83 ms of water preparation still paid on release. This excludes GPU uploads and frame scheduling; it does not establish an interactive frame rate. See [raw results and targeted recovery validation](benchmarks/water-edit-preview-2026-10-18.json).
 
-Values commit on release/change as one undo step. Shape/level and shoreline-field changes prepare resources before committing. Color, roughness, wave shape, ripples and foam reuse existing meshes and textures. Visibility, clarity, wet-bank controls, caustics and animation speed also update the terrain's shoreline field and currently prepare a replacement. Failed preparation preserves the committed document, selection and redo branch, including a failed shoreline texture allocation. Water clicks do not paint terrain, and water editing is disabled in first person.
+Values commit on release/change as one undo step. Shape/level and shoreline-field changes prepare resources before committing. Color, roughness, Standard wave shape, ripples and shore foam reuse existing meshes and textures. Spectral provider/quality/spectrum edits stage replacement simulation resources. Visibility, clarity, wet-bank controls, caustics and animation speed also update the terrain's shoreline field and currently prepare a replacement. Failed preparation preserves the committed document, selection and redo branch, including a failed shoreline texture allocation. Water clicks do not paint terrain, and water editing is disabled in first person.
 
 ## Rendering behavior and limits
 
@@ -37,7 +54,7 @@ All visible bodies share one linear HDR scene-color/depth capture. Refraction us
 
 **Reflect nearby scenery** adds a bounded screen-space reflection trace. Off-screen and missing reflections fall back to the environment. Turning it off retains sky reflections and can reduce cost. Weak reflections at steep viewing angles use the environment; tracing focuses on angles where reflected scenery contributes visibly. Screen-space traces cannot reliably reflect hidden/off-screen trees; planar reflections are not implemented yet. The current refraction offset and optical scattering are approximations, not path tracing.
 
-Six directional geometric waves provide swells and smaller waves, with filtered normal detail for ripples. Steepness is bounded to avoid extreme slopes. This implementation does not yet have a spectral FFT ocean, breaking surf or crest-whitecap simulation. Shore foam and wet-bank effects use the heightfield; arbitrary prop intersections do not receive these effects. The [MIT ocean reference assessment](WATER-DESIGN.md#ocean-reference-assessment--18-october-2026) evaluates web-ocean and GodotOceanWaves and proposes artist-facing wave models; these options are not implemented yet.
+Standard uses six directional geometric waves with filtered ripple normals. The optional spectral ocean adds FFT displacement and persistent crest whitecaps as described above. Shore foam and wet-bank effects use the heightfield; arbitrary prop intersections do not receive these effects. Breaking surf remains pending. The [reference assessment and remaining design](WATER-DESIGN.md#ocean-reference-assessment--18-october-2026) distinguish the integrated web-ocean subset from future work.
 
 Foam detail uses a generated 1024² texture with approximately 4 mm texels over a four-metre repeating tile. Two drifting, rotated layers combine differently sized rounded pores, microfroth and larger patch breakup; normal relief and roughness respond to scene lighting. Mipmaps and anisotropic filtering reduce distant shimmer. The texture is shared by all bodies in a prepared water state (about 5.3 MiB including mipmaps), with cached CPU generation and no external image download. Its detail is independent of terrain grid resolution; the shoreline itself still follows the authored terrain. This is procedural surface foam, not a simulation of breaking waves, foam accumulation or bubbles in volume.
 
@@ -52,6 +69,8 @@ Optional `TerrainProject.water` has `schemaVersion: 1`, global sea level, ocean 
 The old `view.water` and `view.waterLevel` remain the source of truth for unconverted documents. After conversion, `water` is authoritative and the editor mirrors ocean visibility/level into the legacy fields. Runtime consumers should update `water` and prepare/apply a replacement when changing its topology. `TerrainScene.update()` advances waves; `TerrainEnvironment.render(camera)` supplies refraction/reflections. A host that renders the scene directly gets the surface material without the shared scene capture.
 
 Terrain resize scales outlines and optional elevations. Optical visibility, wave lengths and foam width retain their metre values. Ordinary GLB presentation exports bounded, tessellated static surfaces with approximate standard materials; the ocean covers only the terrain footprint in that export. The runtime's submerged boundary walls are not included in that static presentation. Its native authoring extension retains the complete editable system.
+
+Runtime hosts can set `water.ocean.renderer = 'web-ocean'` and initialize `water.ocean.spectral = defaultSpectralOceanSettings()`. Continue calling `TerrainScene.update()` and rendering through `TerrainEnvironment`. Preflight a prepared water candidate with `waterSystem.prepareGPU(candidate, renderer, camera, scene)` before applying it to catch allocation/shader failures. `TerrainWorldScene` supplies shared world clock scopes automatically. Custom synchronized tiles can pass the same explicit scope object to `waterSystem.setWorldTile(x, z, scope)`. Use distinct scopes for independent clocks; share identical settings only. `webOceanResources(renderer)` reports live simulation count and raw buffer bytes; Three's memory accounting tracks the storage textures separately.
 
 ## Verification
 
@@ -87,3 +106,9 @@ node scripts/benchmark-water.mjs "C:/path/to/project.terrain" .qa/water-performa
 ```
 
 The script uses a temporary Chrome profile, adds water in memory, and compares water off, sky reflections, and scenery reflections from one fixed camera at 1080p. On Windows, the shared test helper reads DXGI adapter identifiers with the built-in PowerShell/.NET tools and selects the RTX 5060 when present. Identifiers are read again after each reboot. It changes no Windows graphics or user-browser settings, and the benchmark rejects a different actual adapter before loading the content project. It saves timing data and screenshots without changing the source project. GPU timing, frame intervals and the exact scene are recorded; this bounded comparison does not measure physical input-to-display latency.
+
+The 19 October spectral integration passed build/type checks, lint, all **325 unit tests**, and **13 distinct targeted Chrome scenarios** on the RTX 5060 launcher. The three spectral scenarios were rerun after the final animation-rate isolation fix. They cover animated compute output, shared world-tile leases, separate rates, complete tracked cleanup, coastal sky/shore/pond composition, asynchronous GPU failure and successful retry, settings, switching modes, undo and autosave reload. Existing water, compact inspector and native rendering/export checks also pass. Simulation memory is estimated from allocation formats; dense tropical FPS and incremental GPU cost were not measured. The full browser suite was not rerun. See [integration record](benchmarks/web-ocean-integration-2026-10-19.json).
+
+```sh
+npm run test:browser -- tests/browser/web-ocean.spec.mjs tests/browser/water.spec.mjs tests/browser/compact-inspector.spec.mjs tests/browser/webgpu.spec.mjs
+```

@@ -30,12 +30,12 @@ describe('OpenEXR environment imports', () => {
           height: 32,
         });
         const prepared = await prepareEnvironment(settings(bytes)),
-          texture = prepared.texture!;
+          texture = prepared.texture! as THREE.DataTexture;
         expect(texture.flipY).toBe(false);
         expect(texture.colorSpace).toBe(THREE.LinearSRGBColorSpace);
-        expect(THREE.DataUtils.fromHalfFloat(texture.image.data[0])).toBe(2);
+        expect(THREE.DataUtils.fromHalfFloat(texture.image.data![0])).toBe(2);
         expect(
-          THREE.DataUtils.fromHalfFloat(texture.image.data[31 * 64 * 4]),
+          THREE.DataUtils.fromHalfFloat(texture.image.data![31 * 64 * 4]),
         ).toBe(3.9375);
         prepared.dispose();
       });
@@ -54,8 +54,8 @@ describe('OpenEXR environment imports', () => {
     output.setBigUint64(table + 8, BigInt(first), true);
     const original = await prepareEnvironment(settings(bytes)),
       normalized = await prepareEnvironment(settings(reordered));
-    expect(normalized.texture!.image.data).toEqual(
-      original.texture!.image.data,
+    expect((normalized.texture as THREE.DataTexture).image.data).toEqual(
+      (original.texture as THREE.DataTexture).image.data,
     );
     original.dispose();
     normalized.dispose();
@@ -116,7 +116,9 @@ describe('OpenEXR environment imports', () => {
     view.setFloat32(sample, 100000, true);
     const prepared = await prepareEnvironment(settings(bytes));
     expect(
-      THREE.DataUtils.fromHalfFloat(prepared.texture!.image.data[31 * 64 * 4]),
+      THREE.DataUtils.fromHalfFloat(
+        (prepared.texture as THREE.DataTexture).image.data![31 * 64 * 4],
+      ),
     ).toBe(65504);
     prepared.dispose();
   });

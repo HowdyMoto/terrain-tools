@@ -29,6 +29,32 @@ export class FramePacing {
   }
 }
 
+/** At most one submitted frame in flight; input continues updating while the
+ * queue drains, so the next frame uses the newest camera pose. */
+export class WebGPUFramePacing {
+  private pending = false;
+  private generation = 0;
+  constructor(
+    private readonly queue: { onSubmittedWorkDone(): Promise<unknown> },
+  ) {}
+  ready() {
+    return !this.pending;
+  }
+  submitted() {
+    if (this.pending) return;
+    this.pending = true;
+    const generation = ++this.generation;
+    const complete = () => {
+      if (generation === this.generation) this.pending = false;
+    };
+    void this.queue.onSubmittedWorkDone().then(complete, complete);
+  }
+  reset() {
+    this.generation++;
+    this.pending = false;
+  }
+}
+
 /** First-person rendering uses at most the agreed 1080p pixel budget. CSS size
  * and camera aspect stay unchanged; orbit editing retains its device resolution.
  */

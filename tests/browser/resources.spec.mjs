@@ -20,7 +20,7 @@ async function packagePage(page) {
     if (path === 'index.html')
       return route.fulfill({
         contentType: 'text/html',
-        body: '<!doctype html><title>Resource lifecycle test</title><script type="importmap">{"imports":{"three":"/__resource_test/three/build/three.module.js","three/":"/__resource_test/three/","three/addons/":"/__resource_test/three/examples/jsm/"}}</script>',
+        body: '<!doctype html><title>Resource lifecycle test</title><script type="importmap">{"imports":{"three":"/__resource_test/three/build/three.module.js","three/webgpu":"/__resource_test/three/build/three.webgpu.js","three/tsl":"/__resource_test/three/build/three.tsl.js","three/":"/__resource_test/three/","three/addons/":"/__resource_test/three/examples/jsm/"}}</script>',
       });
     const local = path.startsWith('lib/')
       ? resolve(root, path)

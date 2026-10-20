@@ -1,6 +1,14 @@
 import { PropTools } from './prop-tools';
+import { captureNativePNG } from './capture';
 import type { TerrainWalker } from './first-person';
-import { FramePacing, viewportPixelRatio } from './frame-pacing';
+import { WebGPUFramePacing, viewportPixelRatio } from './frame-pacing';
+import {
+  createTerrainRenderer,
+  gpuDevice,
+  rendererDescription,
+  validateGPU,
+} from './renderer';
+import type { WebGPURenderer } from 'three/webgpu';
 import { WalkPlacement } from './walk-placement';
 import type { WalkPlacementResult } from './walk-placement';
 import { EditTransaction } from './edit-transaction';
@@ -47,8 +55,10 @@ import { TerrainScene } from '../runtime/terrain-scene';
 import { createModelDecoder } from './model-loader';
 import type { TerrainRegion } from '../runtime/terrain-scene';
 import type { RigidBody } from '@dimforge/rapier3d-compat';
+export type ViewportLoadStage = 'lighting' | 'terrain' | 'shaders' | 'water';
+type LoadProgress = (stage: ViewportLoadStage) => Promise<void>;
 export class Viewport {
-  renderer: THREE.WebGLRenderer;
+  renderer: WebGPURenderer;
   readonly gpuRenderer: string;
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(45, 1, 0.1, 3000);
@@ -82,8 +92,8 @@ export class Viewport {
     return this.content.terrainMaterial;
   }
   physics?: TerrainPhysics;
-  private cursor: THREE.LineLoop;
-  private readonly waterGuide = new THREE.LineLoop(
+  private cursor: THREE.Line;
+  private readonly waterGuide = new THREE.Line(
     new THREE.BufferGeometry(),
     new THREE.LineBasicMaterial({
       color: 0x71e4df,
@@ -102,11 +112,11 @@ export class Viewport {
   private activePointer: number | null = null;
   private strokeEnd?: (event?: Event) => void;
   private spheres: { mesh: THREE.Mesh; body: RigidBody; radius: number }[] = [];
-  private clock = new THREE.Clock();
+  private clock = new THREE.Timer();
   private elapsed = 0;
   private frames = 0;
   private statsAt = 0;
-  private readonly framePacing: FramePacing;
+  private readonly framePacing: WebGPUFramePacing;
   private walkingResolution = false;
   private readonly resize: () => void;
   get project() {
@@ -131,13 +141,33 @@ export class Viewport {
       'position',
     ) as THREE.BufferAttribute;
     points
-      .slice(0, 129)
+      .slice(0, 128)
       .forEach((p, i) => position.setXYZ(i, p.x, p.y + 0.18, p.z));
+    if (points.length)
+      position.setXYZ(
+        Math.min(128, points.length),
+        points[0].x,
+        points[0].y + 0.18,
+        points[0].z,
+      );
     position.needsUpdate = true;
-    this.waterGuide.geometry.setDrawRange(0, Math.min(129, points.length));
+    this.waterGuide.geometry.setDrawRange(0, Math.min(128, points.length) + 1);
     this.waterGuide.visible = points.length > 1 && !this.navigationActive;
   }
-  constructor(container: HTMLElement, project: TerrainProject) {
+  static async create(container: HTMLElement, project: TerrainProject) {
+    const renderer = await createTerrainRenderer();
+    try {
+      return new Viewport(container, project, renderer);
+    } catch (error) {
+      renderer.dispose();
+      throw error;
+    }
+  }
+  private constructor(
+    container: HTMLElement,
+    project: TerrainProject,
+    renderer: WebGPURenderer,
+  ) {
     this.waterGuide.geometry.setAttribute(
       'position',
       new THREE.BufferAttribute(new Float32Array(129 * 3), 3),
@@ -147,26 +177,28 @@ export class Viewport {
     this.waterGuide.renderOrder = 10000;
     this.waterGuide.userData.waterOverlay = true;
     this.scene.add(this.waterGuide);
-    this.renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      preserveDrawingBuffer: true,
-      powerPreference: 'high-performance',
-    });
+    this.renderer = renderer;
     const decoder = createModelDecoder(
       this.renderer,
       import.meta.env.BASE_URL + 'basis/',
     );
     this.content = new TerrainScene(project, { decoder: decoder.decode });
-    const gl = this.renderer.getContext();
-    this.framePacing = new FramePacing(gl as WebGL2RenderingContext);
-    const debugRenderer = gl.getExtension('WEBGL_debug_renderer_info');
-    this.gpuRenderer = String(
-      gl.getParameter(debugRenderer?.UNMASKED_RENDERER_WEBGL ?? gl.RENDERER),
-    );
+    this.framePacing = new WebGPUFramePacing(gpuDevice(this.renderer).queue);
+    this.gpuRenderer = rendererDescription(this.renderer);
+    this.renderer.onDeviceLost = (info) => {
+      this.framePacing.reset();
+      this.renderer.setAnimationLoop(null);
+      container.dispatchEvent(
+        new CustomEvent('terrain-renderer-lost', {
+          detail: info.message,
+          bubbles: true,
+        }),
+      );
+    };
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     this.renderer.setClearColor('#aebbb6');
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.15;
     container.append(this.renderer.domElement);
@@ -199,7 +231,7 @@ export class Viewport {
       this.renderer.domElement,
       this.controls,
     );
-    this.cursor = new THREE.LineLoop(
+    this.cursor = new THREE.Line(
       new THREE.BufferGeometry(),
       new THREE.LineBasicMaterial({
         color: '#e0ffd0',
@@ -207,6 +239,12 @@ export class Viewport {
         transparent: true,
         opacity: 0.9,
       }),
+    );
+    this.cursor.geometry.setAttribute(
+      'position',
+      new THREE.BufferAttribute(new Float32Array(97 * 3), 3).setUsage(
+        THREE.DynamicDrawUsage,
+      ),
     );
     this.cursor.renderOrder = 10;
     this.cursor.frustumCulled = false;
@@ -311,6 +349,7 @@ export class Viewport {
     p: TerrainProject,
     materials = true,
     signal?: AbortSignal,
+    onProgress?: LoadProgress,
   ): Promise<PreparedViewport> {
     let environment: PreparedEnvironment | undefined,
       terrain: PreparedTerrain | undefined,
@@ -318,12 +357,22 @@ export class Viewport {
       colliders: PreparedColliders | undefined;
     try {
       checkSignal(signal);
+      if (onProgress) await onProgress('lighting');
       environment = await this.lighting.prepare(p.environment);
       checkSignal(signal);
+      if (onProgress) await onProgress('terrain');
       terrain = await this.content.prepareLoad(p, materials, signal);
+      if (onProgress) await onProgress('shaders');
+      await this.preflightSurface(
+        terrain.value.geometry.value.meshes,
+        terrain.value.material,
+        [terrain.value.foliage.value, terrain.value.props],
+      );
+      checkSignal(signal);
+      if (onProgress) await onProgress('water');
       if (p.water) {
         this.lighting.prepareWater();
-        this.content.waterSystem.prepareGPU(
+        await this.content.waterSystem.prepareGPU(
           terrain.value.water,
           this.renderer,
           this.camera,
@@ -392,13 +441,23 @@ export class Viewport {
     this.loading?.abort();
     this.loading = undefined;
   }
-  async load(p: TerrainProject, materials = true, signal?: AbortSignal) {
+  async load(
+    p: TerrainProject,
+    materials = true,
+    signal?: AbortSignal,
+    onProgress?: LoadProgress,
+  ) {
     this.cancelLoad();
     const { controller, unlink } = linkedController(signal);
     this.loading = controller;
     let prepared: PreparedViewport | undefined;
     try {
-      prepared = await this.prepareLoad(p, materials, controller.signal);
+      prepared = await this.prepareLoad(
+        p,
+        materials,
+        controller.signal,
+        onProgress,
+      );
       checkSignal(controller.signal);
       if (this.loading !== controller) throw cancelled();
       this.loading = undefined;
@@ -435,6 +494,11 @@ export class Viewport {
         terrain = this.content.prepareTerrain(undefined, project);
         picking = this.preparePicking(terrain.value.meshes, true);
       }
+      await this.preflightSurface(
+        terrain?.value.meshes ??
+          (this.content.terrain.children as THREE.Mesh[]),
+        material,
+      );
       checkSignal(signal);
       return new PreparedResource(
         this,
@@ -456,6 +520,50 @@ export class Viewport {
     this.terrainMaterial.assertPrepared(state.material);
     if (state.terrain) this.content.assertTerrain(state.terrain);
     state.picking?.assert(this);
+  }
+  private async preflightSurface(
+    meshes: THREE.Mesh[],
+    prepared?: PreparedMaterial,
+    objects: THREE.Object3D[] = [],
+  ) {
+    const material = prepared
+      ? this.terrainMaterial.preparedNodeMaterial(prepared)
+      : undefined;
+    const group = new THREE.Group();
+    const parents = objects.map((object) => object.parent);
+    const culling: [THREE.Mesh, boolean][] = [];
+    for (const object of objects)
+      object.traverse((part) => {
+        if (part instanceof THREE.Mesh) {
+          culling.push([part, part.frustumCulled]);
+          part.frustumCulled = false;
+        }
+      });
+    try {
+      for (const mesh of meshes) {
+        const candidate = new THREE.Mesh(
+          mesh.geometry,
+          material ?? mesh.material,
+        );
+        candidate.frustumCulled = false;
+        candidate.castShadow = mesh.castShadow;
+        candidate.receiveShadow = mesh.receiveShadow;
+        group.add(candidate);
+      }
+      if (objects.length) group.add(...objects);
+      group.updateMatrixWorld(true);
+      await validateGPU(this.renderer, () =>
+        this.renderer.compileAsync(group, this.camera, this.scene),
+      );
+    } finally {
+      culling.forEach(([mesh, value]) => (mesh.frustumCulled = value));
+      objects.forEach((object, i) => {
+        object.removeFromParent();
+        parents[i]?.add(object);
+      });
+      group.clear();
+      material?.dispose();
+    }
   }
   applySurface(prepared: PreparedSurface) {
     this.assertSurface(prepared);
@@ -715,6 +823,13 @@ export class Viewport {
       renderer: this.renderer,
     });
   }
+  /** Capture the display-converted frame before presentation retires its texture. */
+  capturePNG(): Promise<Blob> {
+    return captureNativePNG(this.renderer, () => {
+      this.lighting.render(this.camera);
+      this.framePacing.submitted();
+    });
+  }
   private emitStroke(point: THREE.Vector3 | null) {
     const dabs = this.strokeSampler.sample(
       point,
@@ -732,14 +847,24 @@ export class Viewport {
       );
     }
   }
+  /** Keep startup covered until the current camera's first view finishes on the GPU. */
+  async present() {
+    const queue = gpuDevice(this.renderer).queue;
+    await queue.onSubmittedWorkDone();
+    this.frame();
+    await queue.onSubmittedWorkDone();
+  }
   private frame() {
     // While the GPU is busy, return to the event loop so mouse input can update
     // the camera. The next submitted frame uses that latest pose, not a backlog.
-    if (this.walker && !this.framePacing.ready()) return;
+    // Orbit/startup frames also need this bound: their unfinished draws would
+    // otherwise accumulate ahead of imports and the first walking frame.
+    if (!this.framePacing.ready()) return;
     if (this.walkingResolution !== !!this.walker) {
       this.walkingResolution = !!this.walker;
       this.resize();
     }
+    this.clock.update();
     const elapsed = this.clock.getDelta();
     const dt = Math.min(elapsed, 0.1);
     this.elapsed += elapsed;
@@ -752,7 +877,10 @@ export class Viewport {
     this.cursor.visible = !!point && this.showBrush && !this.propTools.dragging;
     this.onHover?.(point);
     if (point && this.cursor.visible) {
-      const vertices = new Float32Array(96 * 3);
+      const position = this.cursor.geometry.getAttribute(
+        'position',
+      ) as THREE.BufferAttribute;
+      const vertices = position.array as Float32Array;
       for (let i = 0; i < 96; i++) {
         const a = (i / 96) * Math.PI * 2,
           divisor = this.brushSquare
@@ -770,10 +898,8 @@ export class Viewport {
             Math.cos(this.brushRotation) * lz;
         vertices.set([x, heightAt(this.project, x, z) + 0.2, z], i * 3);
       }
-      this.cursor.geometry.setAttribute(
-        'position',
-        new THREE.BufferAttribute(vertices, 3),
-      );
+      vertices.set(vertices.subarray(0, 3), 96 * 3);
+      position.needsUpdate = true;
     }
     if (this.pressed) this.emitStroke(point);
     if (this.physics) {

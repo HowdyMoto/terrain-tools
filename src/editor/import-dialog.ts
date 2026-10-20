@@ -1,3 +1,5 @@
+import { droppedFiles } from './import-files';
+
 /** Shared modal chrome: keyboard/file drop access, local errors and cancellable work. */
 export function importDialog(
   title: string,
@@ -80,6 +82,7 @@ export function bindFileDrop(
   element: HTMLElement,
   input: HTMLInputElement,
   receive: (files: File[]) => void,
+  folders?: { signal: AbortSignal; onError: (error: unknown) => void },
 ) {
   input.onchange = () => {
     receive(Array.from(input.files ?? []));
@@ -93,7 +96,15 @@ export function bindFileDrop(
   element.ondrop = (e) => {
     e.preventDefault();
     element.classList.remove('is-dragging');
-    if (!input.disabled && !input.closest('fieldset')?.disabled)
-      receive(Array.from(e.dataTransfer?.files ?? []));
+    if (input.disabled || input.closest('fieldset')?.disabled) return;
+    if (folders && e.dataTransfer) {
+      void droppedFiles(e.dataTransfer, folders.signal)
+        .then((files) => {
+          if (!folders.signal.aborted) receive(files);
+        })
+        .catch((error: unknown) => {
+          if (!folders.signal.aborted) folders.onError(error);
+        });
+    } else receive(Array.from(e.dataTransfer?.files ?? []));
   };
 }

@@ -145,6 +145,14 @@ describe('large embedded textures', () => {
       ),
     };
     delete project.materials[0].textures.albedo;
-    expect(() => serializeProjectPackage(project)).toThrow('Models must');
+    // Models now have their own larger allowance; retain the MIME rejection.
+    expect(() => validateProjectData(project)).not.toThrow();
+    project.assets.large.data = project.assets.large.data.replace(
+      'model/gltf-binary',
+      'text/plain',
+    );
+    expect(() => serializeProjectPackage(project)).toThrow(
+      'Invalid embedded asset data URL',
+    );
   });
 });

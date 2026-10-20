@@ -25,7 +25,14 @@ export function modelMemory(parts: ModelPart[]) {
     ),
     gpuBytes = cpuBytes;
   for (const texture of textures) {
-    const data = texture.image;
+    const data = texture.image as
+      | {
+          data?: ArrayBufferView;
+          width?: number;
+          height?: number;
+          depth?: number;
+        }
+      | undefined;
     const mipBytes =
       texture.mipmaps?.reduce(
         (sum, mip) =>

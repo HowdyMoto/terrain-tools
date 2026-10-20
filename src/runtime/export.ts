@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { decompress } from 'three/addons/utils/WebGLTextureUtils.js';
+import { decompress as decompressWebGPU } from 'three/addons/utils/WebGPUTextureUtils.js';
+import { createTerrainRenderer, isWebGPU } from '../render/renderer';
+import type { TerrainRenderer } from '../render/renderer';
 import { serializeProjectPackage } from '../core/project-package';
 import { embedProjectPackage } from '../core/glb-project';
 import { checkSignal } from '../render/resources';
@@ -15,7 +18,7 @@ export interface TerrainExportOptions {
   /** 'colors' is the small, fast legacy presentation. 'pbr' bakes standard texture maps. */
   surface?: 'colors' | 'pbr';
   /** Required for PBR baking; remains usable for animation between bake passes. */
-  renderer?: THREE.WebGLRenderer;
+  renderer?: TerrainRenderer;
   resolution?: TerrainBakeResolution;
   signal?: AbortSignal;
   onProgress?: (message: string) => void;
@@ -33,14 +36,14 @@ export async function exportTerrainGLB(
   )
     throw new Error('Unknown GLB surface export mode.');
   if (options.surface === 'pbr' && !options.renderer)
-    throw new Error('PBR export requires a WebGL renderer.');
+    throw new Error('PBR export requires an initialized terrain renderer.');
   const authored = serializeProjectPackage(scene.project);
   const group = new THREE.Group();
   group.name = scene.project.name;
   const geometries = new Set<THREE.BufferGeometry>(),
     materials = new Set<THREE.Material>();
   let foliage: THREE.Group | undefined, baked: BakedTerrainSurface | undefined;
-  let textureRenderer: THREE.WebGLRenderer | undefined;
+  let textureRenderer: TerrainRenderer | undefined;
   const readableTextures = new Map<THREE.Texture, THREE.Texture>();
   try {
     if (options.surface === 'pbr')
@@ -102,17 +105,21 @@ export async function exportTerrainGLB(
     onProgress?.('Encoding GLB…');
     const exporter = new GLTFExporter();
     exporter.setTextureUtils({
-      decompress(texture, maxSize) {
+      async decompress(texture, maxSize) {
         checkSignal(signal);
         let readable = readableTextures.get(texture);
         if (!readable) {
           // Three's decompressor resizes and clears its canvas. Give it an owned
           // renderer so exporting cannot change the live viewport or its state.
-          textureRenderer ??= new THREE.WebGLRenderer({
-            antialias: false,
-            powerPreference: 'high-performance',
-          });
-          readable = decompress(texture, maxSize, textureRenderer);
+          textureRenderer ??= isWebGPU(options.renderer)
+            ? await createTerrainRenderer()
+            : new THREE.WebGLRenderer({
+                antialias: false,
+                powerPreference: 'high-performance',
+              });
+          readable = isWebGPU(textureRenderer)
+            ? await decompressWebGPU(texture, maxSize, textureRenderer)
+            : decompress(texture, maxSize, textureRenderer);
           readableTextures.set(texture, readable);
         }
         return readable;
@@ -129,7 +136,8 @@ export async function exportTerrainGLB(
   } finally {
     readableTextures.forEach((texture) => texture.dispose());
     textureRenderer?.dispose();
-    textureRenderer?.forceContextLoss();
+    if (textureRenderer && !isWebGPU(textureRenderer))
+      textureRenderer.forceContextLoss();
     foliage?.children.forEach((object) => {
       const mesh = object as THREE.InstancedMesh;
       geometries.add(mesh.geometry);
