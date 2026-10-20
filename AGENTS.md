@@ -24,6 +24,8 @@ Requires Node.js 22.12+ (Node 24 is used for development), npm, and native WebGP
 - `npm run build:assets:runtime`: rebuild the bundled Meshopt/KTX2 pack from checked-in derivatives using pinned WASM/Node tools; ordinary builds do not encode assets.
 - `npm run benchmark:world`: sustained 1080p traversal/teleport benchmark after building; requires the RTX 5060 unless explicitly passed `--allow-other-gpu`.
 - `npm run benchmark:foliage-motion`: bounded native 1080p fern motion/history comparison after building; owns preview port 5197 (`-- --port=5198` overrides it). Optional `-- --baseline-lib=.qa/baseline/lib` compares a saved baseline build. Run it separately from builds, browser tests, other benchmarks and video capture. `npx playwright install ffmpeg` installs the local helper for separate `--capture` runs.
+- `npm run benchmark:foliage-selection`: CPU-only foliage update/LOD scaling and instance-buffer reservations at 1k/10k/50k plants after building; owns port 5199. Supports `-- --baseline-lib=.qa/baseline/lib`. This creates no renderer and does not measure FPS.
+- `npm run benchmark:terrain-lod`: CPU-only source terrain LOD preparation with Node type stripping; supports `-- --baseline=.qa/terrain-lod-before.ts` for a saved standalone source copy. No build/browser needed; not an FPS measurement.
 - `npm run typecheck`: strict TypeScript checks.
 - `npm run lint`: ESLint recommended JavaScript/TypeScript checks for production code in `src/`; Prettier handles formatting.
 - `npm test`: full Vitest suite.

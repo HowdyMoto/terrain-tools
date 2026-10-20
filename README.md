@@ -40,6 +40,8 @@ npm run benchmark:erosion # CPU weathering at 128, 256 and 512 cells (build firs
 npm run benchmark:surfaces # GPU cost of optional texture variation (build runtime first)
 npm run benchmark:foliage # Browser full-detail/LOD comparison (build first)
 npm run benchmark:foliage-motion # Native 1080p fern motion/history cost (build first)
+npm run benchmark:foliage-selection # CPU LOD scaling and instance reservations (build first)
+npm run benchmark:terrain-lod # CPU terrain LOD preparation (source; Node type stripping)
 npm run benchmark:foliage -- --count=50000 --shadows --fade=0.25 # Include cross-fades
 npm run benchmark:history # Retained CPU memory and undo/redo timings (build first)
 npm run benchmark:edit-preview -- --count=50000 # Stroke preview startup and retained buffers
@@ -51,7 +53,11 @@ npm run format        # Format source, tests, and documentation
 
 For timing without screenshots, run `npm run benchmark:world -- --no-captures --output=test-results/world-timing.json`. The output directory must already exist (the harness creates `test-results`). Reports include wall-clock submission FPS and frame-time percentiles; close other GPU workloads and run benchmarks sequentially. See [performance evidence and measurement limits](docs/PERFORMANCE.md).
 
-`npm run benchmark:foliage-motion` starts its own preview on port 5197 (`-- --port=5198` overrides it), renders 400 checked-in CC0 ferns with LODs, shadows, water capture, GTAO and temporal stabilization, and writes `.qa/foliage-motion-benchmark.json`. To compare two builds, first copy the baseline `lib/` outside the generated build directory, rebuild, then pass `-- --baseline-lib=.qa/baseline/lib --output=.qa/motion-comparison.json`. It runs baseline/current/current/baseline sequentially. Install the local video helper with `npx playwright install ffmpeg` before using `--capture`; capture runs record separate videos and are excluded from performance evidence. See [scope and measurements](docs/PERFORMANCE.md#foliage-motion-history--19-october-2026).
+`npm run benchmark:foliage-motion` starts its own preview on port 5197 (`-- --port=5198` overrides it), renders 400 checked-in CC0 ferns with LODs, shadows, water capture, GTAO and temporal stabilization, and writes `.qa/foliage-motion-benchmark.json`. To compare two builds, first copy the baseline `lib/` outside the generated build directory, rebuild, then pass `-- --baseline-lib=.qa/baseline/lib --output=.qa/motion-comparison.json`. Optional `--density=0.25` retains 25% of the distant ferns; the default is full density. It runs baseline/current/current/baseline sequentially. Install the local video helper with `npx playwright install ffmpeg` before using `--capture`; capture runs record separate videos and are excluded from performance evidence. See [scope and measurements](docs/PERFORMANCE.md#foliage-motion-history--19-october-2026).
+
+`npm run benchmark:foliage-selection` measures CPU foliage updates at 1,000, 10,000 and 50,000 authored plants, including fades and teleports, and reports reserved instance attributes. It uses built-in geometry and creates no renderer, so its results are not FPS measurements. It owns preview port 5199 (`--port=5200` overrides it), supports the same `--baseline-lib` option, and writes `.qa/foliage-selection.json`. Run benchmarks separately from builds, browser tests and other benchmarks.
+
+`npm run benchmark:terrain-lod` uses Node's `--experimental-strip-types` to measure the source terrain LOD builder on 500 chunks with changing heights. Optional `-- --baseline=.qa/terrain-lod-before.ts` compares a saved standalone copy of `src/core/terrain-lod.ts`, checks exact output hashes, and writes `.qa/terrain-lod-benchmark.json`. No build or browser is needed. This measures CPU preparation, not FPS.
 
 Browser tests currently use installed Google Chrome and serve the production build on port 5175. Run the build first. For other environments, install Playwright Chromium with `npx playwright install --with-deps chromium`. Linux CI installs `mesa-vulkan-drivers`, `vulkan-tools` and `xvfb`, and runs full Chromium with a software Vulkan display and explicit SwiftShader WebGPU adapter. These results are not hardware performance evidence.
 
