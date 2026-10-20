@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { createProject, buildMeshData } from '../src/core/terrain';
 import { buildTerrainLods } from '../src/core/terrain-lod';
+import { editFoliageModels } from '../src/core/foliage';
 import { TerrainWorldScene } from '../src/runtime/world-scene';
 import { TerrainScene } from '../src/runtime/terrain-scene';
 import { TerrainLod } from '../src/runtime/terrain-lod';
@@ -313,4 +314,86 @@ it('reserves borrowed impostor atlases once per world without disposing host-own
   expect(world.stats.cpuBytes).toBe(0);
   expect(world.stats.gpuBytes).toBe(0);
   expect(bake.dispose).not.toHaveBeenCalled();
+});
+
+it('bounds rendered cell work when authored world area grows 64-fold and retains placements after revisiting', async () => {
+  const measure = async (side: number) => {
+    const expanded: TerrainWorld = {
+      ...manifest,
+      tiles: Array.from({ length: side * side }, (_, index) => ({
+        x: index % side,
+        z: Math.floor(index / side),
+        source: String(index),
+      })),
+    };
+    const world = new TerrainWorldScene(expanded, {
+      radius: 32,
+      maxResidentTiles: 4,
+      materials: false,
+      foliageClusters: { nearby: true, nearbyCellSize: 128 },
+      load: async (descriptor) => {
+        const p = tile(descriptor, true),
+          brush = p.brushes[0],
+          model = editFoliageModels(brush, [])[0];
+        for (let index = 0; index < 64; index++)
+          p.foliage.push({
+            id: p.nextId++,
+            brushId: brush.id,
+            modelId: model.id,
+            x: (index % 8) * 4 - 14,
+            z: Math.floor(index / 8) * 4 - 14,
+            rotation: index * 0.1,
+            scale: 1,
+          });
+        return p;
+      },
+    });
+    const view = camera(48);
+    view.position.z = 48;
+    const settle = async () => {
+      view.updateMatrixWorld();
+      world.update(view, 0);
+      await world.whenIdle();
+      expect([...world.streaming.errors.values()]).toEqual([]);
+      world.update(view, 0.1);
+      const tiles = world.tiles;
+      return {
+        residents: tiles.length,
+        instances: tiles.reduce((n, t) => n + t.foliage.viewStats.instances, 0),
+        batches: tiles.reduce((n, t) => n + t.foliage.viewStats.batches, 0),
+        triangles: tiles.reduce((n, t) => n + t.foliage.viewStats.triangles, 0),
+        placements: tiles
+          .flatMap((t) =>
+            t.project.foliage.map((p) =>
+              [
+                t.position.x,
+                t.position.z,
+                p.id,
+                p.x,
+                p.z,
+                p.rotation,
+                p.scale,
+              ].join(':'),
+            ),
+          )
+          .sort(),
+      };
+    };
+    try {
+      const initial = await settle();
+      expect(initial.residents).toBe(4);
+      expect(initial.instances).toBe(256);
+      view.position.set(80, 10, 80);
+      await settle();
+      view.position.set(48, 10, 48);
+      expect(await settle()).toEqual(initial);
+      return initial;
+    } finally {
+      world.dispose();
+      await world.whenIdle();
+      expect(world.stats.cpuBytes).toBe(0);
+      expect(world.stats.gpuBytes).toBe(0);
+    }
+  };
+  expect(await measure(32)).toEqual(await measure(4));
 });
