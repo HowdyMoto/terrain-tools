@@ -81,6 +81,14 @@ export class TerrainWorldScene extends THREE.Group {
     readonly options: WorldSceneOptions,
   ) {
     super();
+    // Later edits to a host-owned registry must not alter admitted resources
+    // without their matching atlas reservation. Bakes themselves stay borrowed.
+    this.options = options = {
+      ...options,
+      foliageImpostors: options.foliageImpostors
+        ? new Map(options.foliageImpostors)
+        : undefined,
+    };
     this.world = validateTerrainWorld(world);
     this.impostorBytes = [
       ...new Set(options.foliageImpostors?.values() ?? []),

@@ -300,6 +300,16 @@ it('reserves borrowed impostor atlases once per world without disposing host-own
     cpuByteLimit: 64 * 1024 ** 2,
     gpuByteLimit: 64 * 1024 ** 2,
   });
+  options.foliageImpostors.clear();
+  options.foliageImpostors.set('later', {
+    ...bake,
+    memoryBytes: 128 * 1024 ** 2,
+  });
+  expect(world.options.foliageImpostors).not.toBe(options.foliageImpostors);
+  expect([...world.options.foliageImpostors!.keys()]).toEqual([
+    'pine',
+    'same-bake',
+  ]);
   world.update(camera(16), 0);
   await world.whenIdle();
   expect(world.stats.impostorBytes).toBe(bake.memoryBytes);
