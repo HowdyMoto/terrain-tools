@@ -2,6 +2,33 @@
 
 The editor and interactive runtime examples use native WebGPU. The first optimization pass removes repeated shader construction and reduces native streaming stalls; steady 30 FPS remains a separate acceptance target. Other measurements are **WebGL baselines** unless explicitly marked otherwise. See [WebGPU scope](WEBGPU.md). `benchmark:surfaces`, `benchmark:foliage` and `benchmark-forest.mjs` still exercise explicit legacy WebGL paths.
 
+## Changed-cluster updates and optional near grouping — 20 October 2026
+
+The follow-up removes retained-source version scans from settled wind-only frames. Placement, contact, fades and bounds changes invalidate only the affected clusters. Source buffers remain available for authoring/export; unchanged frames retain their packed state. Alpha-blended and refractive materials keep separate object sorting. A regression observes **zero source-version reads across 30 settled frames**, followed by correct resynchronization after reanchoring. Primary exports omit the internal source marker.
+
+`foliageClusters: { nearby: true }` optionally groups compatible primary/intermediate representations into 64 m cells; default clustering remains distant-only. The [native CC0 pine test](../tests/browser/foliage-clusters.spec.mjs) compares two sun directions at near/distant views, including primary/intermediate cross-fades, with matching pixels within the test tolerance. CPU checks compare exact packed transforms, IDs, contact and fade values through motion, culling, recovery, reanchoring, rollback and rebuild. All **353 unit tests**, typecheck, lint and build pass. Eleven targeted RTX Chrome cases pass across this iteration, including five final cases after option wiring; the full browser suite and other devices were not locally rerun.
+
+The new **RTX 5060 / Chrome 155 / AC / 1080p** default-path world comparison runs baseline/candidate/candidate/baseline, with source edits, builds, tests and encoders stopped. Forest submission FPS ranges **43.2–45.1 baseline / 42.6–47.8 candidate**, with 33.4 ms p95 in all four runs. Open-view FPS ranges **59.1–59.8 / 48.3–59.8**; the slower candidate run reaches 33.4 ms p95 versus 16.8 ms in the others. Coast stays about 60 FPS. Resident tiles and terrain detail match. **No reliable default-path FPS gain is established.** These quiet fixed views meet the local 33.5 ms p95 threshold; they do not resolve streaming stalls or prove sustained dense-world acceptance. Earlier near-field prototypes measured while source edits could trigger background work are excluded from performance claims.
+
+The separate external **7,323-plant Tropical Grove** comparison uses Standard water, the complete native shadow/sky/GTAO/temporal pipeline, 90 warmup frames, 10-second coast/canopy windows in forward/reverse order, and one unfinished GPU frame. The optional near mode preserves selected plants and triangles in each matching phase:
+
+| View                     | Selected batches default → nearby | CPU submission median default → nearby | GPU render median default → nearby |
+| ------------------------ | --------------------------------: | -------------------------------------: | ---------------------------------: |
+| Coast, forward / reverse |             293 / 321 → 104 / 110 |                  9.4–10.2 → 5.6–5.9 ms |         9.67–10.21 → 9.71–10.22 ms |
+| Canopy                   |                         416 → 183 |                 10.9–11.2 → 7.6–7.8 ms |           9.08–9.09 → 9.03–9.12 ms |
+
+Default cadence stays about 30 FPS. Near mode records 30.7–31.7 FPS coast and about 30 FPS canopy, with 33.4–33.5 ms p95. This supports reduced submission cost in these views, with similar measured GPU cost; it is one run per configuration, not a universal speedup or a geometry reduction. Coast forward/reverse select 1,495/1,840 plants because of LOD history; compare configurations within the same phase. Canopy selects 3,424 plants in every case. Tracked renderer storage increases by 0.24–1.87 MiB across matching phases, excluding CPU source buffers and driver allocations. Wider clusters can submit extra off-screen geometry in other scenes. The option remains off by default. All accepted runs have no captured rendering/GPU errors and release tracked allocations to zero. See [full measurements, hashes, validation and limits](benchmarks/foliage-cluster-updates-2026-10-20.json).
+
+After saving a baseline built `lib/` inside the workspace and building the candidate, reproduce the tropical configurations sequentially:
+
+```sh
+npm run benchmark:tropical-water -- --runtime-lib=.qa/baseline/lib --variants=standard --no-canopy --output=.qa/tropical-baseline.json
+npm run benchmark:tropical-water -- --variants=standard --no-canopy --output=.qa/tropical-default.json
+npm run benchmark:tropical-water -- --variants=standard --no-canopy --near-clusters --output=.qa/tropical-near.json
+```
+
+The source project is read-only. Pass `--project="C:/path/to/scene.terrain"` to use another document. `npm run benchmark:world -- --steady --no-captures` checks the default resident views; add `--near-clusters` for the optional mode. These harnesses have different queue policies, so do not compare their FPS directly.
+
 ## Forest streaming, clusters and canopy light — 20 October 2026
 
 TerrainWorldScene now moves chunk geometry, normals, bounds, LODs and morph bounds to a bounded worker pool, yields between main-thread preparation stages, and offers a staged GPU warmup hook before admitting a tile. `/world.html?prewarm` opts into serialized `compileAsync` work. Requiring compilation before admission delayed visible content, so it is off by default. Equal wind/fade/leaf-lighting configurations reuse node graphs across tiles with independent per-material wind values. These changes target load hitches and repeated shader preparation; they do not guarantee that every shadow/MRT pipeline or asset upload is already warm.
