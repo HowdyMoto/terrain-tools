@@ -26,6 +26,8 @@ import {
   screenCoordinate,
   vec2,
   vertexColor,
+  select,
+  float,
 } from 'three/tsl';
 import {
   impostorUV,
@@ -451,8 +453,16 @@ export function configureImpostorMaterial(
     if (subsurface) configureLeafNodes(material, subsurface, properties.b);
     return;
   }
-  const column = (i: number) => attribute(foliageMatrixAttribute + i, 'vec4');
-  const matrix = mat4(column(0), column(1), column(2), column(3));
+  const row = (i: number) => attribute(foliageMatrixAttribute + i, 'vec4');
+  const a = row(0),
+    b = row(1),
+    c = row(2);
+  const matrix = mat4(
+    vec4(a.x, b.x, c.x, 0),
+    vec4(a.y, b.y, c.y, 0),
+    vec4(a.z, b.z, c.z, 0),
+    vec4(a.w, b.w, c.w, 1),
+  );
   const world = modelWorldMatrix.mul(matrix);
   const basis = mat3(world);
   const noise = fract(
@@ -484,7 +494,13 @@ export function configureImpostorMaterial(
     // Retain transition/fresh-instance rejection, but let resting cards accumulate.
     terrainHistoryNode: (
       (material as HistoryMaterial).terrainHistoryNode ??
-      varying(attribute('terrainPreviousState', 'vec2').y)
+      varying(
+        select(
+          attribute('terrainInstanceState', 'vec4').z.greaterThan(1.5),
+          float(1),
+          float(0),
+        ),
+      )
     ).mul(impostorViewConfidence),
   };
   // Depth is reconstructed along each baked view ray, including shadow cameras.

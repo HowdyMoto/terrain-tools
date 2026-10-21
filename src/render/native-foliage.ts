@@ -22,6 +22,8 @@ export const foliageMatrixAttribute = 'terrainInstance';
 export const foliagePreviousAttribute = 'terrainPreviousInstance';
 export const foliagePreviousStateAttribute = 'terrainPreviousState';
 export const foliageCurrentStateAttribute = 'terrainInstanceState';
+export const foliageCapsuleAttribute = 'terrainInstanceCapsule';
+export const foliagePreviousCapsuleAttribute = 'terrainPreviousCapsule';
 type Attributes = Record<string, BufferAttribute | InterleavedBufferAttribute>;
 interface Batch {
   capacity: number;
@@ -29,6 +31,8 @@ interface Batch {
   current?: InstancedInterleavedBuffer;
   previous?: InstancedInterleavedBuffer;
   states?: InterleavedBufferAttribute;
+  amounts?: Float32Array;
+  shapes?: Float32Array;
   wind: WindUniforms;
   history?: FoliageMotionHistory;
   historyVersion?: number;
@@ -58,8 +62,8 @@ export function foliageMotionReservation(mesh: InstancedMesh) {
   const batch = batches.get(mesh);
   if (!batch) return { cpuBytes: 0, gpuBytes: 0 };
   return {
-    cpuBytes: batch.capacity * 352 + 1024,
-    gpuBytes: batch.capacity * 88,
+    cpuBytes: batch.capacity * 464 + 1024,
+    gpuBytes: batch.capacity * 104,
   };
 }
 
@@ -69,7 +73,7 @@ export function foliagePendingInstanceBytes(mesh: InstancedMesh) {
   const batch = batches.get(mesh);
   if (!batch) return 0;
   let bytes = Math.max(0, batch.capacity - mesh.instanceMatrix.count) * 64;
-  for (const name of ['terrainContact', 'terrainFade']) {
+  for (const name of ['terrainContact', 'terrainCapsule', 'terrainFade']) {
     const attribute = batch.owned[name];
     if (attribute)
       bytes += Math.max(
@@ -138,17 +142,29 @@ export function installNativeFoliage(renderer: WebGPURenderer) {
         18,
         1,
       );
-      batch.states = new InterleavedBufferAttribute(batch.previous, 2, 16);
+      batch.amounts = new Float32Array(source.instanceMatrix.count);
+      batch.shapes = new Float32Array(source.instanceMatrix.count * 5);
+      batch.states = new InterleavedBufferAttribute(batch.previous, 4, 12);
       batch.owned[foliagePreviousStateAttribute] = batch.states;
       geometry.setAttribute(foliagePreviousStateAttribute, batch.states);
-      const state = new InterleavedBufferAttribute(batch.current, 4, 16);
+      const state = new InterleavedBufferAttribute(batch.current, 4, 12);
       batch.owned[foliageCurrentStateAttribute] = state;
       geometry.setAttribute(foliageCurrentStateAttribute, state);
+      for (const [name, buffer, size, offset] of [
+        [foliageCapsuleAttribute, batch.current, 4, 16],
+        [foliagePreviousCapsuleAttribute, batch.previous, 2, 16],
+      ] as const) {
+        const attribute = new InterleavedBufferAttribute(buffer, size, offset);
+        batch.owned[name] = attribute;
+        geometry.setAttribute(name, attribute);
+      }
       for (const [prefix, buffer] of [
         [foliageMatrixAttribute, batch.current],
         [foliagePreviousAttribute, batch.previous],
       ] as const) {
-        for (let i = 0; i < 4; i++) {
+        // Three affine rows save two vertex attributes across current/previous
+        // poses, keeping tangent + flexibility + capsule draws within WebGPU's 16.
+        for (let i = 0; i < 3; i++) {
           const name = prefix + i;
           batch.owned[name] = new InterleavedBufferAttribute(buffer, 4, i * 4);
           geometry.setAttribute(name, batch.owned[name]);
@@ -159,20 +175,40 @@ export function installNativeFoliage(renderer: WebGPURenderer) {
       InstancedBufferAttribute | undefined;
     const fade = geometry.getAttribute('terrainFade') as
       InstancedBufferAttribute | undefined;
+    const capsule = geometry.getAttribute('terrainCapsule') as
+      InstancedBufferAttribute | undefined;
     if (
       batch.matrixVersion !== source.instanceMatrix.version ||
       batch.contactVersion !== (contact?.version ?? 0) ||
       batch.fadeVersion !== (fade?.version ?? 0)
     ) {
       for (let slot = 0; slot < source.count; slot++) {
-        batch.current.array.set(
-          source.instanceMatrix.array.subarray(slot * 16, slot * 16 + 16),
+        packAffine(
+          source.instanceMatrix.array,
+          slot * 16,
+          batch.current.array,
           slot * 20,
         );
-        batch.current.array[slot * 20 + 16] = contact?.getX(slot) ?? 0;
-        batch.current.array[slot * 20 + 17] = fade?.getX(slot) ?? 0;
-        batch.current.array[slot * 20 + 18] = fade?.getY(slot) ?? 1;
-        batch.current.array[slot * 20 + 19] = fade?.getZ(slot) ?? 0;
+        const at = slot * 20;
+        batch.current.array[at + 12] = batch.amounts![slot] =
+          contact?.getX(slot) ?? 0;
+        const shape = [
+          contact?.getY(slot) ?? 0,
+          contact?.getZ(slot) ?? 0,
+          contact?.getW(slot) ?? 0,
+          capsule?.getX(slot) ?? 0,
+          capsule?.getY(slot) ?? 0,
+        ];
+        batch.shapes!.set(shape, slot * 5);
+        batch.current.array[at + 13] = shape[2];
+        batch.current.array[at + 14] =
+          (fade?.getX(slot) ?? 0) +
+          (batch.current.array[at + 14] > 1.5 ? 2 : 0);
+        batch.current.array[at + 15] = fade?.getY(slot) ?? 1;
+        batch.current.array.set(
+          [shape[0], shape[1], shape[3], shape[4]],
+          at + 16,
+        );
       }
       batch.current.clearUpdateRanges();
       batch.current.addUpdateRange(0, source.count * 20);
@@ -208,7 +244,7 @@ export function installNativeFoliage(renderer: WebGPURenderer) {
         source.userData.instanceIds,
         source.instanceMatrix.array as Float32Array,
         source.instanceMatrix.version,
-        contact?.array as Float32Array | undefined,
+        batch.amounts,
         contact?.version ?? 0,
         [
           wind.uTime.value,
@@ -218,6 +254,7 @@ export function installNativeFoliage(renderer: WebGPURenderer) {
           wind.uDirection.value.x,
           wind.uDirection.value.y,
         ],
+        batch.shapes,
       );
       proxy.userData.terrainPreviousWind = history.wind;
       proxy.userData.terrainPreviousDirection = history.direction;
@@ -226,16 +263,28 @@ export function installNativeFoliage(renderer: WebGPURenderer) {
         batch.historyVersion !== history.version
       ) {
         for (let slot = 0; slot < source.count; slot++) {
-          batch.previous!.array.set(
-            history.matrices.subarray(slot * 16, slot * 16 + 16),
+          packAffine(
+            history.matrices,
+            slot * 16,
+            batch.previous!.array,
             slot * 18,
           );
-          batch.previous!.array[slot * 18 + 16] = history.states[slot * 2];
-          batch.previous!.array[slot * 18 + 17] = history.states[slot * 2 + 1];
+          batch.previous!.array[slot * 18 + 12] = history.states[slot * 2];
+          batch.previous!.array.set(
+            history.shapes.subarray(slot * 5, slot * 5 + 5),
+            slot * 18 + 13,
+          );
+          // Encode validity above the fade interval's [0,1] range. The dither
+          // seed is derived from the stable plant origin, saving a vertex slot.
+          batch.current.array[slot * 20 + 14] =
+            (fade?.getX(slot) ?? 0) + history.states[slot * 2 + 1] * 2;
         }
         batch.previous!.clearUpdateRanges();
         batch.previous!.addUpdateRange(0, source.count * 18);
         batch.previous!.needsUpdate = true;
+        batch.current.clearUpdateRanges();
+        batch.current.addUpdateRange(0, source.count * 20);
+        batch.current.needsUpdate = true;
         batch.history = history;
         batch.historyVersion = history.version;
       }
@@ -255,4 +304,16 @@ export function installNativeFoliage(renderer: WebGPURenderer) {
       ...rest,
     );
   };
+}
+
+/** Pack an ordinary column-major affine matrix into three contiguous rows. */
+export function packAffine(
+  source: ArrayLike<number>,
+  at: number,
+  target: { [index: number]: number },
+  offset: number,
+) {
+  for (let row = 0; row < 3; row++)
+    for (let col = 0; col < 4; col++)
+      target[offset + row * 4 + col] = source[at + col * 4 + row];
 }

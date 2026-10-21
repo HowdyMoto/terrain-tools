@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-20",
+  "platform": "Windows, installed Chrome, native WebGPU on RTX 5060 Laptop GPU",
+  "cutoutRegression": {
+    "dimensions": [512, 512],
+    "description": "Fixed rotated cutout, linear HDR readback, no AO darkening; fractional red values identify actual multisample coverage.",
+    "directMsaaFractionalPixels": 550,
+    "oldCaptureFractionalPixels": 0,
+    "correctedCaptureFractionalPixels": {
+      "dry": 550,
+      "water": 550,
+      "afterTemporalToggle": 550,
+      "displayScale2": 550
+    },
+    "correctedUnexpectedDarkPixels": 0,
+    "samples": 4
+  },
+  "isolatedNamaqualandShrub": {
+    "asset": "Existing external Namaqualand Searsia lucida shrub; original art and project untouched",
+    "dimensions": [1280, 720],
+    "temporalAA": false,
+    "ambientOcclusion": false,
+    "comparison": "Current runtime versus the same build with only capture MSAA matching and default cutout coverage reverted in the diagnostic route",
+    "region": { "left": 480, "top": 180, "right": 800, "bottom": 500 },
+    "isolatedDarkPixelDefinition": "Mean RGB below 45/255, with the mean of four direct neighbors above 90/255",
+    "before": { "darkPixels": 1776, "isolatedDarkPixels": 967 },
+    "after": { "darkPixels": 791, "isolatedDarkPixels": 301 },
+    "limits": "This counts high-contrast speckles, not every leaf edge or an aesthetic quality score. One shrub in a fixed view; the complete personal scene/browser session is unverified. No FPS comparison."
+  }
+}

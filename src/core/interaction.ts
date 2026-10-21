@@ -1,18 +1,60 @@
 import { clamp } from './math';
 import type { FoliageInstance, TerrainProject } from './types';
 
+/** Metres of soft influence outside the collider, covering sparse leaf vertices. */
+export const foliageContactPadding = 0.45;
+
+/** A sphere is a capsule with coincident segment ends. Sample its path so a fast
+ * falling preview body cannot pass through leaves between rendered frames. */
+export function sweptSphereContacts(
+  from: { x: number; y: number; z: number },
+  to: { x: number; y: number; z: number },
+  radius: number,
+): GroundContact[] {
+  if (
+    !Number.isFinite(from.x + from.y + from.z + to.x + to.y + to.z + radius) ||
+    radius <= 0
+  )
+    return [];
+  const distance = Math.hypot(to.x - from.x, to.y - from.y, to.z - from.z);
+  const steps = Math.min(
+    32,
+    Math.max(1, Math.ceil(distance / Math.max(0.1, radius * 0.25))),
+  );
+  return Array.from({ length: steps }, (_, i) => {
+    const t = (i + 1) / steps;
+    const bottom = from.y + (to.y - from.y) * t - radius;
+    return {
+      x: from.x + (to.x - from.x) * t,
+      z: from.z + (to.z - from.z) * t,
+      radius,
+      strength: 1,
+      capsule: { bottom, top: bottom + radius * 2 },
+    };
+  });
+}
+
 /** Engine-independent influence emitted where an object contacts the ground. */
 export interface GroundContact {
   x: number;
   z: number;
   radius: number;
   strength: number;
+  /** Optional upright capsule in terrain-local metres. bottom/top include the rounded ends. */
+  capsule?: { bottom: number; top: number };
+}
+export interface FoliageContactBounds {
+  radius: number;
+  minY: number;
+  maxY: number;
 }
 
 /** Sparse contact response: only nearby and recovering instances require work. */
 export class FoliageInteraction {
   private cells = new Map<string, FoliageInstance[]>();
   private amounts = new Map<number, number>();
+  private capsules = new Map<number, GroundContact>();
+  private capsuleWeights = new Map<number, number>();
   private validIds = new Set<number>();
   constructor(private cellSize = 8) {}
   setInstances(instances: FoliageInstance[]) {
@@ -25,24 +67,49 @@ export class FoliageInteraction {
       this.cells.set(key, cell);
     }
     for (const id of this.amounts.keys())
-      if (!this.validIds.has(id)) this.amounts.delete(id);
+      if (!this.validIds.has(id)) {
+        this.amounts.delete(id);
+        this.capsules.delete(id);
+        this.capsuleWeights.delete(id);
+      }
   }
   /** Independent spatial index and recovery state for a candidate population. */
   fork(instances: FoliageInstance[]) {
     const result = new FoliageInteraction(this.cellSize);
     result.amounts = new Map(this.amounts);
+    result.capsules = new Map(this.capsules);
+    result.capsuleWeights = new Map(this.capsuleWeights);
     result.setInstances(instances);
     return result;
   }
   private key(x: number, z: number) {
     return Math.floor(x / this.cellSize) + ',' + Math.floor(z / this.cellSize);
   }
+  private *nearby(minX: number, maxX: number, minZ: number, maxZ: number) {
+    // Oversized source geometry must not turn a capsule query into millions of
+    // empty cell lookups. Work is bounded by the populated cells instead.
+    if ((maxX - minX + 1) * (maxZ - minZ + 1) > this.cells.size) {
+      for (const cell of this.cells.values()) {
+        const x = Math.floor(cell[0].x / this.cellSize),
+          z = Math.floor(cell[0].z / this.cellSize);
+        if (x >= minX && x <= maxX && z >= minZ && z <= maxZ) yield* cell;
+      }
+    } else
+      for (let z = minZ; z <= maxZ; z++)
+        for (let x = minX; x <= maxX; x++)
+          yield* this.cells.get(x + ',' + z) ?? [];
+  }
   amount(id: number) {
     return this.amounts.get(id) ?? 0;
+  }
+  capsule(id: number) {
+    return this.capsules.get(id);
   }
   clear() {
     const changed = new Set(this.amounts.keys());
     this.amounts.clear();
+    this.capsules.clear();
+    this.capsuleWeights.clear();
     return changed;
   }
   /** Optional per-instance settings override the legacy defaults and contact radius.
@@ -53,6 +120,8 @@ export class FoliageInteraction {
     settings: TerrainProject['interaction'],
     resolve?: (id: number) => TerrainProject['interaction'] | undefined,
     maximumRadius = 0,
+    bounds?: (id: number) => FoliageContactBounds | undefined,
+    maximumPlantRadius = 0,
   ) {
     const changed = new Set<number>();
     if (!settings.enabled && maximumRadius === 0) return this.clear();
@@ -63,32 +132,80 @@ export class FoliageInteraction {
           Math.exp(-Math.max(0, dt) / Math.max(0.01, selected.recovery))
         : 0;
       changed.add(id);
-      if (next < 0.001) this.amounts.delete(id);
-      else this.amounts.set(id, next);
+      const weight = this.capsuleWeights.get(id);
+      if (weight !== undefined)
+        this.capsuleWeights.set(id, weight * (amount > 0 ? next / amount : 0));
+      if (next < 0.001) {
+        this.amounts.delete(id);
+        this.capsules.delete(id);
+        this.capsuleWeights.delete(id);
+      } else this.amounts.set(id, next);
     }
     for (const contact of contacts) {
-      const radius = Math.max(0.01, contact.radius, maximumRadius),
+      if (
+        !Number.isFinite(
+          contact.x + contact.z + contact.radius + contact.strength,
+        ) ||
+        contact.radius <= 0
+      )
+        continue;
+      if (
+        contact.capsule &&
+        (!Number.isFinite(contact.capsule.bottom + contact.capsule.top) ||
+          contact.capsule.top < contact.capsule.bottom + contact.radius * 2)
+      )
+        continue;
+      const radius = contact.capsule
+          ? contact.radius + foliageContactPadding + maximumPlantRadius
+          : Math.max(0.01, contact.radius, maximumRadius),
         minX = Math.floor((contact.x - radius) / this.cellSize),
         maxX = Math.floor((contact.x + radius) / this.cellSize),
         minZ = Math.floor((contact.z - radius) / this.cellSize),
         maxZ = Math.floor((contact.z + radius) / this.cellSize);
-      for (let z = minZ; z <= maxZ; z++)
-        for (let x = minX; x <= maxX; x++)
-          for (const f of this.cells.get(x + ',' + z) ?? []) {
-            const override = resolve?.(f.id);
-            const selected = override ?? settings;
-            if (!selected.enabled) continue;
-            const reach = Math.max(0.01, override?.radius ?? contact.radius);
-            const amount = clamp(
-              (1 - Math.hypot(f.x - contact.x, f.z - contact.z) / reach) *
-                contact.strength *
-                selected.strength,
-            );
-            if (amount > this.amount(f.id)) {
-              this.amounts.set(f.id, amount);
-              changed.add(f.id);
-            }
-          }
+      for (const f of this.nearby(minX, maxX, minZ, maxZ)) {
+        const override = resolve?.(f.id);
+        const selected = override ?? settings;
+        if (!selected.enabled) continue;
+        if (contact.capsule) {
+          const shape = bounds?.(f.id);
+          if (
+            !shape ||
+            shape.maxY < contact.capsule.bottom - foliageContactPadding ||
+            shape.minY > contact.capsule.top + foliageContactPadding ||
+            Math.hypot(f.x - contact.x, f.z - contact.z) >
+              shape.radius + contact.radius + foliageContactPadding
+          )
+            continue;
+          const amount = clamp(contact.strength * selected.strength);
+          if (amount <= 0) continue;
+          // Retain the closest imprint as the body leaves. Replacing it
+          // with an empty, receding capsule would erase a trampled trail.
+          const weight =
+            amount / (1 + Math.hypot(f.x - contact.x, f.z - contact.z));
+          if (weight < (this.capsuleWeights.get(f.id) ?? 0)) continue;
+          this.capsuleWeights.set(f.id, weight);
+          this.amounts.set(f.id, Math.max(amount, this.amount(f.id)));
+          // Own the pose: callers commonly reuse their contact objects next frame.
+          this.capsules.set(f.id, {
+            ...contact,
+            capsule: { ...contact.capsule },
+          });
+          changed.add(f.id);
+          continue;
+        }
+        const reach = Math.max(0.01, override?.radius ?? contact.radius);
+        const amount = clamp(
+          (1 - Math.hypot(f.x - contact.x, f.z - contact.z) / reach) *
+            contact.strength *
+            selected.strength,
+        );
+        if (amount > this.amount(f.id)) {
+          this.amounts.set(f.id, amount);
+          this.capsules.delete(f.id);
+          this.capsuleWeights.delete(f.id);
+          changed.add(f.id);
+        }
+      }
     }
     return changed;
   }

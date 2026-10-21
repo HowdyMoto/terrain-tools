@@ -1,0 +1,50 @@
+{
+  "date": "2026-10-20",
+  "platform": "Windows, installed Chrome, RTX 5060 Laptop GPU; native WebGPU plus WebGL2 transform-feedback verification",
+  "contactEnvelope": {
+    "bodyRadiusMetres": 0.35,
+    "softFalloffMetres": 0.45,
+    "description": "Full response inside/on the collider, smoothly falling to zero outside it. Vertex masks and per-model strength still multiply this envelope."
+  },
+  "syntheticRender": {
+    "dimensions": [320, 480],
+    "restLeafCenterPixels": 186.5,
+    "directContactLeafCenterPixels": 254.83717313113638,
+    "grazingContactLeafCenterPixels": 212.6657163221668,
+    "fallingSphereLeafCenterPixels": 232.2250732278852,
+    "rigidChangedPixels": 0,
+    "highCanopyChangedPixels": 0,
+    "recoveryChangedPixels": 0,
+    "gpuValidationErrors": [],
+    "documentUnchanged": true,
+    "limits": "Pixel centres cover a fixed low-leaf region; they are not world-space displacement measurements. The canopy region is beyond the body plus soft falloff and its nearest mesh segment."
+  },
+  "isolatedNamaqualandShrub": {
+    "asset": "searsia_lucida_a_lod0-001 from the external Namaqualand project",
+    "profile": "Soft plant",
+    "dimensions": [1280, 720],
+    "contactChangedPixels": 43928,
+    "recoveryChangedPixels": 0,
+    "errors": [],
+    "limits": "One isolated existing shrub; wind and temporal AA disabled. Changed pixels include lighting/shadows. Original art and project untouched. Full-scene acceptance and FPS unmeasured."
+  },
+  "webglJacobian": {
+    "method": "Actual production GLSL positions from transform feedback, compared with independent finite differences for body and spherical contact in the soft falloff",
+    "maximumError": 0.0001736283302307129,
+    "glError": 0
+  },
+  "editorChecks": [
+    "Injected preview allocation failure preserves the document; successful retry",
+    "Preview owns one isolated plant and restores the surrounding scene on Stop",
+    "Export during preview restores props and full foliage; no preview geometry or document changes in GLB",
+    "Preview, falling-body and walking GPU contact uploads",
+    "Falling-body contact above terrain before impact",
+    "Undoable presets, unchanged downloaded document and history"
+  ],
+  "validation": {
+    "unitTests": 390,
+    "targetedBrowserCases": 7,
+    "build": "passed",
+    "lint": "passed"
+  }
+}

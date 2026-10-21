@@ -48,8 +48,10 @@ import {
   reference,
   output,
   select,
+  sqrt,
 } from 'three/tsl';
 import type { WindUniforms } from './wind';
+import { foliageContactPadding } from '../core/interaction';
 import type { FoliageSubsurface } from '../core/foliage-shading';
 import { impostorVertex } from '../render/impostor-nodes';
 import { materialNodeUniforms } from '../render/node-uniforms';
@@ -58,6 +60,8 @@ import {
   foliagePreviousAttribute,
   foliagePreviousStateAttribute,
   foliageCurrentStateAttribute,
+  foliageCapsuleAttribute,
+  foliagePreviousCapsuleAttribute,
 } from '../render/native-foliage';
 
 type N = Node<'vec3'>;
@@ -82,11 +86,116 @@ type DeformationInputs = {
   sourceNormal: N;
   sourceTangent: N;
   flex: Node<'vec4'>;
-  contact: Node<'float'>;
+  contact: Node<'vec4'>;
+  capsule: Node<'vec2'>;
   wind: Node<'vec4'>;
   windDirection: Node<'vec2'>;
   rootAmount: Node<'vec2'>;
 };
+/** Capsule push and droop with an analytic local-space Jacobian. The rest-pose
+ * vertex test keeps high canopies and leaves beyond the body completely still. */
+const capsuleDeformation = Fn(
+  ({
+    m,
+    p,
+    flex,
+    contact,
+    capsule,
+  }: {
+    m: Node<'mat4'>;
+    p: N;
+    flex: Node<'vec4'>;
+    contact: Node<'vec4'>;
+    capsule: Node<'vec2'>;
+  }) => {
+    const world = m.mul(vec4(p, 1)).xyz;
+    const radius = max(contact.w, 0.01),
+      reach = radius.add(foliageContactPadding);
+    const low = capsule.x.add(radius),
+      high = max(low, capsule.y.sub(radius));
+    const closestY = world.y.clamp(low, high);
+    const delta = world.sub(vec3(contact.y, closestY, contact.z));
+    const distance = max(length(delta), 0.0001);
+    // Full response at the body surface. The former centre-to-edge ramp was
+    // already almost zero where a leaf first touched the player.
+    const t = reach.sub(distance).div(foliageContactPadding).clamp(0, 1);
+    const falloff = t.mul(t).mul(float(3).sub(t.mul(2)));
+    const radial = sqrt(
+      delta.x.mul(delta.x).add(delta.z.mul(delta.z)).add(0.0025),
+    );
+    const unit = vec3(delta.x.div(radial), 0, delta.z.div(radial));
+    const height = world.y.sub(column4(m, 3).y);
+    const droop = height.clamp(0, 1.4).mul(0.9);
+    const push = unit.mul(0.75).sub(vec3(0, droop, 0));
+    const amplitude = contact.x.negate();
+    const factor = falloff.mul(amplitude).mul(flex.x);
+    const inverse = (v: N) =>
+      vec3(
+        ...([0, 1, 2].map((i) =>
+          dot(column4(m, i).xyz, v).div(
+            max(dot(column4(m, i).xyz, column4(m, i).xyz), 0.0001),
+          ),
+        ) as [Node<'float'>, Node<'float'>, Node<'float'>]),
+      );
+    const position = p.add(inverse(push).mul(factor));
+    const activeY = select(
+      world.y.lessThan(low).or(world.y.greaterThan(high)),
+      float(1),
+      float(0),
+    );
+    const distanceGradient = delta
+      .mul(vec3(1, activeY, 1))
+      .div(distance.mul(foliageContactPadding))
+      .mul(t.mul(float(1).sub(t)).mul(6))
+      .negate();
+    const columns = [0, 1, 2].map((axis) => {
+      const basis = column4(m, axis).xyz;
+      const dx = basis.x,
+        dz = basis.z;
+      const unitDerivative = vec3(dx, 0, dz)
+        .div(radial)
+        .sub(
+          unit
+            .mul(delta.x.mul(dx).add(delta.z.mul(dz)))
+            .div(radial.mul(radial)),
+        );
+      const droopDerivative = select(
+        height.greaterThan(0).and(height.lessThan(1.4)),
+        basis.y.mul(0.9),
+        float(0),
+      );
+      const pushDerivative = unitDerivative
+        .mul(0.75)
+        .sub(vec3(0, droopDerivative, 0));
+      const maskGradient = [flex.y, flex.z, flex.w][axis];
+      const derivative = select(
+        falloff.greaterThan(0),
+        dot(distanceGradient, basis),
+        float(0),
+      )
+        .mul(amplitude)
+        .mul(flex.x)
+        .add(falloff.mul(amplitude).mul(maskGradient));
+      return vec4(
+        vec3(axis === 0 ? 1 : 0, axis === 1 ? 1 : 0, axis === 2 ? 1 : 0).add(
+          inverse(pushDerivative.mul(factor).add(push.mul(derivative))),
+        ),
+        0,
+      );
+    });
+    return mat4(vec4(position, 1), columns[0], columns[1], columns[2]);
+  },
+).setLayout({
+  name: 'terrainCapsuleDeformation',
+  type: 'mat4',
+  inputs: [
+    { name: 'm', type: 'mat4' },
+    { name: 'p', type: 'vec3' },
+    { name: 'flex', type: 'vec4' },
+    { name: 'contact', type: 'vec4' },
+    { name: 'capsule', type: 'vec2' },
+  ],
+});
 // Explicit layouts compile these pure functions once per renderer, instead of
 // rebuilding their math for every spatial/LOD instanced mesh and shadow pass.
 const deformationFunction = (masked: boolean) =>
@@ -98,6 +207,7 @@ const deformationFunction = (masked: boolean) =>
       sourceTangent,
       flex,
       contact,
+      capsule,
       wind,
       windDirection,
       rootAmount,
@@ -127,7 +237,8 @@ const deformationFunction = (masked: boolean) =>
           gradient = flex.yzw,
           pivot = vec3(0, rootAmount.x, 0),
           p = sourcePosition.sub(pivot);
-        const bend = contact.mul(mask),
+        const amount = max(contact.x, 0);
+        const bend = amount.mul(mask),
           angle = bend.mul(0.9),
           scaleY = float(1).sub(bend.mul(0.75));
         const s = sin(angle),
@@ -143,8 +254,8 @@ const deformationFunction = (masked: boolean) =>
           c.mul(p.x).sub(s.mul(scaleY).mul(p.y)),
           0,
         )
-          .mul(contact.mul(0.9))
-          .add(vec3(s.negate(), c, 0).mul(contact.mul(-0.75).mul(p.y)));
+          .mul(amount.mul(0.9))
+          .add(vec3(s.negate(), c, 0).mul(amount.mul(-0.75).mul(p.y)));
         jacobian.assign(
           rotation.add(
             matrix3(
@@ -154,6 +265,23 @@ const deformationFunction = (masked: boolean) =>
             ),
           ),
         );
+        If(contact.x.lessThan(0), () => {
+          const capsulePose = capsuleDeformation({
+            m,
+            p: sourcePosition,
+            flex,
+            contact,
+            capsule,
+          }).toVar();
+          q.assign(column4(capsulePose, 0).xyz);
+          jacobian.assign(
+            matrix3(
+              column4(capsulePose, 1).xyz,
+              column4(capsulePose, 2).xyz,
+              column4(capsulePose, 3).xyz,
+            ),
+          );
+        });
         const height = max(q.y.sub(rootAmount.x), 0).mul(scale),
           profile = pow(height, 1.25);
         const heightGradient = vec3().toVar();
@@ -220,7 +348,8 @@ const deformationFunction = (masked: boolean) =>
       { name: 'sourceNormal', type: 'vec3' },
       { name: 'sourceTangent', type: 'vec3' },
       { name: 'flex', type: 'vec4' },
-      { name: 'contact', type: 'float' },
+      { name: 'contact', type: 'vec4' },
+      { name: 'capsule', type: 'vec2' },
       { name: 'wind', type: 'vec4' },
       { name: 'windDirection', type: 'vec2' },
       { name: 'rootAmount', type: 'vec2' },
@@ -238,6 +367,7 @@ const previousDeformation = (masked: boolean) =>
       p,
       flex,
       contact,
+      capsule,
       wind,
       direction,
       rootAmount,
@@ -245,7 +375,8 @@ const previousDeformation = (masked: boolean) =>
       m: Node<'mat4'>;
       p: N;
       flex: Node<'float'>;
-      contact: Node<'float'>;
+      contact: Node<'vec4'>;
+      capsule: Node<'vec2'>;
       wind: Node<'vec4'>;
       direction: Node<'vec2'>;
       rootAmount: Node<'vec2'>;
@@ -253,7 +384,7 @@ const previousDeformation = (masked: boolean) =>
       const q = p.toVar();
       if (masked) {
         const relative = p.sub(vec3(0, rootAmount.x, 0));
-        const bend = contact.mul(flex),
+        const bend = max(contact.x, 0).mul(flex),
           angle = bend.mul(0.9);
         const s = sin(angle),
           c = cos(angle),
@@ -265,6 +396,20 @@ const previousDeformation = (masked: boolean) =>
             relative.z,
           ),
         );
+        If(contact.x.lessThan(0), () => {
+          q.assign(
+            column4(
+              capsuleDeformation({
+                m,
+                p,
+                flex: vec4(flex, 0, 0, 0),
+                contact,
+                capsule,
+              }),
+              0,
+            ).xyz,
+          );
+        });
       }
       const worldDirection = vec3(direction.x, 0, direction.y);
       const localDirection = (i: number) =>
@@ -298,7 +443,8 @@ const previousDeformation = (masked: boolean) =>
       { name: 'm', type: 'mat4' },
       { name: 'p', type: 'vec3' },
       { name: 'flex', type: 'float' },
-      { name: 'contact', type: 'float' },
+      { name: 'contact', type: 'vec4' },
+      { name: 'capsule', type: 'vec2' },
       { name: 'wind', type: 'vec4' },
       { name: 'direction', type: 'vec2' },
       { name: 'rootAmount', type: 'vec2' },
@@ -306,6 +452,19 @@ const previousDeformation = (masked: boolean) =>
   });
 const previousMaskedPosition = previousDeformation(true),
   previousWindPosition = previousDeformation(false);
+
+const nativeFade = () => {
+  const state = attribute(foliageCurrentStateAttribute, 'vec4');
+  const start = state.z.sub(
+    select(state.z.greaterThan(1.5), float(2), float(0)),
+  );
+  const origin = vec2(
+    attribute(foliageMatrixAttribute + '0', 'vec4').w,
+    attribute(foliageMatrixAttribute + '2', 'vec4').w,
+  );
+  const seed = fract(sin(dot(origin, vec2(12.9898, 78.233))).mul(43758.5453));
+  return vec3(start, state.w, seed);
+};
 
 /** Position nodes run after built-in instancing. Work from geometry attributes,
  * then apply the instance matrix once, including the analytic normal Jacobian.
@@ -335,13 +494,17 @@ export function configureWindNodes(
       (
         builder as NodeBuilder & { needsPreviousData(): boolean }
       ).needsPreviousData();
-    const attributeMatrix = (prefix: string) =>
-      matrix4(
-        attribute(prefix + '0', 'vec4'),
-        attribute(prefix + '1', 'vec4'),
-        attribute(prefix + '2', 'vec4'),
-        attribute(prefix + '3', 'vec4'),
+    const attributeMatrix = (prefix: string) => {
+      const a = attribute(prefix + '0', 'vec4'),
+        b = attribute(prefix + '1', 'vec4'),
+        c = attribute(prefix + '2', 'vec4');
+      return matrix4(
+        vec4(a.x, b.x, c.x, 0),
+        vec4(a.y, b.y, c.y, 0),
+        vec4(a.z, b.z, c.z, 0),
+        vec4(a.w, b.w, c.w, 1),
       );
+    };
     let matrix = nativeBatch
       ? attributeMatrix(foliageMatrixAttribute)
       : matrices.get(mesh);
@@ -377,17 +540,27 @@ export function configureWindNodes(
             : attribute('terrainFlexibility', 'vec4'),
         contact:
           root === undefined
-            ? float(0)
+            ? vec4(0)
             : nativeBatch
-              ? attribute(foliageCurrentStateAttribute, 'vec4').x
-              : attribute('terrainContact', 'float'),
+              ? vec4(
+                  attribute(foliageCurrentStateAttribute, 'vec4').x,
+                  attribute(foliageCapsuleAttribute, 'vec4').xy,
+                  attribute(foliageCurrentStateAttribute, 'vec4').y,
+                )
+              : attribute('terrainContact', 'vec4'),
+        capsule:
+          root === undefined
+            ? vec2(0)
+            : nativeBatch
+              ? attribute(foliageCapsuleAttribute, 'vec4').zw
+              : attribute('terrainCapsule', 'vec2'),
         wind: vec4(u('uTime'), u('uStrength'), u('uSpeed'), u('uGust')),
         windDirection: u('uDirection', 'vec2'),
         rootAmount: vec2(root ?? 0, amount),
       },
     ).toVar();
     if (motion) {
-      const state = attribute(foliagePreviousStateAttribute, 'vec2');
+      const state = attribute(foliagePreviousStateAttribute, 'vec4');
       const previous = (
         root === undefined ? previousWindPosition : previousMaskedPosition
       )({
@@ -397,13 +570,18 @@ export function configureWindNodes(
           root === undefined
             ? float(0)
             : attribute('terrainFlexibility', 'vec4').x,
-        contact: state.x,
+        contact: state,
+        capsule: attribute(foliagePreviousCapsuleAttribute, 'vec2'),
         wind: reference('userData.terrainPreviousWind', 'vec4', null),
         direction: reference('userData.terrainPreviousDirection', 'vec2', null),
         rootAmount: vec2(root ?? 0, amount),
       });
       positionPrevious.assign(
-        select(state.y.greaterThan(0.5), previous, column3(deformed, 0)),
+        select(
+          attribute(foliageCurrentStateAttribute, 'vec4').z.greaterThan(1.5),
+          previous,
+          column3(deformed, 0),
+        ),
       );
     }
     normalLocal.assign(column3(deformed, 1));
@@ -422,14 +600,16 @@ export function configureWindNodes(
       )
         return output.a;
       let history: Node<'float'> = varying(
-        attribute(foliagePreviousStateAttribute, 'vec2').y,
+        select(
+          attribute(foliageCurrentStateAttribute, 'vec4').z.greaterThan(1.5),
+          float(1),
+          float(0),
+        ),
       ).setInterpolation('flat');
       if (builder.geometry.hasAttribute('terrainFade')) {
         // These bounds belong to an instance, not the leaf surface. Perspective
         // interpolation can turn a settled 1 into <1 and reject history forever.
-        const fade = varying(
-          attribute(foliageCurrentStateAttribute, 'vec4').yzw,
-        ).setInterpolation('flat');
+        const fade = varying(nativeFade()).setInterpolation('flat');
         history = history.mul(
           select(
             fade.x.greaterThan(0).or(fade.y.lessThan(1)),
@@ -455,7 +635,7 @@ export function configureFadeNodes(material: Material, enabled: () => boolean) {
       if (!enabled()) return float(1);
       const fade = varying(
         builder.geometry.hasAttribute(foliageCurrentStateAttribute)
-          ? attribute(foliageCurrentStateAttribute, 'vec4').yzw
+          ? nativeFade()
           : attribute('terrainFade', 'vec3'),
       ).setInterpolation('flat');
       const noise = fract(

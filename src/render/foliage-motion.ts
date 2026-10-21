@@ -46,11 +46,14 @@ export class FoliageMotionHistory {
   readonly matrices: Float32Array;
   /** Previous contact amount and valid-history flag, two floats per instance. */
   readonly states: Float32Array;
+  /** Previous capsule emitter (xz/radius) and vertical interval, by matched ID. */
+  readonly shapes: Float32Array;
   readonly wind = new Vector4();
   readonly direction = new Vector2();
   version = 0;
   private snapshot: Float32Array;
   private contacts: Float32Array;
+  private shapeSnapshot: Float32Array;
   private ids: readonly number[] = [];
   private indices = new Map<number, number>();
   private windSnapshot = new Float64Array(6);
@@ -63,6 +66,8 @@ export class FoliageMotionHistory {
     this.states = new Float32Array(capacity * 2);
     this.snapshot = new Float32Array(capacity * 16);
     this.contacts = new Float32Array(capacity);
+    this.shapes = new Float32Array(capacity * 5);
+    this.shapeSnapshot = new Float32Array(capacity * 5);
   }
   prepare(
     frame: FoliageMotionFrame,
@@ -72,6 +77,7 @@ export class FoliageMotionHistory {
     contacts: Float32Array | undefined,
     contactVersion: number,
     wind: readonly number[],
+    shapes?: Float32Array,
   ) {
     if (this.frame?.serial === frame.serial && this.frame.epoch === frame.epoch)
       return;
@@ -103,6 +109,10 @@ export class FoliageMotionHistory {
         this.states[slot * 2] =
           old === undefined ? (contacts?.[slot] ?? 0) : this.contacts[old];
         this.states[slot * 2 + 1] = old === undefined ? 0 : 1;
+        const shape = old === undefined ? shapes : this.shapeSnapshot;
+        const at = (old ?? slot) * 5;
+        if (shape) this.shapes.set(shape.subarray(at, at + 5), slot * 5);
+        else this.shapes.fill(0, slot * 5, slot * 5 + 5);
       }
       this.version++;
     }
@@ -112,6 +122,8 @@ export class FoliageMotionHistory {
       this.snapshot.set(matrices.subarray(0, ids.length * 16));
       if (contacts) this.contacts.set(contacts.subarray(0, ids.length));
       else this.contacts.fill(0, 0, ids.length);
+      if (shapes) this.shapeSnapshot.set(shapes.subarray(0, ids.length * 5));
+      else this.shapeSnapshot.fill(0, 0, ids.length * 5);
       if (ids !== this.ids) {
         this.indices.clear();
         ids.forEach((id, slot) => this.indices.set(id, slot));

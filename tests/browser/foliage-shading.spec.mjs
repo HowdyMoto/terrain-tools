@@ -9,6 +9,7 @@ import {
 } from 'terrain-tools';
 import { runtimePackagePage } from './runtime-package-page.mjs';
 import { decodeDocument, maskedPlantGlb } from './fixtures.mjs';
+import { seedEditorProject } from './seed-editor-project.mjs';
 
 function track(page) {
   const errors = [];
@@ -229,7 +230,14 @@ test('authors leaf lighting and natural sunlight with failed preparation recover
 }, info) => {
   test.setTimeout(120000);
   const errors = track(page);
-  await page.addInitScript(() => {
+  await seedEditorProject(page);
+  await page.goto('/');
+  await expect(page.locator('#app')).toHaveJSProperty('inert', false, {
+    timeout: 60000,
+  });
+  // Install allocation faults after Three registers its typed-array formats.
+  // A global constructor proxy present during module import changes those map keys.
+  await page.evaluate(() => {
     const original = Float32Array;
     window.restoreLeafPreparation = () => {
       window.Float32Array = original;
@@ -243,10 +251,6 @@ test('authors leaf lighting and natural sunlight with failed preparation recover
         return Reflect.construct(target, args, constructor);
       },
     });
-  });
-  await page.goto('/');
-  await expect(page.locator('#foliage-count')).not.toHaveText('0', {
-    timeout: 30000,
   });
   const project = createProject(16, 32);
   project.name = 'Leaf lighting authoring';
@@ -322,6 +326,9 @@ test('authors leaf lighting and natural sunlight with failed preparation recover
   ).toEqual(history);
   expect((await save('#save', 'failed.terrain')).data).toEqual(original.data);
   await page.reload();
+  await expect(page.locator('#app')).toHaveJSProperty('inert', false, {
+    timeout: 60000,
+  });
   await expect(page.locator('#project-name')).toHaveValue(project.name);
   await page.locator('[data-tab=foliage]').click();
   await expect(page.locator('#leaf-enabled')).not.toBeChecked();
@@ -368,11 +375,14 @@ test('authors leaf lighting and natural sunlight with failed preparation recover
   await expect(page.locator('#env-toneMapping')).toHaveValue('agx');
   await expect(page.locator('#save-state')).toHaveText('Saved locally');
   await page.reload();
+  await expect(page.locator('#app')).toHaveJSProperty('inert', false, {
+    timeout: 60000,
+  });
   await expect(page.locator('#project-name')).toHaveValue(project.name);
   await page.locator('[data-tab=light]').click();
   await expect(page.locator('#env-toneMapping')).toHaveValue('agx');
   // GLTFExporter compares typed-array constructors; retire the allocation fault proxy.
-  await page.evaluate(() => window.restoreLeafPreparation());
+  await page.evaluate(() => window.restoreLeafPreparation?.());
   const glb = await save('#export', 'leaves.glb');
   expect(glb.data.brushes[0].models[0].subsurface).toEqual(expected);
   const runtime = await context.newPage();
@@ -382,7 +392,12 @@ test('authors leaf lighting and natural sunlight with failed preparation recover
     timeout: 30000,
   });
   await runtime.locator('#open-project').setInputFiles(glb.path);
-  await expect(runtime.locator('#status')).toContainText('1 foliage instances');
+  await expect(runtime.locator('#status')).toContainText(
+    '1 foliage instances',
+    {
+      timeout: 30000,
+    },
+  );
   await page.locator('[data-tab=foliage]').click();
   await (
     await inspectorControl(page, '.foliage-shading-controls')
