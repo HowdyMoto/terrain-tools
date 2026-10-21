@@ -45,7 +45,7 @@ describe('walking capsule foliage interaction', () => {
       (id) => (id === 0 ? { ...settings, enabled: false } : undefined),
       100,
       bounds,
-      4,
+      1e8, // An oversized asset's conservative reach must stay bounded by populated cells.
     );
     expect([0, 1, 2, 3].map((id) => interaction.amount(id))).toEqual([
       0, 1, 0, 0,
