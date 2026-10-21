@@ -39,6 +39,19 @@ export async function chooseProjectDirectory() {
 export const fileStamp = (file: File) => `${file.lastModified}:${file.size}`;
 const notFound = (error: unknown) =>
   error instanceof DOMException && error.name === 'NotFoundError';
+// Legacy imports may use octet-stream MIME or unpadded base64 for identical bytes.
+const sameModelBytes = (left: string, right: string) => {
+  if (left === right) return true;
+  const a = left.slice(left.indexOf(',') + 1),
+    b = right.slice(right.indexOf(',') + 1);
+  const tailA = Math.floor((a.length - 1) / 4) * 4,
+    tailB = Math.floor((b.length - 1) / 4) * 4;
+  return (
+    tailA === tailB &&
+    a.slice(0, tailA) === b.slice(0, tailB) &&
+    atob(a.slice(tailA)) === atob(b.slice(tailB))
+  );
+};
 
 export interface ModelRevision {
   project: TerrainProject;
@@ -83,7 +96,11 @@ export class ProjectFolder {
       return undefined;
     }
   }
-  private async writeNewFile(path: string, blob: Blob) {
+  private async writeNewFile(
+    path: string,
+    blob: Blob,
+    verify?: () => Promise<void>,
+  ) {
     if (await this.optionalFile(path))
       throw new Error('File already exists: ' + path);
     const handle = await this.file(path, true);
@@ -93,6 +110,7 @@ export class ProjectFolder {
     try {
       stream = await handle.createWritable();
       await stream.write(blob);
+      await verify?.();
       if (fileStamp(await handle.getFile()) !== fileStamp(created))
         throw new Error('File changed while saving: ' + path);
       await stream.close();
@@ -182,7 +200,7 @@ export class ProjectFolder {
     this.savedStamp = fileStamp(file);
     this.needsBackup = new DataView(buffer).getUint32(8, true) !== 2;
   }
-  async assertSourcesCurrent(project: TerrainProject) {
+  async assertOpeningCurrent(project: TerrainProject) {
     for (const [id, model] of Object.entries(project.assets)) {
       if (!model.source || !this.applied.has(id)) continue;
       const key =
@@ -194,6 +212,44 @@ export class ProjectFolder {
           'Source changed while opening: ' + model.source.path + '. Try again.',
         );
     }
+    if (
+      fileStamp(await (await this.file(this.filename)).getFile()) !==
+      this.savedStamp
+    )
+      throw new Error('Project changed while it was opening. Try again.');
+  }
+  /** A linked save must reopen the art being saved, including after Undo. Never rewrite DCC files. */
+  async verifySaveSources(project: TerrainProject) {
+    const recipes = new Map<string, { source: ModelSource; data: string }>();
+    const mismatch = (path: string) =>
+      new Error(
+        'Linked art differs from the open scene: ' +
+          path +
+          '. Use Reload linked assets now, or Embed instead to keep this art version before saving.',
+      );
+    for (const model of Object.values(project.assets)) {
+      if (!model.source) continue;
+      const source = parseModelSource(model.source);
+      const key = JSON.stringify(source);
+      const prior = recipes.get(key);
+      if (prior && !sameModelBytes(prior.data, model.data))
+        throw mismatch(source.path);
+      recipes.set(key, { source, data: model.data });
+    }
+    const stamps = new Map<string, string>();
+    for (const { source, data } of recipes.values()) {
+      const current = await this.readModel(source);
+      if (!sameModelBytes(current.data, data)) throw mismatch(source.path);
+      const prior = stamps.get(source.path);
+      if (prior && prior !== current.stamp)
+        throw new Error('Source changed during saving: ' + source.path);
+      stamps.set(source.path, current.stamp);
+    }
+    return async () => {
+      for (const [path, stamp] of stamps)
+        if (fileStamp(await (await this.file(path)).getFile()) !== stamp)
+          throw new Error('Source changed during saving: ' + path);
+    };
   }
   async chooseModels(multiple = true) {
     const handles = await (window as unknown as Pickers).showOpenFilePicker({
@@ -222,9 +278,14 @@ export class ProjectFolder {
   /** Poll metadata only; decode bytes only after two stable observations, or explicit reload. */
   async revisions(
     project: TerrainProject,
+    path: string,
     force = false,
     signal?: AbortSignal,
   ): Promise<ModelRevision | undefined> {
+    checkSignal(signal);
+    // Observe one export once, even when many IDs retain different import recipes.
+    const file = await this.optionalFile(path);
+    const stamp = file ? fileStamp(file) : 'missing';
     const changed: {
       id: string;
       source: ModelSource;
@@ -232,16 +293,17 @@ export class ProjectFolder {
       key: string;
     }[] = [];
     const liveIds = new Set<string>();
+    let unstable = false;
     for (const [id, model] of Object.entries(project.assets)) {
       if (!model.source) continue;
       liveIds.add(id);
+      if (model.source.path !== path) continue;
       checkSignal(signal);
       const source = parseModelSource(model.source);
-      const file = await this.optionalFile(source.path);
-      const stamp = file ? fileStamp(file) : 'missing';
       const key = JSON.stringify(source) + ':' + stamp;
       const stable = this.observed.get(id) === key;
-      if (!stable) this.failed.clear();
+      unstable ||= !stable;
+      if (!stable) this.failed.delete(id);
       this.observed.set(id, key);
       if (
         !force &&
@@ -260,6 +322,7 @@ export class ProjectFolder {
     }
     for (const cache of [this.applied, this.observed, this.failed])
       for (const id of cache.keys()) if (!liveIds.has(id)) cache.delete(id);
+    if (!force && unstable) return;
     if (!changed.length) return;
     const candidate = { ...project, assets: { ...project.assets } };
     try {
@@ -320,14 +383,15 @@ export class ProjectFolder {
     };
   }
   /** Staged writes publish only on close; conflicting external document edits are rejected. */
-  async save(blob: Blob) {
+  async save(blob: Blob, verify?: () => Promise<void>) {
+    await verify?.();
     const current = await this.optionalFile(this.filename);
     if ((current ? fileStamp(current) : undefined) !== this.savedStamp)
       throw new Error(
         'The project file changed on disk. Save a portable copy or reopen the folder before replacing it.',
       );
     if (!current) {
-      await this.writeNewFile(this.filename, blob);
+      await this.writeNewFile(this.filename, blob, verify);
       this.savedStamp = fileStamp(
         await (await this.file(this.filename)).getFile(),
       );
@@ -342,7 +406,11 @@ export class ProjectFolder {
     const stream = await handle.createWritable();
     try {
       await stream.write(blob);
-      const now = await handle.getFile();
+      await verify?.();
+      const target = await this.file(this.filename);
+      if (!(await target.isSameEntry(handle)))
+        throw new Error('The project file was replaced during saving.');
+      const now = await target.getFile();
       // A newly created empty target has no prior stamp.
       if (current && fileStamp(now) !== this.savedStamp)
         throw new Error('The project file changed during saving.');

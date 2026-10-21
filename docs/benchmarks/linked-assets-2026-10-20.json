@@ -12,10 +12,10 @@
     "lint": "passed",
     "formatting": "passed",
     "unitCommand": "npm test -- --testTimeout=15000",
-    "unitTests": 378,
-    "unitFiles": 57,
+    "unitTests": 380,
+    "unitFiles": 58,
     "targetedBrowserCases": 10,
-    "finalLinkedBrowserRerun": 3,
+    "finalLinkedBrowserRerun": 5,
     "browserFiles": [
       "linked-assets.spec.mjs",
       "project-package.spec.mjs",
@@ -34,8 +34,37 @@
     "Cancelled folder choice and injected new-root write failure preserve the open document and allow same-folder retry",
     "Recovered unsaved edits survive folder reauthorization after browser reload",
     "Linked foliage review retains scale and pivot recipe; existing sources can be retargeted or detached",
-    "Source aliases resolve once, path traversal and external GLB dependencies reject, failed reads retry"
+    "Source aliases resolve once, path traversal and external GLB dependencies reject, failed reads retry",
+    "Undo then linked Save rejects mismatched art without changing the root file, scene, history or recovery; embedding the older version saves and reopens it without rewriting its source",
+    "A broken GPU revision does not block valid sibling source refreshes, including forced refresh with automatic refresh off",
+    "An export completing between metadata observations cannot split same-source aliases across art revisions",
+    "A root document changed during GPU preparation rejects opening without changing the live document, history or recovery",
+    "A source changed during staged saving aborts publication; refreshing, saving and reopening then succeeds",
+    "Save compares model bytes across valid legacy MIME and unpadded base64 spellings"
   ],
+  "adversarialReview": {
+    "reviewedCommit": "9ed1060",
+    "confirmedFindings": [
+      {
+        "priority": "P1",
+        "issue": "Undo followed by linked Save reopened newer source art",
+        "resolution": "Reject mismatched linked art and verify source stamps before publication"
+      },
+      {
+        "priority": "P2",
+        "issue": "One broken source blocked unrelated valid revisions",
+        "resolution": "Stage source paths independently, grouping all aliases"
+      },
+      {
+        "priority": "P2",
+        "issue": "Root document changes during GPU preparation were not rechecked",
+        "resolution": "Verify the root stamp immediately before committing the opened scene"
+      }
+    ],
+    "followupFinding": "Alias metadata could observe different exports within one poll; fixed with one source observation and group stability",
+    "secondReview": "No remaining material findings in the reviewed fixes",
+    "scope": "Targeted review of linked-art transactions, identity, serialization, source paths and recovery; not a complete engine audit"
+  },
   "realContent": {
     "scene": "Tropical Grove",
     "originalDocumentBytes": 55176040,

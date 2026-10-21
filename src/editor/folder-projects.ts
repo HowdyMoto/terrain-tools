@@ -175,7 +175,7 @@ export class FolderProjects {
           return candidate;
         },
         'Opening project folder…',
-        () => folder.assertSourcesCurrent(candidate!),
+        () => folder.assertOpeningCurrent(candidate!),
       )
     ) {
       this.folders.set(candidate!.folderId!, folder);
@@ -236,8 +236,19 @@ export class FolderProjects {
       throw new Error('Project folder is unavailable or already saving.');
     this.saving = true;
     try {
-      const blob = await this.callbacks.encode(this.callbacks.project(), true);
-      await folder.save(blob);
+      const project = this.callbacks.project(),
+        epoch = this.callbacks.revision();
+      const verify = await folder.verifySaveSources(project);
+      if (
+        project !== this.callbacks.project() ||
+        epoch !== this.callbacks.revision() ||
+        folder !== this.folder
+      )
+        throw new Error(
+          'The document changed while preparing the save. Try again.',
+        );
+      const blob = await this.callbacks.encode(project, true);
+      await folder.save(blob, verify);
       this.callbacks.notify('Project saved to its folder.');
     } finally {
       this.saving = false;
@@ -297,42 +308,66 @@ export class FolderProjects {
     )
       return;
     this.busy = true;
-    let revision: ModelRevision | undefined;
     const controller = new AbortController();
+    let updated = 0;
     try {
-      const project = this.callbacks.project(),
-        epoch = this.callbacks.revision();
-      revision = await folder.revisions(project, force, controller.signal);
-      if (!revision) return;
-      if (
-        project !== this.callbacks.project() ||
-        epoch !== this.callbacks.revision() ||
-        folder !== this.folder ||
-        !this.callbacks.ready()
-      )
-        return;
-      if (!revision.count) {
-        await revision.assertCurrent();
-        revision.accept();
-        this.lastError = undefined;
-        return;
-      }
-      folder.status = 'Preparing changed GLBs…';
-      this.status();
-      const applied = await this.callbacks.apply(
-        revision.project,
-        'Refreshing linked assets…',
-        revision.assertCurrent,
+      const paths = new Set(
+        Object.values(this.callbacks.project().assets).flatMap((model) =>
+          model.source ? [model.source.path] : [],
+        ),
       );
-      if (applied) {
-        revision.accept();
+      // Independent exports must not be held hostage by one broken GLB. Aliases of
+      // a source still stage together, with one metadata observation per poll.
+      for (const path of paths) {
+        if (folder !== this.folder || !this.callbacks.ready()) break;
+        let revision: ModelRevision | undefined;
+        try {
+          const project = this.callbacks.project(),
+            epoch = this.callbacks.revision();
+          revision = await folder.revisions(
+            project,
+            path,
+            force,
+            controller.signal,
+          );
+          if (!revision) continue;
+          if (
+            project !== this.callbacks.project() ||
+            epoch !== this.callbacks.revision() ||
+            folder !== this.folder ||
+            !this.callbacks.ready()
+          )
+            break;
+          if (!revision.count) {
+            await revision.assertCurrent();
+            revision.accept();
+            continue;
+          }
+          folder.status = 'Preparing changed GLBs…';
+          this.status();
+          const applied = await this.callbacks.apply(
+            revision.project,
+            'Refreshing linked assets…',
+            revision.assertCurrent,
+          );
+          if (applied) {
+            revision.accept();
+            updated += revision.count;
+          } else {
+            controller.abort();
+            break;
+          }
+        } catch (error) {
+          revision?.reject();
+          if (folder === this.folder) this.error(error);
+        }
+      }
+      if (updated)
         this.callbacks.notify(
-          `Updated ${revision.count} linked model${revision.count === 1 ? '' : 's'}. Undo restores the previous art.`,
+          `Updated ${updated} linked model${updated === 1 ? '' : 's'}. Undo restores the previous art.`,
         );
-      } else controller.abort();
-    } catch (error) {
-      revision?.reject();
-      if (folder === this.folder) this.error(error);
+      if (folder.status === 'Linked assets are up to date.')
+        this.lastError = undefined;
     } finally {
       this.busy = false;
       this.status();
