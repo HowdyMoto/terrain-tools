@@ -15,8 +15,44 @@ import {
 import { configureFoliageSubsurface } from '../src/runtime/foliage-shading';
 import { configureWind, windUniforms } from '../src/runtime/wind';
 import { configureFoliageFade } from '../src/runtime/foliage-fade';
+import { TerrainScene } from '../src/runtime/terrain-scene';
 
 describe('leaf subsurface lighting', () => {
+  it('smooths imported cutouts without transmission, preserves source materials and honors the edge opt-out', () => {
+    const p = createProject(8, 16);
+    p.heights.fill(0);
+    const model = editFoliageModels(p.brushes[0], [])[0];
+    model.model = 'grass';
+    p.foliage = [
+      {
+        id: 1,
+        brushId: p.brushes[0].id,
+        modelId: model.id,
+        x: 0,
+        z: 0,
+        scale: 1,
+        rotation: 0,
+      },
+    ];
+    const scene = new TerrainScene(p);
+    const source = scene.library.get('grass')[0]
+      .material as THREE.MeshStandardMaterial;
+    source.alphaTest = 0.5;
+    scene.rebuildFoliage();
+    const drawn = () =>
+      (scene.foliage.children[0] as THREE.InstancedMesh)
+        .material as THREE.Material;
+    expect(drawn().alphaToCoverage).toBe(true);
+    expect(source.alphaToCoverage).toBe(false);
+    model.subsurface = { ...defaultFoliageSubsurface(), smoothEdges: false };
+    scene.rebuildFoliage();
+    expect(drawn().alphaToCoverage).toBe(false);
+    delete model.subsurface;
+    source.transparent = true;
+    scene.rebuildFoliage();
+    expect(drawn().alphaToCoverage).toBe(false);
+    scene.dispose();
+  });
   it('preserves legacy appearance and persists settings through documents and brushes', async () => {
     const p = createProject(8, 16);
     const model = editFoliageModels(p.brushes[0], [])[0];

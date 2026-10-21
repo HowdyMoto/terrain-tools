@@ -131,6 +131,13 @@ class WaterCapture {
       background = scene.background;
     const surfaces = waters.flatMap((w) => w.surfaces.filter((m) => m.visible));
     const hidden: import('three').Object3D[] = [];
+    if (this.target.samples !== target.samples) {
+      // Cutout coverage must be generated where foliage is actually drawn.
+      // Multisampling only the later fullscreen copy cannot recover lost edges.
+      this.target.dispose();
+      this.target.samples = target.samples;
+      this.material.needsUpdate = true;
+    }
     this.target.setSize(target.width, target.height);
     try {
       surfaces.forEach((m) => (m.visible = false));

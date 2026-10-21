@@ -119,6 +119,7 @@ export class Viewport {
   private readonly framePacing: WebGPUFramePacing;
   private walkingResolution = false;
   private readonly resize: () => void;
+  private displayPixelRatio = devicePixelRatio;
   get project() {
     return this.content.project;
   }
@@ -256,6 +257,7 @@ export class Viewport {
     this.scene.add(grid);
     this.resize = () => {
       const { width, height } = container.getBoundingClientRect();
+      this.displayPixelRatio = devicePixelRatio;
       this.renderer.setPixelRatio(
         viewportPixelRatio(width, height, devicePixelRatio, !!this.walker),
       );
@@ -865,7 +867,10 @@ export class Viewport {
     // Orbit/startup frames also need this bound: their unfinished draws would
     // otherwise accumulate ahead of imports and the first walking frame.
     if (!this.framePacing.ready()) return;
-    if (this.walkingResolution !== !!this.walker) {
+    if (
+      this.walkingResolution !== !!this.walker ||
+      this.displayPixelRatio !== devicePixelRatio
+    ) {
       this.walkingResolution = !!this.walker;
       this.resize();
     }

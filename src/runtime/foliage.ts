@@ -333,6 +333,12 @@ export class TerrainFoliage extends THREE.Group {
           material.color.lerp(new THREE.Color(model.color), 0.3);
         configureWind(material, model.wind, this.uniforms, root);
         configureFoliageSubsurface(material, model.subsurface);
+        // Cutout antialiasing also applies to imported plants without leaf
+        // transmission settings. Keep blended surfaces and explicit opt-outs.
+        material.alphaToCoverage =
+          material.alphaTest > 0 &&
+          !material.transparent &&
+          (model.subsurface?.smoothEdges ?? true);
         if (hasFade) configureFoliageFade(material);
         configureImpostorMaterial(material, part, model.subsurface);
         return material;
