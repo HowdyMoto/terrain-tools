@@ -52,7 +52,8 @@ export interface FoliageLOD {
 }
 /** Per-vertex response shared by wind and contact. Zero is rigid; one is flexible. */
 export interface FoliageFlexibility {
-  source: 'height' | 'red' | 'green' | 'blue' | 'alpha' | 'attribute';
+  source:
+    'height' | 'leaves' | 'red' | 'green' | 'blue' | 'alpha' | 'attribute';
   /** Remap a normalized source value. end must exceed start by at least 0.001. */
   start: number;
   end: number;

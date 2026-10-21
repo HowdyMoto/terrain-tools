@@ -3,16 +3,19 @@ import { effectiveHoles, heightAt, isHole } from '../core/terrain';
 import type { TerrainProject } from '../core/types';
 import { parseEyeHeight } from '../core/project-settings';
 import type { WalkStart } from './walk-placement';
+import type { GroundContact } from '../core/interaction';
 
 /** Ground-following editor walkthrough, in metres. Props and water are not colliders. */
 export class TerrainWalker {
   readonly eyeHeight: number;
   readonly walkSpeed = 6;
   readonly runSpeed = 12;
+  readonly bodyRadius = 0.35;
   private readonly holes: Uint8Array;
   private readonly look = new Euler(0, 0, 0, 'YXZ');
   private readonly keys = new Set<string>();
   private readonly spawn = new Vector3();
+  private readonly lastContact = new Vector3();
   private readonly heading: number;
 
   constructor(
@@ -28,6 +31,7 @@ export class TerrainWalker {
   enter(camera: PerspectiveCamera) {
     this.look.set(0, this.heading, 0);
     camera.position.copy(this.spawn);
+    this.lastContact.copy(this.spawn);
     camera.quaternion.setFromEuler(this.look);
     camera.fov = 75;
     camera.updateProjectionMatrix();
@@ -48,6 +52,49 @@ export class TerrainWalker {
 
   clearKeys() {
     this.keys.clear();
+  }
+  /** The camera is at eye level; the upright body reaches slightly above it. */
+  contact(camera: PerspectiveCamera): GroundContact {
+    const bottom = camera.position.y - this.eyeHeight;
+    return {
+      x: camera.position.x,
+      z: camera.position.z,
+      radius: this.bodyRadius,
+      strength: 1,
+      capsule: {
+        bottom,
+        top: bottom + Math.max(this.bodyRadius * 2, this.eyeHeight + 0.15),
+      },
+    };
+  }
+  /** Sample the swept body at 20 cm intervals, including slow frames/running.
+   * Teleports start a new footprint instead of trampling across the world. */
+  contacts(camera: PerspectiveCamera): GroundContact[] {
+    const current = this.contact(camera);
+    const distance = Math.hypot(
+      camera.position.x - this.lastContact.x,
+      camera.position.z - this.lastContact.z,
+    );
+    const steps = distance > 3 ? 1 : Math.max(1, Math.ceil(distance / 0.2));
+    const result = Array.from({ length: steps }, (_, i) => {
+      const t = (i + 1) / steps;
+      const x =
+        this.lastContact.x + (camera.position.x - this.lastContact.x) * t;
+      const z =
+        this.lastContact.z + (camera.position.z - this.lastContact.z) * t;
+      const bottom = heightAt(this.project, x, z);
+      return {
+        ...current,
+        x,
+        z,
+        capsule: {
+          bottom,
+          top: bottom + current.capsule!.top - current.capsule!.bottom,
+        },
+      };
+    });
+    this.lastContact.copy(camera.position);
+    return result;
   }
 
   mouseLook(camera: PerspectiveCamera, x: number, y: number) {

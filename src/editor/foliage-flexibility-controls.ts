@@ -5,6 +5,7 @@ import { hasFlexibilitySource } from '../render/foliage-flexibility';
 const sources: [string, string][] = [
   ['whole', 'Whole plant'],
   ['height', 'Height ramp'],
+  ['leaves', 'Leaf materials · rigid wood'],
   ['red', 'Vertex color · red'],
   ['green', 'Vertex color · green'],
   ['blue', 'Vertex color · blue'],
@@ -38,13 +39,15 @@ export function foliageFlexibilityControls(
     step +
     '"/></label>';
   let details =
-    '<p class="field-note">Wind uses height; contact tilts and compresses the entire plant.</p>';
+    '<p class="field-note">Ground contacts tilt the whole plant. Walking uses a rooted height ramp and bends only vertices touched by the player capsule.</p>';
   if (mask) {
     const levels = [model.model, ...(model.lods ?? []).map((lod) => lod.model)];
     details =
-      field('start', 'Rigid below', mask.start, 0, 0.999, 0.001) +
-      field('end', 'Full flexibility above', mask.end, 0.001, 1, 0.001) +
-      field('exponent', 'Response curve', mask.exponent, 1, 8, 0.1) +
+      (mask.source === 'leaves'
+        ? ''
+        : field('start', 'Rigid below', mask.start, 0, 0.999, 0.001) +
+          field('end', 'Full flexibility above', mask.end, 0.001, 1, 0.001) +
+          field('exponent', 'Response curve', mask.exponent, 1, 8, 0.1)) +
       '<p class="field-note">Both wind and contact use this mask. Values run from 0 (rigid) to 1 (flexible). A larger curve keeps more of the plant rigid.</p>' +
       (mask.source === 'height'
         ? '<p class="field-note">Height runs from the primary model’s base to its top. Every LOD uses that same height range.</p>'
@@ -53,7 +56,7 @@ export function foliageFlexibilityControls(
             .map((asset, i) => {
               const parts = library.get(asset);
               const available = parts.filter((part) =>
-                hasFlexibilitySource(part.geometry, mask.source),
+                hasFlexibilitySource(part.geometry, mask.source, part.material),
               ).length;
               return (
                 (i ? 'LOD ' + i : 'Primary') +
@@ -66,9 +69,11 @@ export function foliageFlexibilityControls(
             })
             .join(' ') +
           ' Parts without the selected channel stay rigid.</p>' +
-          (mask.source === 'attribute'
-            ? '<p class="field-note">Import a GLB with a scalar _TERRAIN_FLEXIBILITY attribute (0–1) on each flexible mesh.</p>'
-            : '<p class="field-note">Vertex colors also affect material tint or opacity. An imported flexibility mask controls bending independently.</p>'));
+          (mask.source === 'leaves'
+            ? '<p class="field-note">Only alpha-tested or opacity-mapped leaf materials bend; opaque wood stays rigid. For opaque leaves or a shared wood/leaf material, use an imported or vertex-color mask.</p>'
+            : mask.source === 'attribute'
+              ? '<p class="field-note">Import a GLB with a scalar _TERRAIN_FLEXIBILITY attribute (0–1) on each flexible mesh.</p>'
+              : '<p class="field-note">Vertex colors also affect material tint or opacity. An imported flexibility mask controls bending independently.</p>'));
   }
   return (
     '<section class="control-section foliage-flexibility-controls"><h3>Plant flexibility</h3>' +
@@ -109,7 +114,7 @@ export function bindFoliageFlexibilityControls(
         source: select.value as FoliageFlexibility['source'],
       });
   };
-  if (!model.flexibility) return;
+  if (!model.flexibility || model.flexibility.source === 'leaves') return;
   const original = { ...model.flexibility };
   for (const key of ['start', 'end', 'exponent'] as const) {
     const input = document.getElementById(

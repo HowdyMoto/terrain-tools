@@ -6,7 +6,13 @@ import type { FoliageFlexibility } from '../core/types';
 export const FLEXIBILITY_ATTRIBUTE = '_terrain_flexibility';
 export const FLEXIBILITY_SHADER_ATTRIBUTE = 'terrainFlexibility';
 export const CONTACT_SHADER_ATTRIBUTE = 'terrainContact';
+export const CAPSULE_SHADER_ATTRIBUTE = 'terrainCapsule';
 const channels = { red: 0, green: 1, blue: 2, alpha: 3 } as const;
+/** Conservative automatic mask: opaque wood/rocks stay rigid. */
+export function isLeafMaterial(material: THREE.Material) {
+  const surface = material as THREE.MeshStandardMaterial;
+  return surface.alphaTest > 0 || !!surface.alphaMap;
+}
 
 export function validateFlexibilityAttribute(geometry: THREE.BufferGeometry) {
   const attribute = geometry.getAttribute(FLEXIBILITY_ATTRIBUTE);
@@ -28,8 +34,14 @@ export function validateFlexibilityAttribute(geometry: THREE.BufferGeometry) {
 export function hasFlexibilitySource(
   geometry: THREE.BufferGeometry,
   source: FoliageFlexibility['source'],
+  material?: THREE.Material | THREE.Material[],
 ) {
   if (source === 'height') return true;
+  if (source === 'leaves')
+    return (
+      !!material &&
+      (Array.isArray(material) ? material : [material]).some(isLeafMaterial)
+    );
   const attribute = geometry.getAttribute(
     source === 'attribute' ? FLEXIBILITY_ATTRIBUTE : 'color',
   );
@@ -42,11 +54,12 @@ export function prepareFlexibility(
   geometry: THREE.BufferGeometry,
   settings: FoliageFlexibility,
   bounds: THREE.Box3,
+  material?: THREE.Material | THREE.Material[],
 ) {
   const positions = geometry.getAttribute('position');
   const output = new Float32Array(positions.count * 4);
   const source = settings.source;
-  if (!hasFlexibilitySource(geometry, source)) {
+  if (!hasFlexibilitySource(geometry, source, material)) {
     geometry.setAttribute(
       FLEXIBILITY_SHADER_ATTRIBUTE,
       new THREE.BufferAttribute(output, 4),
@@ -58,21 +71,49 @@ export function prepareFlexibility(
     source === 'attribute' ? FLEXIBILITY_ATTRIBUTE : 'color',
   );
   const channel =
-    source === 'height' || source === 'attribute' ? 0 : channels[source];
+    source === 'height' || source === 'leaves' || source === 'attribute'
+      ? 0
+      : channels[source];
+  const heightSource = source === 'height';
+  const leaves = new Uint8Array(positions.count).fill(1);
+  if (source === 'leaves' && Array.isArray(material)) {
+    leaves.fill(0);
+    // A vertex shared with an opaque group must remain an anchor.
+    const wood = new Uint8Array(positions.count);
+    for (const group of geometry.groups) {
+      const selected = material[group.materialIndex ?? 0];
+      for (
+        let i = group.start;
+        i <
+        Math.min(
+          group.start + group.count,
+          geometry.index?.count ?? positions.count,
+        );
+        i++
+      ) {
+        const vertex = geometry.index?.getX(i) ?? i;
+        if (selected && isLeafMaterial(selected)) leaves[vertex] = 1;
+        else wood[vertex] = 1;
+      }
+    }
+    for (let i = 0; i < leaves.length; i++) if (wood[i]) leaves[i] = 0;
+  }
   const span = settings.end - settings.start;
   for (let i = 0; i < positions.count; i++) {
     const raw =
-      source === 'height'
-        ? (positions.getY(i) - bounds.min.y) / height
-        : attribute.getComponent(i, channel);
+      source === 'leaves'
+        ? 1
+        : heightSource
+          ? (positions.getY(i) - bounds.min.y) / height
+          : attribute.getComponent(i, channel);
     const t = THREE.MathUtils.clamp((raw - settings.start) / span, 0, 1);
-    output[i * 4] = Math.pow(t, settings.exponent);
-    if (source === 'height' && t > 0 && t < 1)
+    output[i * 4] = Math.pow(t, settings.exponent) * leaves[i];
+    if (heightSource && leaves[i] && t > 0 && t < 1)
       output[i * 4 + 2] =
         (settings.exponent * Math.pow(t, settings.exponent - 1)) /
         (span * height);
   }
-  if (source !== 'height') {
+  if (!heightSource) {
     // The least-length tangent gradient on each triangle, area weighted at its vertices.
     const weight = new Float64Array(positions.count);
     const a = new THREE.Vector3(),

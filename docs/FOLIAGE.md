@@ -97,7 +97,7 @@ Select an entry in **Model in mixture** to edit:
 - **Scale and yaw:** each new instance samples the entry’s scale and rotation ranges uniformly. Yaw is in degrees around the surface normal when alignment is enabled, or around world up otherwise.
 - **Align to surface:** follow terrain slope, useful for ground cover. Leave disabled for upright trees.
 - **Wind flexibility:** independent per model; the **Wind** tab sets the overall direction, speed, strength, and gusts.
-- **Asset contact interaction:** enable **Respond to contact** only for models that should bend or compress. Set **Compression**, **Contact radius** in metres, and **Recovery time** in seconds for the selected model. This entry's settings apply to all its placed instances; other entries and brushes keep their own settings. New photoreal grass/ground-cover brushes and ground-cover imports enable contact; new tree/rigid imports and photoreal pines disable it. Trees can still sway in wind.
+- **Asset contact interaction:** enable **Respond to contact** only for models that should bend or compress. Use the **Grass**, **Soft plant**, **Woody leaves** or **Rigid** starting points, then refine **Bend / trample strength**, **Ground contact radius** and **Recovery time**. Settings apply to all placed instances of this entry; other entries keep their settings. Ground-cover imports/defaults enable contact; tree/rigid imports and photoreal pines keep it disabled until explicitly enabled. Wind is independent.
 
 Probability, scale, and yaw changes apply to future placements. Existing instances retain their model and sampled transform. Asset, alignment, and response edits update existing instances. **Remove model** also removes that entry’s placed instances; Undo restores both.
 
@@ -117,14 +117,21 @@ This is an inexpensive thin-sheet approximation, not full subsurface transport, 
 
 ### Bend and contact response
 
-Use **Asset contact interaction** to tune responses to ground contacts, such as bodies dropped in the physics preview. Recovery time is the exponential time constant: after one interval without contact, roughly 37% of the response remains. Contact radius measures from each contact's centre; overlapping contacts use the strongest response. Disabling contact clears the selected model's current compression. Wind and the bend mask remain separate controls.
+Walking emits a 0.35 m radius upright capsule from the player's feet to just above eye height. Its swept path is sampled every 20 cm so running and slow frames do not leave gaps. A spatial query finds nearby plants; the shader checks individual vertices against the rounded body, pushes touched leaves away horizontally and lowers flexible grass. High canopy vertices and rigid mask regions stay at rest. Normals, tangents, shadows and previous-frame motion follow the same deformation. No extra foliage art is required.
+
+**Grass** gives strong, slower-recovering trampling; **Soft plant** gives a gentler, faster response. **Woody leaves** uses alpha-tested/opacity-mapped leaf materials and leaves opaque wood rigid. For opaque leaves, alpha-tested bark, or a material shared between wood and leaves, use an imported/vertex-color mask with zero weights on wood and attachment points. **Rigid** disables contact. Presets change the selected entry and support Undo; wind remains independently adjustable.
+
+Recovery time is the exponential time constant: after one interval without contact, roughly 37% of the response remains. Ground contact radius controls dropped physics bodies, not the player's physical capsule. Overlapping influences retain the strongest response and the most recent capsule pose per plant. Recovery continues when culled and after leaving walk mode. Footprints are temporary runtime state: they do not enter the document, history, autosave or exported art. This is procedural foliage deformation; solid player blocking against trunks/props, skeletal branch constraints and permanently flattened tracks are not implemented.
+
+Runtime hosts pass terrain-local contacts to `TerrainScene.update(dt, contacts, camera)`, for example `{ x, z, radius: 0.35, strength: 1, capsule: { bottom: groundY, top: groundY + 1.95 } }`. End heights include the rounded caps and must span at least twice the radius. Contacts without `capsule` preserve the ground-contact behavior. `foliageContactPreset('woody')` supplies the same typed starting point as the editor.
 
 Existing projects without per-model contact settings retain their original global behavior. Editing a model's contact controls stores its own settings and folds the former global strength into its Compression value. Other models retain their previous behavior. Overrides round-trip through native projects, portable brushes, JSON and the embedded GLB authoring document.
 
 Open **Plant flexibility** for the selected model. **Bend mask** controls which vertices respond to both wind and contact; the existing wind/crush sliders remain independent multipliers.
 
-- **Whole plant** preserves older projects: wind increases with height, and contact tilts/compresses the entire instance.
+- **Whole plant** preserves legacy ground-contact tilt/compression. Walking uses a rooted height ramp when no explicit mask is supplied.
 - **Height ramp** measures 0 at the primary model's lowest point and 1 at its highest. For a stiff trunk and soft crown, start with **Rigid below** 0.55, **Full flexibility above** 1, and **Response curve** 2. Every LOD uses the primary height range and pivot.
+- **Leaf materials · rigid wood** gives full flexibility to alpha-tested/opacity-mapped leaf materials and zero to opaque wood. This conservative material mask also supports low leaves on tall trees. A vertex shared with an opaque material group remains anchored. Use an authored mask when material classification does not describe the plant.
 - **Vertex color · red/green/blue/alpha** reads the chosen channel. Black/0 is rigid; white/1 is flexible. Vertex colors retain their material tint/opacity role.
 - **Imported flexibility mask** reads a dedicated GLB attribute without changing material color. The inspector reports how many mesh parts have the selected channel at each LOD. Missing channels make that part rigid; an RGB color does not implicitly supply alpha.
 

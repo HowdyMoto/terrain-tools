@@ -922,7 +922,7 @@ export class Viewport {
         }
       }
     }
-    const contacts = this.spheres
+    const contacts: import('../core/interaction').GroundContact[] = this.spheres
       .filter((s) => this.physics?.touchesTerrain(s.body))
       .map((s) => ({
         x: s.mesh.position.x,
@@ -930,6 +930,7 @@ export class Viewport {
         radius: this.project.interaction.radius,
         strength: 1,
       }));
+    if (this.walker) contacts.push(...this.walker.contacts(this.camera));
     this.content.update(dt, contacts, this.camera);
     this.lighting.tick(dt);
     this.lighting.render(this.camera);

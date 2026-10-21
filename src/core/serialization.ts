@@ -295,9 +295,15 @@ export function validateProjectData(
         if (entry.flexibility !== undefined) {
           const mask = object(entry.flexibility, 'foliage flexibility');
           if (
-            !['height', 'red', 'green', 'blue', 'alpha', 'attribute'].includes(
-              mask.source as string,
-            )
+            ![
+              'height',
+              'leaves',
+              'red',
+              'green',
+              'blue',
+              'alpha',
+              'attribute',
+            ].includes(mask.source as string)
           )
             throw new Error('Invalid foliage flexibility source.');
           number(mask.start, 'flexibility start', 0, 0.999);

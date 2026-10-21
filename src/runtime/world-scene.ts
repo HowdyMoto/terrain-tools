@@ -407,6 +407,8 @@ export class TerrainWorldScene extends THREE.Group {
               object.instanceMatrix.array.byteLength +
               (object.geometry.getAttribute('terrainContact')?.array
                 .byteLength ?? 0) +
+              (object.geometry.getAttribute('terrainCapsule')?.array
+                .byteLength ?? 0) +
               (object.geometry.getAttribute('terrainFade')?.array.byteLength ??
                 0);
         });

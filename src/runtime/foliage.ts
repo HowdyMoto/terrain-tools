@@ -36,6 +36,7 @@ import {
   prepareFlexibility,
   foliageGeometryView,
   CONTACT_SHADER_ATTRIBUTE,
+  CAPSULE_SHADER_ATTRIBUTE,
   FLEXIBILITY_SHADER_ATTRIBUTE,
 } from '../render/foliage-flexibility';
 
@@ -48,6 +49,7 @@ interface Batch {
   capacity: number;
   baseGeometry: THREE.BufferGeometry;
   contact?: THREE.InstancedBufferAttribute;
+  capsule?: THREE.InstancedBufferAttribute;
   fade?: THREE.InstancedBufferAttribute;
   radius: number;
   mesh: THREE.InstancedMesh;
@@ -60,6 +62,13 @@ interface Tile {
   model: FoliageModel;
   matrices: Float32Array;
   contacts: Float32Array;
+  capsuleBounds: {
+    radius: number;
+    minY: number;
+    maxY: number;
+    minOffset: number;
+    maxOffset: number;
+  }[];
   root?: number;
   ranks: Float64Array;
   selected: Int8Array;
@@ -135,6 +144,7 @@ export class TerrainFoliage extends THREE.Group {
     TerrainProject['interaction']
   >();
   private maximumContactRadius = 0;
+  private maximumPlantRadius = 0;
   private elapsed = 0;
   private windBoundStrength = 0;
   private viewDirty = true;
@@ -207,6 +217,7 @@ export class TerrainFoliage extends THREE.Group {
       interaction: this.interaction,
       modelInteractions: this.modelInteractions,
       maximumContactRadius: this.maximumContactRadius,
+      maximumPlantRadius: this.maximumPlantRadius,
       elapsed: this.elapsed,
       windBoundStrength: this.windBoundStrength,
       viewDirty: this.viewDirty,
@@ -226,6 +237,7 @@ export class TerrainFoliage extends THREE.Group {
     this.interaction = state.interaction;
     this.modelInteractions = state.modelInteractions;
     this.maximumContactRadius = state.maximumContactRadius;
+    this.maximumPlantRadius = state.maximumPlantRadius;
     this.elapsed = state.elapsed;
     this.windBoundStrength = state.windBoundStrength;
     this.viewDirty = state.viewDirty;
@@ -368,15 +380,16 @@ export class TerrainFoliage extends THREE.Group {
         const model = foliageModel(brush, instances[0])!,
           count = instances.length,
           bounds = this.library.bounds(model.model, models),
-          root = model.flexibility ? bounds.min.y : undefined,
+          flex =
+            model.flexibility ??
+            (model.crush > 0
+              ? { source: 'height' as const, start: 0, end: 1, exponent: 1 }
+              : undefined),
+          root = flex ? bounds.min.y : undefined,
           lazy =
             !!this.options.lazyInstances &&
             !!(model.lods?.length || model.cullDistance),
-          geometryKey = JSON.stringify([
-            model.flexibility,
-            bounds.min.y,
-            bounds.max.y,
-          ]);
+          geometryKey = JSON.stringify([flex, bounds.min.y, bounds.max.y]);
         const transitions =
           (model.lodFadeDuration ?? 0) > 0 &&
           (model.lods?.length || model.cullDistance)
@@ -392,7 +405,41 @@ export class TerrainFoliage extends THREE.Group {
           instances,
           model,
           matrices: new Float32Array(count * 16),
-          contacts: new Float32Array(count),
+          contacts: new Float32Array(count * 6),
+          capsuleBounds: instances.map((instance) => {
+            const extentX = Math.max(
+              Math.abs(bounds.min.x),
+              Math.abs(bounds.max.x),
+            );
+            const extentY = Math.max(
+              Math.abs(bounds.min.y),
+              Math.abs(bounds.max.y),
+            );
+            const extentZ = Math.max(
+              Math.abs(bounds.min.z),
+              Math.abs(bounds.max.z),
+            );
+            const sphere =
+              Math.hypot(extentX, extentY, extentZ) * instance.scale;
+            const radius = model.alignToNormal
+              ? sphere
+              : Math.hypot(extentX, extentZ) * instance.scale;
+            const minOffset = model.alignToNormal
+              ? -sphere
+              : bounds.min.y * instance.scale;
+            const maxOffset = model.alignToNormal
+              ? sphere
+              : bounds.max.y * instance.scale;
+            // A sphere encloses arbitrary slope alignment. Upright trees use tighter extents.
+            const y = heightAt(project, instance.x, instance.z);
+            return {
+              radius,
+              minY: y + minOffset,
+              maxY: y + maxOffset,
+              minOffset,
+              maxOffset,
+            };
+          }),
           root,
           ranks: Float64Array.from(instances, (instance) =>
             foliageDensityRank(instance.id),
@@ -441,8 +488,8 @@ export class TerrainFoliage extends THREE.Group {
                   geometry.applyMatrix4(part.matrix);
                   geometry.computeBoundingSphere();
                   geometry.computeBoundingBox();
-                  if (model.flexibility)
-                    prepareFlexibility(geometry, model.flexibility, bounds);
+                  if (flex)
+                    prepareFlexibility(geometry, flex, bounds, part.material);
                   return geometry;
                 } catch (error) {
                   geometry.dispose();
@@ -453,10 +500,16 @@ export class TerrainFoliage extends THREE.Group {
               baseGeometry = lease.value;
               variants.set(geometryKey, baseGeometry);
             }
-            const contact = model.flexibility
+            const contact = flex
               ? new THREE.InstancedBufferAttribute(
-                  new Float32Array(lazy ? 0 : capacity),
-                  1,
+                  new Float32Array(lazy ? 0 : capacity * 4),
+                  4,
+                ).setUsage(THREE.DynamicDrawUsage)
+              : undefined;
+            const capsule = flex
+              ? new THREE.InstancedBufferAttribute(
+                  new Float32Array(lazy ? 0 : capacity * 2),
+                  2,
                 ).setUsage(THREE.DynamicDrawUsage)
               : undefined;
             const fade = transitions
@@ -470,6 +523,7 @@ export class TerrainFoliage extends THREE.Group {
               THREE.BufferAttribute | THREE.InterleavedBufferAttribute
             > = {};
             if (contact) attributes[CONTACT_SHADER_ATTRIBUTE] = contact;
+            if (capsule) attributes[CAPSULE_SHADER_ATTRIBUTE] = capsule;
             if (fade) attributes[FOLIAGE_FADE_ATTRIBUTE] = fade;
             const geometry = this.own(
               foliageGeometryView(baseGeometry, attributes),
@@ -531,6 +585,7 @@ export class TerrainFoliage extends THREE.Group {
               slots,
               baseGeometry,
               contact,
+              capsule,
               fade,
               radius,
             });
@@ -546,8 +601,18 @@ export class TerrainFoliage extends THREE.Group {
     }
     this.modelInteractions.clear();
     this.maximumContactRadius = 0;
+    this.maximumPlantRadius = 0;
     for (const tile of this.tiles) {
       const interaction = tile.model.interaction;
+      if (
+        (interaction?.enabled ?? project.interaction.enabled) &&
+        tile.model.crush > 0
+      )
+        for (const shape of tile.capsuleBounds)
+          this.maximumPlantRadius = Math.max(
+            this.maximumPlantRadius,
+            shape.radius,
+          );
       if (!interaction) continue;
       this.modelInteractions.set(tile.model, { ...interaction, strength: 1 });
       if (interaction.enabled)
@@ -593,6 +658,11 @@ export class TerrainFoliage extends THREE.Group {
         return model ? this.modelInteractions.get(model) : undefined;
       },
       this.maximumContactRadius,
+      (id) => {
+        const location = this.locations.get(id);
+        return location?.tile.capsuleBounds[location.index];
+      },
+      this.maximumPlantRadius,
     );
     const touched = new Set<Tile>();
     if (dt > 0 && !changed.size) return touched;
@@ -624,7 +694,19 @@ export class TerrainFoliage extends THREE.Group {
         )
           continue;
         const crush = this.interaction.amount(instance.id) * model.crush;
-        tile.contacts[i] = crush;
+        const capsule = this.interaction.capsule(instance.id);
+        const pose = capsule?.capsule;
+        tile.contacts.set(
+          [
+            pose ? -crush : model.flexibility ? crush : 0,
+            capsule?.x ?? 0,
+            capsule?.z ?? 0,
+            capsule?.radius ?? 0,
+            pose?.bottom ?? 0,
+            pose?.top ?? 0,
+          ],
+          i * 6,
+        );
         const updateMatrix = !model.flexibility || dt === 0;
         if (updateMatrix) {
           dummy.position.set(
@@ -647,7 +729,7 @@ export class TerrainFoliage extends THREE.Group {
           }
           yaw.setFromAxisAngle(up, instance.rotation);
           dummy.quaternion.multiply(yaw);
-          const wholePlantCrush = model.flexibility ? 0 : crush;
+          const wholePlantCrush = model.flexibility || pose ? 0 : crush;
           dummy.rotateZ(wholePlantCrush * 0.9);
           dummy.scale.set(
             instance.scale,
@@ -656,6 +738,10 @@ export class TerrainFoliage extends THREE.Group {
           );
           dummy.updateMatrix();
           dummy.matrix.toArray(tile.matrices, i * 16);
+          const shape = tile.capsuleBounds[i];
+          const y = dummy.position.y;
+          shape.minY = y + shape.minOffset;
+          shape.maxY = y + shape.maxOffset;
         }
         for (const batch of tile.batches) {
           const slot = batch.slots[i];
@@ -665,8 +751,16 @@ export class TerrainFoliage extends THREE.Group {
             queueUpload(batch.mesh.instanceMatrix, slot * 16, 16);
           }
           if (batch.contact) {
-            batch.contact.setX(slot, crush);
-            queueUpload(batch.contact, slot, 1);
+            batch.contact.array.set(
+              tile.contacts.subarray(i * 6, i * 6 + 4),
+              slot * 4,
+            );
+            queueUpload(batch.contact, slot * 4, 4);
+            batch.capsule!.array.set(
+              tile.contacts.subarray(i * 6 + 4, i * 6 + 6),
+              slot * 2,
+            );
+            queueUpload(batch.capsule!, slot * 2, 2);
           }
         }
         touched.add(tile);
@@ -684,7 +778,7 @@ export class TerrainFoliage extends THREE.Group {
         matrix.fromArray(tile.matrices, i * 16);
         part.center.set(0, tile.root ?? 0, 0).applyMatrix4(matrix);
         const extent = batch.radius * tile.instances[i].scale;
-        // Contact rotation/compression cannot grow this pivot-centred sphere.
+        // Capsule bending can displace flexible vertices by at most 1.5 metres.
         // Wind is evaluated in terrain metres; bound every phase and gust.
         part.radius =
           (extent +
@@ -693,7 +787,7 @@ export class TerrainFoliage extends THREE.Group {
               0.09 *
               Math.pow(extent, 1.25)) *
             1.0001 +
-          0.0001;
+          1.5001;
         bound.union(part);
       }
       batch.mesh.boundingSphere = bound;
@@ -879,11 +973,17 @@ export class TerrainFoliage extends THREE.Group {
         const attributes: Record<string, THREE.BufferAttribute> = {};
         if (batch.contact) {
           batch.contact = new THREE.InstancedBufferAttribute(
-            new Float32Array(batch.capacity),
-            1,
+            new Float32Array(batch.capacity * 4),
+            4,
           ).setUsage(THREE.DynamicDrawUsage);
           mesh.geometry.setAttribute(CONTACT_SHADER_ATTRIBUTE, batch.contact);
           attributes[CONTACT_SHADER_ATTRIBUTE] = batch.contact;
+          batch.capsule = new THREE.InstancedBufferAttribute(
+            new Float32Array(batch.capacity * 2),
+            2,
+          ).setUsage(THREE.DynamicDrawUsage);
+          mesh.geometry.setAttribute(CAPSULE_SHADER_ATTRIBUTE, batch.capsule);
+          attributes[CAPSULE_SHADER_ATTRIBUTE] = batch.capsule;
         }
         if (batch.fade) {
           batch.fade = new THREE.InstancedBufferAttribute(
@@ -903,7 +1003,14 @@ export class TerrainFoliage extends THREE.Group {
       sources.forEach((source, slot) => {
         if (repack) {
           batch.slots[source] = slot;
-          batch.contact?.setX(slot, tile.contacts[source]);
+          batch.contact?.array.set(
+            tile.contacts.subarray(source * 6, source * 6 + 4),
+            slot * 4,
+          );
+          batch.capsule?.array.set(
+            tile.contacts.subarray(source * 6 + 4, source * 6 + 6),
+            slot * 2,
+          );
           matrices.set(
             tile.matrices.subarray(source * 16, source * 16 + 16),
             slot * 16,
@@ -934,8 +1041,11 @@ export class TerrainFoliage extends THREE.Group {
       }
       if (batch.contact && repack) {
         batch.contact.clearUpdateRanges();
-        if (mesh.count) batch.contact.addUpdateRange(0, mesh.count);
+        if (mesh.count) batch.contact.addUpdateRange(0, mesh.count * 4);
         batch.contact.needsUpdate = true;
+        batch.capsule!.clearUpdateRanges();
+        if (mesh.count) batch.capsule!.addUpdateRange(0, mesh.count * 2);
+        batch.capsule!.needsUpdate = true;
       }
     }
     this.clusters?.invalidate(tile.batches);

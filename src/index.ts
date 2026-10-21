@@ -12,6 +12,7 @@ export * from './core/interaction';
 export * from './core/foliage-shading';
 export * from './core/glb-project';
 export * from './core/foliage';
+export * from './core/foliage-contact';
 export * from './core/foliage-preset';
 export * from './core/heightmap';
 export * from './core/heightmap-png';

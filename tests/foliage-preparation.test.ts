@@ -99,6 +99,7 @@ it('keeps distant source detail arrays unallocated, admits their growth conserva
         m.instanceMatrix.array.byteLength +
         foliagePendingInstanceBytes(m) +
         (m.geometry.getAttribute('terrainFade')?.array.byteLength ?? 0) +
+        (m.geometry.getAttribute('terrainCapsule')?.array.byteLength ?? 0) +
         (m.geometry.getAttribute('terrainContact')?.array.byteLength ?? 0),
       0,
     );

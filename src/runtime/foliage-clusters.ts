@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {
   foliageGeometryView,
   CONTACT_SHADER_ATTRIBUTE,
+  CAPSULE_SHADER_ATTRIBUTE,
 } from '../render/foliage-flexibility';
 import { registerFoliageBatch } from '../render/native-foliage';
 import { FOLIAGE_FADE_ATTRIBUTE } from './foliage-fade';
@@ -13,6 +14,7 @@ export interface FoliageClusterSource {
   mesh: THREE.InstancedMesh;
   baseGeometry: THREE.BufferGeometry;
   contact?: THREE.InstancedBufferAttribute;
+  capsule?: THREE.InstancedBufferAttribute;
   fade?: THREE.InstancedBufferAttribute;
 }
 export interface FoliageClusterOptions {
@@ -27,6 +29,7 @@ interface Cluster {
   sources: FoliageClusterSource[];
   mesh: THREE.InstancedMesh;
   contact?: THREE.InstancedBufferAttribute;
+  capsule?: THREE.InstancedBufferAttribute;
   fade?: THREE.InstancedBufferAttribute;
   versions: number[];
   bounds: (THREE.Sphere | null)[];
@@ -103,8 +106,14 @@ export class FoliageDrawClusters {
             );
           const contact = first.contact
             ? new THREE.InstancedBufferAttribute(
-                new Float32Array(capacity),
-                1,
+                new Float32Array(capacity * 4),
+                4,
+              ).setUsage(THREE.DynamicDrawUsage)
+            : undefined;
+          const capsule = first.capsule
+            ? new THREE.InstancedBufferAttribute(
+                new Float32Array(capacity * 2),
+                2,
               ).setUsage(THREE.DynamicDrawUsage)
             : undefined;
           const fade = first.fade
@@ -118,6 +127,7 @@ export class FoliageDrawClusters {
             THREE.BufferAttribute | THREE.InterleavedBufferAttribute
           > = {};
           if (contact) attributes[CONTACT_SHADER_ATTRIBUTE] = contact;
+          if (capsule) attributes[CAPSULE_SHADER_ATTRIBUTE] = capsule;
           if (fade) attributes[FOLIAGE_FADE_ATTRIBUTE] = fade;
           const geometry = own(
             foliageGeometryView(first.baseGeometry, attributes),
@@ -144,6 +154,7 @@ export class FoliageDrawClusters {
             sources: group,
             mesh,
             contact,
+            capsule,
             fade,
             versions: [],
             bounds: [],
@@ -206,8 +217,13 @@ export class FoliageDrawClusters {
           );
         if (contactsChanged && cluster.contact)
           cluster.contact.array.set(
-            source.contact!.array.subarray(0, size),
-            count,
+            source.contact!.array.subarray(0, size * 4),
+            count * 4,
+          );
+        if (contactsChanged && cluster.capsule)
+          cluster.capsule.array.set(
+            source.capsule!.array.subarray(0, size * 2),
+            count * 2,
           );
         if (fadesChanged && cluster.fade)
           cluster.fade.array.set(
@@ -228,7 +244,8 @@ export class FoliageDrawClusters {
         cluster.mesh.userData.instanceIds = ids;
       for (const [attribute, changed, stride] of [
         [cluster.mesh.instanceMatrix, matricesChanged, 16],
-        [cluster.contact, contactsChanged, 1],
+        [cluster.contact, contactsChanged, 4],
+        [cluster.capsule, contactsChanged, 2],
         [cluster.fade, fadesChanged, 3],
       ] as const) {
         if (!attribute || !changed) continue;
