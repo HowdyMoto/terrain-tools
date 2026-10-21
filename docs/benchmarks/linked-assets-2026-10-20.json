@@ -40,7 +40,8 @@
     "An export completing between metadata observations cannot split same-source aliases across art revisions",
     "A root document changed during GPU preparation rejects opening without changing the live document, history or recovery",
     "A source changed during staged saving aborts publication; refreshing, saving and reopening then succeeds",
-    "Save compares model bytes across valid legacy MIME and unpadded base64 spellings"
+    "Save compares model bytes across valid legacy MIME and unpadded base64 spellings",
+    "Rendered before/failure/after comparisons use synchronized GPU readback, reject blank baselines and pass on RTX 5060 and local SwiftShader"
   ],
   "adversarialReview": {
     "reviewedCommit": "9ed1060",

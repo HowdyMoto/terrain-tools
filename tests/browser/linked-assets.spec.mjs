@@ -1,5 +1,7 @@
 import { test, expect as nativeExpect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import sharp from 'sharp';
 import {
   createProject,
   environmentPreset,
@@ -166,11 +168,22 @@ async function history(page) {
     );
 }
 async function canvas(page) {
-  return page.locator('#viewport canvas').evaluate(async (canvas) => {
-    await new Promise(requestAnimationFrame);
-    await new Promise(requestAnimationFrame);
-    return canvas.toDataURL();
+  // A WebGPU presentation texture can be retired before toDataURL runs. Use
+  // the editor's synchronized GPU readback, and reject a blank baseline.
+  const pending = page.waitForEvent('download');
+  await page.locator('#screenshot').click();
+  const capture = await pending;
+  const png = await readFile(await capture.path());
+  await test.info().attach('linked-art-viewport', {
+    body: png,
+    contentType: 'image/png',
   });
+  const stats = await sharp(png).stats();
+  expect(stats.channels.slice(0, 3).some((channel) => channel.stdev > 2)).toBe(
+    true,
+  );
+  const pixels = await sharp(png).ensureAlpha().raw().toBuffer();
+  return createHash('sha256').update(pixels).digest('hex');
 }
 async function autosave(page) {
   await expect(page.locator('#save-state')).toHaveText(
