@@ -1979,7 +1979,7 @@ function renderInspector() {
             0.1,
             ' s',
           ) +
-          '<p class="field-note">Walking uses a 0.35 m body capsule with per-vertex contact: grass flattens, flexible leaves push aside, and rigid mask regions stay anchored. Ground contact radius affects physics preview bodies only. Recovery is temporary and never edits planted instances. Wind is independent.</p>',
+          '<div class="button-row"><button id="preview-foliage-contact">Preview bending</button><button id="stop-foliage-contact-preview">Stop preview</button></div><p class="field-note">Preview temporarily isolates a placed plant, pauses its wind and sweeps a visible player capsule through it, then lets it recover. No project changes. Walking and falling balls push nearby flexible vertices; rigid mask regions stay anchored. Ground contact radius controls the extra ground compression from resting physics bodies. Wind is independent.</p>',
       ) +
       foliageShadingControls(entry, viewport.library) +
       foliageFlexibilityControls(entry, viewport.library) +
@@ -2708,6 +2708,20 @@ function bindInspector() {
         if (enabled && model.crush === 0) model.crush = 0.6;
       });
     };
+    $('#preview-foliage-contact').onclick = () => {
+      try {
+        const selected = project.brushes[brushIndex];
+        const model = foliageModels(selected)[foliageModelIndex];
+        viewport.previewFoliageContact(selected.id, model.id);
+        notify(
+          'Bending preview: isolated plant, two passes, then recovery. Orbit to inspect; Stop preview restores the scene.',
+        );
+      } catch (error) {
+        notify(String(error instanceof Error ? error.message : error), true);
+      }
+    };
+    $('#stop-foliage-contact-preview').onclick = () =>
+      viewport.stopFoliageContactPreview();
     document
       .querySelectorAll<HTMLButtonElement>('[data-contact-preset]')
       .forEach((button) => {

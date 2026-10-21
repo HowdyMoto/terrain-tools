@@ -1,6 +1,7 @@
 import { nodeGraphKey } from '../render/node-uniforms';
 import * as THREE from 'three';
 import { configureWindNodes } from './foliage-nodes';
+import { foliageContactPadding } from '../core/interaction';
 export type WindUniforms = Record<string, THREE.IUniform>;
 export function windUniforms(): WindUniforms {
   return {
@@ -39,17 +40,18 @@ export function configureWind(
     }
     void capsuleDeformation(vec3 p, out vec3 q, out mat3 jacobian) {
       vec3 world = (instanceMatrix * vec4(p,1.0)).xyz;
-      float radius = max(terrainContact.w,0.01), reach = radius+0.2;
-      float low = terrainCapsule.x+radius, high = terrainCapsule.y-radius;
+      float radius = max(terrainContact.w,0.01), reach = radius+${foliageContactPadding.toFixed(5)};
+      float low = terrainCapsule.x+radius, high = max(low,terrainCapsule.y-radius);
       vec3 delta = world-vec3(terrainContact.y,clamp(world.y,low,high),terrainContact.z);
-      float distance = max(length(delta),0.0001), falloff = max(1.0-distance/reach,0.0);
+      float distance = max(length(delta),0.0001);
+      float t = clamp((reach-distance)/${foliageContactPadding.toFixed(5)},0.0,1.0), falloff = t*t*(3.0-2.0*t);
       float radial = sqrt(dot(delta.xz,delta.xz)+0.0025);
       vec3 unit = vec3(delta.x,0.0,delta.z)/radial;
       float height = world.y-instanceMatrix[3].y;
       vec3 push = unit*0.75-vec3(0.0,clamp(height,0.0,1.4)*0.9,0.0);
       float amplitude = -terrainContact.x, factor = falloff*amplitude*terrainFlexibility.x;
       q = p+contactLocal(push)*factor;
-      vec3 distanceGradient = -delta*vec3(1.0,(world.y<low||world.y>high)?1.0:0.0,1.0)/(distance*reach);
+      vec3 distanceGradient = -delta*vec3(1.0,(world.y<low||world.y>high)?1.0:0.0,1.0)/(distance*${foliageContactPadding.toFixed(5)})*(6.0*t*(1.0-t));
       for(int axis=0;axis<3;axis++) {
         vec3 basis = instanceMatrix[axis].xyz;
         vec3 unitDerivative = vec3(basis.x,0.0,basis.z)/radial-unit*dot(delta.xz,basis.xz)/(radial*radial);

@@ -1,4 +1,6 @@
 import { PropTools } from './prop-tools';
+import { FoliageContactPreview } from './foliage-contact-preview';
+import { sweptSphereContacts } from '../core/interaction';
 import { captureNativePNG } from './capture';
 import type { TerrainWalker } from './first-person';
 import { WebGPUFramePacing, viewportPixelRatio } from './frame-pacing';
@@ -111,7 +113,14 @@ export class Viewport {
   private pointerPressure = 1;
   private activePointer: number | null = null;
   private strokeEnd?: (event?: Event) => void;
-  private spheres: { mesh: THREE.Mesh; body: RigidBody; radius: number }[] = [];
+  private spheres: {
+    mesh: THREE.Mesh;
+    body: RigidBody;
+    radius: number;
+    contactPosition: THREE.Vector3;
+  }[] = [];
+  private contactPreview?: FoliageContactPreview;
+  private previewVisibility?: { foliage: boolean; props: boolean };
   private clock = new THREE.Timer();
   private elapsed = 0;
   private frames = 0;
@@ -124,6 +133,7 @@ export class Viewport {
     return this.content.project;
   }
   set project(value: TerrainProject) {
+    this.stopFoliageContactPreview();
     this.content.project = value;
   }
   brushRadius = 10;
@@ -430,6 +440,7 @@ export class Viewport {
   }
   applyPrepared(prepared: PreparedViewport) {
     this.assertPrepared(prepared);
+    this.stopFoliageContactPreview();
     this.propTools.cancel();
     this.cancelLoad();
     const state = prepared.take(this),
@@ -774,9 +785,53 @@ export class Viewport {
     mesh.castShadow = true;
     mesh.position.set(point.x, point.y + 15, point.z);
     this.scene.add(mesh);
-    this.spheres.push({ mesh, body, radius });
+    this.spheres.push({
+      mesh,
+      body,
+      radius,
+      contactPosition: mesh.position.clone(),
+    });
+  }
+  previewFoliageContact(brushId: string, modelId: string) {
+    if (this.navigationActive)
+      throw new Error('Leave walk mode before previewing bending.');
+    const preview = new FoliageContactPreview(
+      this.project,
+      this.library,
+      brushId,
+      modelId,
+      this.controls.target,
+    );
+    this.stopFoliageContactPreview();
+    this.contactPreview = preview;
+    this.previewVisibility = {
+      foliage: this.foliage.visible,
+      props: this.props.visible,
+    };
+    this.foliage.visible = false;
+    this.props.visible = false;
+    this.scene.add(preview.marker, preview.foliage!);
+    this.controls.target.copy(preview.focus);
+    this.camera.position
+      .copy(preview.focus)
+      .add(
+        new THREE.Vector3(0.2, 0.2, 1)
+          .normalize()
+          .multiplyScalar(preview.cameraDistance),
+      );
+    this.controls.update();
+  }
+  stopFoliageContactPreview() {
+    this.contactPreview?.dispose();
+    this.contactPreview = undefined;
+    if (this.previewVisibility) {
+      this.foliage.visible = this.previewVisibility.foliage;
+      this.props.visible = this.previewVisibility.props;
+      this.previewVisibility = undefined;
+    }
   }
   clearBalls() {
+    this.stopFoliageContactPreview();
     for (const s of this.spheres) {
       this.physics?.remove(s.body);
       this.scene.remove(s.mesh);
@@ -801,6 +856,7 @@ export class Viewport {
     );
   }
   beginWalkPlacement() {
+    this.stopFoliageContactPreview();
     const placement = new WalkPlacement(this.project);
     this.walkPlacement = placement;
     this.scene.add(placement.marker);
@@ -825,6 +881,7 @@ export class Viewport {
     return result;
   }
   async exportGLB(options: TerrainExportOptions = {}) {
+    this.stopFoliageContactPreview();
     return exportTerrainGLB(this.content, {
       ...options,
       renderer: this.renderer,
@@ -935,6 +992,24 @@ export class Viewport {
         radius: this.project.interaction.radius,
         strength: 1,
       }));
+    for (const sphere of this.spheres) {
+      contacts.push(
+        ...sweptSphereContacts(
+          sphere.contactPosition,
+          sphere.mesh.position,
+          sphere.radius,
+        ),
+      );
+      sphere.contactPosition.copy(sphere.mesh.position);
+    }
+    if (this.contactPreview) {
+      if (
+        this.contactPreview.done ||
+        this.contactPreview.project !== this.project
+      )
+        this.stopFoliageContactPreview();
+      else this.contactPreview.update(dt, this.camera);
+    }
     if (this.walker) contacts.push(...this.walker.contacts(this.camera));
     this.content.update(dt, contacts, this.camera);
     this.lighting.tick(dt);

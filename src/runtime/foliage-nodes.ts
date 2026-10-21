@@ -51,6 +51,7 @@ import {
   sqrt,
 } from 'three/tsl';
 import type { WindUniforms } from './wind';
+import { foliageContactPadding } from '../core/interaction';
 import type { FoliageSubsurface } from '../core/foliage-shading';
 import { impostorVertex } from '../render/impostor-nodes';
 import { materialNodeUniforms } from '../render/node-uniforms';
@@ -109,13 +110,16 @@ const capsuleDeformation = Fn(
   }) => {
     const world = m.mul(vec4(p, 1)).xyz;
     const radius = max(contact.w, 0.01),
-      reach = radius.add(0.2);
+      reach = radius.add(foliageContactPadding);
     const low = capsule.x.add(radius),
-      high = capsule.y.sub(radius);
+      high = max(low, capsule.y.sub(radius));
     const closestY = world.y.clamp(low, high);
     const delta = world.sub(vec3(contact.y, closestY, contact.z));
     const distance = max(length(delta), 0.0001);
-    const falloff = float(1).sub(distance.div(reach)).max(0);
+    // Full response at the body surface. The former centre-to-edge ramp was
+    // already almost zero where a leaf first touched the player.
+    const t = reach.sub(distance).div(foliageContactPadding).clamp(0, 1);
+    const falloff = t.mul(t).mul(float(3).sub(t.mul(2)));
     const radial = sqrt(
       delta.x.mul(delta.x).add(delta.z.mul(delta.z)).add(0.0025),
     );
@@ -141,7 +145,8 @@ const capsuleDeformation = Fn(
     );
     const distanceGradient = delta
       .mul(vec3(1, activeY, 1))
-      .div(distance.mul(reach))
+      .div(distance.mul(foliageContactPadding))
+      .mul(t.mul(float(1).sub(t)).mul(6))
       .negate();
     const columns = [0, 1, 2].map((axis) => {
       const basis = column4(m, axis).xyz;

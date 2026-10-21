@@ -27,8 +27,12 @@ test('native capsule bends touched leaves away, anchors wood and canopy, recover
       await import('three/tsl');
     const { TerrainScene, createTerrainRenderer } =
       await import('/__runtime_test/lib/runtime.js');
-    const { createProject, editFoliageModels, serializeProject } =
-      await import('/__runtime_test/lib/core.js');
+    const {
+      createProject,
+      editFoliageModels,
+      serializeProject,
+      sweptSphereContacts,
+    } = await import('/__runtime_test/lib/core.js');
     const p = createProject(8, 32);
     p.heights.fill(0);
     p.wind.enabled = false;
@@ -225,6 +229,23 @@ test('native capsule bends touched leaves away, anchors wood and canopy, recover
     terrain.clearInteractions();
     terrain.update(1 / 60, [{ ...body, x: 0.4 }]);
     const reverse = await draw('Capsule on the right · leaves pushed left');
+    terrain.clearInteractions();
+    terrain.update(1 / 60, [{ ...body, x: -0.45 }]);
+    const grazing = await draw(
+      'Body surface · strong contact, soft outer falloff',
+    );
+    terrain.clearInteractions();
+    terrain.update(
+      1 / 60,
+      sweptSphereContacts(
+        { x: -0.1, y: 2, z: 0 },
+        { x: -0.1, y: 1, z: 0 },
+        0.5,
+      ),
+    );
+    const falling = await draw(
+      'Falling sphere · contact before terrain impact',
+    );
     terrain.update(40);
     const recovered = await draw('Recovered');
     terrain.update(1 / 60, [{ ...body, capsule: { bottom: 5, top: 6.95 } }]);
@@ -263,12 +284,16 @@ test('native capsule bends touched leaves away, anchors wood and canopy, recover
     const stats = {
       flexible: diff(rest.pixels, pushed.pixels, 160, 320),
       rigid: diff(rest.pixels, pushed.pixels, 0, 150),
-      canopy: diff(rest.pixels, pushed.pixels, 0, 320, 0, 120),
+      // Rows above 2.5 m stay outside the 1.95 m body + 0.45 m soft falloff,
+      // including the interpolation across the nearest geometry segment.
+      canopy: diff(rest.pixels, pushed.pixels, 0, 320, 0, 105),
       recovered: diff(rest.pixels, recovered.pixels),
       above: diff(rest.pixels, above.pixels),
       restCenter: greenCenter(rest.pixels),
       pushCenter: greenCenter(pushed.pixels),
       reverseCenter: greenCenter(reverse.pixels),
+      grazingCenter: greenCenter(grazing.pixels),
+      fallingCenter: greenCenter(falling.pixels),
       moving: pushed.speed,
       settled: settled.speed,
       validation,
@@ -298,16 +323,21 @@ test('native capsule bends touched leaves away, anchors wood and canopy, recover
   expect(result.above).toBe(0);
   expect(result.pushCenter).toBeGreaterThan(result.restCenter + 3);
   expect(result.reverseCenter).toBeLessThan(result.restCenter - 3);
+  expect(result.grazingCenter).toBeGreaterThan(result.restCenter + 8);
+  expect(result.fallingCenter).toBeGreaterThan(result.restCenter + 8);
   expect(result.moving).toBeGreaterThan(0.1);
   expect(result.settled).toBeLessThan(0.01);
 });
 
-test('walk mode emits a swept player capsule and artist contact presets remain undoable without saving footprints', async ({
+test('preview, falling bodies and walk mode bend foliage without saving footprints; presets remain undoable', async ({
   page,
 }, info) => {
   test.setTimeout(120000);
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
   await page.addInitScript(() => {
     window.walkCapsuleUploads = 0;
+    window.fallingCapsuleUploads = 0;
     const write = GPUQueue.prototype.writeBuffer;
     GPUQueue.prototype.writeBuffer = function (
       buffer,
@@ -328,6 +358,12 @@ test('walk mode emits a swept player capsule and artist contact presets remain u
             Math.abs(source[i + 19] - source[i + 18] - 1.95) < 0.01
           )
             window.walkCapsuleUploads++;
+          if (
+            source[i + 12] < 0 &&
+            Math.abs(source[i + 13] - 1.4) < 0.001 &&
+            source[i + 18] > 0.5
+          )
+            window.fallingCapsuleUploads++;
         }
       }
       return write.call(this, buffer, offset, source, start, size);
@@ -344,6 +380,19 @@ test('walk mode emits a swept player capsule and artist contact presets remain u
   p.view.textureResolution = 256;
   p.wind.enabled = false;
   p.foliage = [];
+  p.props = [
+    {
+      id: 2000,
+      model: 'boulder',
+      x: 4,
+      z: 4,
+      yOffset: 0,
+      scale: 1,
+      rotation: 0,
+      cutHole: false,
+      holeRadius: 0,
+    },
+  ];
   const model = editFoliageModels(p.brushes[0], [])[0];
   Object.assign(model, {
     model: 'grass',
@@ -363,14 +412,12 @@ test('walk mode emits a swept player capsule and artist contact presets remain u
         scale: 1.5,
         rotation: ((x + z) * 0.1) % (Math.PI * 2),
       });
-  p.nextId = p.foliage.length + 1;
-  await page
-    .locator('#file-open')
-    .setInputFiles({
-      name: 'Capsule meadow.json',
-      mimeType: 'application/json',
-      buffer: Buffer.from(serializeProject(p)),
-    });
+  p.nextId = 2001;
+  await page.locator('#file-open').setInputFiles({
+    name: 'Capsule meadow.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(serializeProject(p)),
+  });
   await expect(page.locator('#toast')).toHaveText('Project loaded.', {
     timeout: 60000,
   });
@@ -388,6 +435,93 @@ test('walk mode emits a swept player capsule and artist contact presets remain u
     return decodeDocument(await readFile(file));
   };
   const before = await save('before-walking');
+  const history = await page
+    .locator('#undo, #redo')
+    .evaluateAll((nodes) =>
+      nodes.map((n) => ({ title: n.title, disabled: n.disabled })),
+    );
+  // Preview preparation must fail before hiding or replacing the live scene.
+  await (
+    await inspectorControl(page, '#preview-foliage-contact')
+  ).scrollIntoViewIfNeeded();
+  const caught = await page.evaluate(() => {
+    const original = window.Float32Array;
+    let rejected = false;
+    window.Float32Array = new Proxy(original, {
+      construct(target, args, constructor) {
+        if (args[0] === 16) {
+          rejected = true;
+          throw new RangeError('Injected bending preview failure');
+        }
+        return Reflect.construct(target, args, constructor);
+      },
+    });
+    try {
+      document.querySelector('#preview-foliage-contact').click();
+    } finally {
+      window.Float32Array = original;
+    }
+    return rejected;
+  });
+  expect(caught).toBe(true);
+  await expect(page.locator('#toast')).toHaveText(
+    'Injected bending preview failure',
+  );
+  expect(await save('failed-preview')).toEqual(before);
+  await (await inspectorControl(page, '#preview-foliage-contact')).click();
+  await expect(page.locator('#toast')).toContainText('Bending preview:');
+  await expect
+    .poll(() => page.evaluate(() => window.walkCapsuleUploads))
+    .toBeGreaterThan(10);
+  await page.screenshot({
+    path: info.outputPath('editor-bending-preview.png'),
+  });
+  // Export must end isolation before cloning props, whose visibility is exported.
+  const exported = page.waitForEvent('download', { timeout: 30000 });
+  await page.locator('#export-mode').selectOption('colors');
+  await page.locator('#export').click();
+  const glbFile = info.outputPath('during-bending-preview.glb');
+  await (await exported).saveAs(glbFile);
+  const bytes = await readFile(glbFile);
+  const gltf = JSON.parse(
+    bytes.toString('utf8', 20, 20 + bytes.readUInt32LE(12)),
+  );
+  expect(gltf.nodes.some((n) => n.name === 'boulder 2000')).toBe(true);
+  expect(gltf.nodes.some((n) => n.name === 'Foliage')).toBe(true);
+  expect(gltf.nodes.some((n) => n.name === 'Foliage bending preview')).toBe(
+    false,
+  );
+  expect(decodeDocument(bytes)).toEqual(before);
+  await (await inspectorControl(page, '#preview-foliage-contact')).click();
+  await (await inspectorControl(page, '#stop-foliage-contact-preview')).click();
+  expect(await save('after-preview')).toEqual(before);
+  expect(
+    await page
+      .locator('#undo, #redo')
+      .evaluateAll((nodes) =>
+        nodes.map((n) => ({ title: n.title, disabled: n.disabled })),
+      ),
+  ).toEqual(history);
+  await page.locator('#frame').click();
+  await page.locator('#physics').click();
+  await expect(page.locator('#toast')).toContainText(
+    'Click terrain to drop a body',
+  );
+  const stage = await page.locator('#viewport canvas').boundingBox();
+  await page.mouse.click(
+    stage.x + stage.width / 2,
+    stage.y + stage.height * 0.55,
+  );
+  await expect
+    .poll(() => page.evaluate(() => window.fallingCapsuleUploads), {
+      timeout: 30000,
+    })
+    .toBeGreaterThan(0);
+  await page.locator('#clear-balls').click();
+  await page.locator('#physics').click();
+  await page.evaluate(() => {
+    window.walkCapsuleUploads = 0;
+  });
   await page.locator('#frame').click();
   await page.locator('#walk').click();
   const box = await page.locator('#viewport canvas').boundingBox();
@@ -414,4 +548,5 @@ test('walk mode emits a swept player capsule and artist contact presets remain u
   await page.keyboard.press('v');
   await expect(page.locator('.stage')).not.toHaveClass(/walking/);
   expect(await save('after-walking')).toEqual(before);
+  expect(errors).toEqual([]);
 });

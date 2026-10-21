@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { createProject } from '../src/core/terrain';
 import { editFoliageModels } from '../src/core/foliage';
-import { FoliageInteraction } from '../src/core/interaction';
+import {
+  FoliageInteraction,
+  sweptSphereContacts,
+} from '../src/core/interaction';
+import { FoliageContactPreview } from '../src/render/foliage-contact-preview';
+import { ModelLibrary } from '../src/render/models';
 import { foliageContactPreset } from '../src/core/foliage-contact';
 import { serializeProject, parseProject } from '../src/core/serialization';
 import { TerrainScene } from '../src/runtime/terrain-scene';
@@ -20,6 +25,108 @@ const body = {
 };
 
 describe('walking capsule foliage interaction', () => {
+  it('sweeps falling spheres through leaves before ground contact without affecting high canopies', () => {
+    const from = { x: 0, y: 5, z: 0 },
+      to = { x: 0, y: 1, z: 0 };
+    const contacts = sweptSphereContacts(from, to, 0.5);
+    expect(contacts.length).toBeGreaterThan(10);
+    expect(contacts.at(-1)).toMatchObject({
+      radius: 0.5,
+      capsule: { bottom: 0.5, top: 1.5 },
+    });
+    const interaction = new FoliageInteraction();
+    interaction.setInstances(
+      [1, 2, 3].map((id) => ({
+        id,
+        brushId: 'a',
+        x: 0,
+        z: 0,
+        scale: 1,
+        rotation: 0,
+      })),
+    );
+    const settings = { enabled: true, radius: 2, strength: 1, recovery: 3 };
+    interaction.update(
+      0,
+      contacts,
+      settings,
+      (id) => (id === 3 ? { ...settings, enabled: false } : undefined),
+      0,
+      (id) => ({
+        radius: 0.1,
+        minY: id === 2 ? 8 : 3,
+        maxY: id === 2 ? 9 : 3.2,
+      }),
+      0.1,
+    );
+    expect(interaction.amount(1)).toBe(1); // Swept through a leaf above the final sphere.
+    expect(interaction.amount(2)).toBe(0);
+    expect(interaction.amount(3)).toBe(0);
+    expect(sweptSphereContacts(from, to, -1)).toEqual([]);
+    expect(sweptSphereContacts(from, { ...to, y: NaN }, 1)).toEqual([]);
+    expect(sweptSphereContacts(from, { ...to, y: -1e6 }, 1)).toHaveLength(32);
+  });
+
+  it('previews only the selected placed model, recovers and leaves the authored project untouched', () => {
+    const p = createProject(8, 32);
+    p.heights.fill(2);
+    const model = editFoliageModels(p.brushes[0], [])[0];
+    Object.assign(model, foliageContactPreset('plant'), { model: 'grass' });
+    p.foliage = [0, 10].map((x, i) => ({
+      id: i + 1,
+      brushId: p.brushes[0].id,
+      modelId: model.id,
+      x,
+      z: 0,
+      scale: 1,
+      rotation: 0,
+    }));
+    p.nextId = 3;
+    const before = serializeProject(p),
+      library = new ModelLibrary();
+    const preview = new FoliageContactPreview(
+      p,
+      library,
+      p.brushes[0].id,
+      model.id,
+      new THREE.Vector3(9, 0, 0),
+    );
+    expect(preview.instanceId).toBe(2);
+    const first = preview.update(0)[0],
+      middle = preview.update(1.5)[0];
+    expect(first.x).toBeLessThan(middle.x);
+    expect(middle.x).toBeCloseTo(preview.focus.x);
+    expect(middle.capsule).toEqual({ bottom: 2, top: 3.95 });
+    expect(preview.update(4.5)).toEqual([]);
+    expect(preview.marker.visible).toBe(false);
+    preview.update(3);
+    expect(preview.done).toBe(true);
+    expect(serializeProject(p)).toBe(before);
+    preview.dispose();
+    expect(
+      () =>
+        new FoliageContactPreview(
+          p,
+          library,
+          p.brushes[0].id,
+          'missing',
+          new THREE.Vector3(),
+        ),
+    ).toThrow('Paint at least one');
+    Object.assign(model, foliageContactPreset('rigid'));
+    expect(
+      () =>
+        new FoliageContactPreview(
+          p,
+          library,
+          p.brushes[0].id,
+          model.id,
+          new THREE.Vector3(),
+        ),
+    ).toThrow('enable contact first');
+    library.dispose();
+  });
+
   it('uses plant extents, skips vertically separated/rigid plants and owns recoverable capsule poses', () => {
     const interaction = new FoliageInteraction(1);
     interaction.setInstances(

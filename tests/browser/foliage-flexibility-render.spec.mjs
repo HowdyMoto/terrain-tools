@@ -97,15 +97,20 @@ test('renders rigid and flexible parts with matching wind/contact shadows and a 
       const target = new THREE.WebGLRenderTarget(400, 400);
       const readShadow = (light) => {
         const map = light.shadow.map;
-        const pixels = new Uint8Array(map.width * map.height * 4);
-        renderer.readRenderTargetPixels(
-          map,
-          0,
-          0,
-          map.width,
-          map.height,
-          pixels,
-        );
+        // r186 point shadows use a cube target, rather than the old 2D atlas.
+        const faceSize = map.width * map.height * 4;
+        const faces = map.isWebGLCubeRenderTarget ? 6 : 1;
+        const pixels = new Uint8Array(faceSize * faces);
+        for (let face = 0; face < faces; face++)
+          renderer.readRenderTargetPixels(
+            map,
+            0,
+            0,
+            map.width,
+            map.height,
+            pixels.subarray(face * faceSize, (face + 1) * faceSize),
+            map.isWebGLCubeRenderTarget ? face : undefined,
+          );
         return pixels;
       };
       const snapshot = (label) => {
@@ -296,6 +301,37 @@ test('renders rigid and flexible parts with matching wind/contact shadows and a 
           );
       }
       stats.derivativeError = derivativeError;
+      const capsule = gl.getAttribLocation(program, 'terrainCapsule');
+      const worldCenter = new THREE.Vector3(...center).applyMatrix4(matrix);
+      stats.capsuleDerivativeError = 0;
+      for (const sphere of [false, true]) {
+        gl.vertexAttrib4f(
+          contact,
+          -0.8,
+          worldCenter.x - 0.65,
+          worldCenter.z,
+          0.35,
+        );
+        const bottom = sphere ? worldCenter.y - 0.1 : 1;
+        gl.vertexAttrib2f(capsule, bottom, sphere ? bottom + 0.7 : 5);
+        const pose = evaluate(center);
+        for (let axis = 0; axis < 3; axis++) {
+          const plus = [...center],
+            minus = [...center];
+          plus[axis] += epsilon;
+          minus[axis] -= epsilon;
+          const a = evaluate(plus),
+            b = evaluate(minus);
+          for (let component = 0; component < 3; component++)
+            stats.capsuleDerivativeError = Math.max(
+              stats.capsuleDerivativeError,
+              Math.abs(
+                (a[component] - b[component]) / (2 * epsilon) -
+                  pose[3 + axis * 3 + component],
+              ),
+            );
+        }
+      }
       stats.glError = gl.getError();
       gl.disable(gl.RASTERIZER_DISCARD);
       gl.deleteTransformFeedback(feedback);
@@ -324,6 +360,7 @@ test('renders rigid and flexible parts with matching wind/contact shadows and a 
   expect(result.contactShadows.every((value) => value > 20)).toBe(true);
   expect(result.identicalPasses).toBe(true);
   expect(result.derivativeError).toBeLessThan(0.003);
+  expect(result.capsuleDerivativeError).toBeLessThan(0.003);
   expect(result.glError).toBe(0);
   const metricsPath = testInfo.outputPath('deformation-metrics.json');
   await writeFile(metricsPath, JSON.stringify(result, null, 2));

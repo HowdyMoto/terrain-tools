@@ -1,6 +1,39 @@
 import { clamp } from './math';
 import type { FoliageInstance, TerrainProject } from './types';
 
+/** Metres of soft influence outside the collider, covering sparse leaf vertices. */
+export const foliageContactPadding = 0.45;
+
+/** A sphere is a capsule with coincident segment ends. Sample its path so a fast
+ * falling preview body cannot pass through leaves between rendered frames. */
+export function sweptSphereContacts(
+  from: { x: number; y: number; z: number },
+  to: { x: number; y: number; z: number },
+  radius: number,
+): GroundContact[] {
+  if (
+    !Number.isFinite(from.x + from.y + from.z + to.x + to.y + to.z + radius) ||
+    radius <= 0
+  )
+    return [];
+  const distance = Math.hypot(to.x - from.x, to.y - from.y, to.z - from.z);
+  const steps = Math.min(
+    32,
+    Math.max(1, Math.ceil(distance / Math.max(0.1, radius * 0.25))),
+  );
+  return Array.from({ length: steps }, (_, i) => {
+    const t = (i + 1) / steps;
+    const bottom = from.y + (to.y - from.y) * t - radius;
+    return {
+      x: from.x + (to.x - from.x) * t,
+      z: from.z + (to.z - from.z) * t,
+      radius,
+      strength: 1,
+      capsule: { bottom, top: bottom + radius * 2 },
+    };
+  });
+}
+
 /** Engine-independent influence emitted where an object contacts the ground. */
 export interface GroundContact {
   x: number;
@@ -123,7 +156,7 @@ export class FoliageInteraction {
       )
         continue;
       const radius = contact.capsule
-          ? contact.radius + 0.2 + maximumPlantRadius
+          ? contact.radius + foliageContactPadding + maximumPlantRadius
           : Math.max(0.01, contact.radius, maximumRadius),
         minX = Math.floor((contact.x - radius) / this.cellSize),
         maxX = Math.floor((contact.x + radius) / this.cellSize),
@@ -137,10 +170,10 @@ export class FoliageInteraction {
           const shape = bounds?.(f.id);
           if (
             !shape ||
-            shape.maxY < contact.capsule.bottom - 0.2 ||
-            shape.minY > contact.capsule.top + 0.2 ||
+            shape.maxY < contact.capsule.bottom - foliageContactPadding ||
+            shape.minY > contact.capsule.top + foliageContactPadding ||
             Math.hypot(f.x - contact.x, f.z - contact.z) >
-              shape.radius + contact.radius + 0.2
+              shape.radius + contact.radius + foliageContactPadding
           )
             continue;
           const amount = clamp(contact.strength * selected.strength);
