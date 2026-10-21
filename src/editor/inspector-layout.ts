@@ -186,6 +186,14 @@ export function renderCompactInspector(
       { name: 'Waves', selectors: ['#water-waves'] },
       { name: 'Shore', selectors: ['#water-shore'] },
     ];
+  } else if (tool === 'project') {
+    pages = [
+      { name: 'Files', selectors: [sectionWith('project-file-location')] },
+      {
+        name: 'Terrain',
+        selectors: [sectionWith('eye-height'), sectionWith('terrain-size')],
+      },
+    ];
   } else if (tool === 'light') {
     // Separate the existing environment controls without touching rendering code.
     const group = (name: string, id: string, selectors: string[]) => {

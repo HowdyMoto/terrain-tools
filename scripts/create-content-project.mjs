@@ -1,5 +1,5 @@
 import { mkdir, writeFile } from 'node:fs/promises';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { basename, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -41,7 +41,7 @@ export async function writeContentProject(directory, name, document) {
   );
   await writeFile(
     join(root, 'README.md'),
-    `# ${name}\n\nOpen **${project}** from this folder in Terrain Studio. It contains the editable landscape and its embedded assets.\n\nSave your working project here in the root. Keep alternate scenes in \`scenes/\` and GLB/delivery exports in \`exports/\`. Browser autosave is a recovery copy; Save project downloads a file rather than writing back here automatically.\n\n- \`sources/\`: original downloads and DCC authoring files.\n- \`prepared/\`: ready-to-import models, materials and heightmaps.\n- \`scenes/\`: alternate editable scenes and named revisions.\n- \`tools/\`: project-specific conversion/build scripts.\n- \`exports/\`: GLBs and other delivery files.\n- \`CREDITS.md\`: artists, source links, licenses and modifications.\n- \`content-manifest.json\`: supporting inventory, not the file to open. Its checksum describes the initial generated document; record a new checksum after an intentional rebuild.\n`,
+    `# ${name}\n\nIn Terrain Studio, choose **Open folder** and select this folder. **${project}** is the main editable document; linked GLBs live beside it in prepared/.\n\nSave your working project here in the root. Keep alternate scenes in \`scenes/\` and GLB/delivery exports in \`exports/\`. After opening the folder, Save project writes the root document directly. Download portable project embeds the current art for sharing. Browser autosave is a self-contained recovery copy; use Reconnect recovered project folder after restarting the browser to keep unsaved edits.\n\n- \`sources/\`: original downloads and DCC authoring files.\n- \`prepared/\`: ready-to-import models, materials and heightmaps.\n- \`scenes/\`: alternate editable scenes and named revisions.\n- \`tools/\`: project-specific conversion/build scripts.\n- \`exports/\`: GLBs and other delivery files.\n- \`CREDITS.md\`: artists, source links, licenses and modifications.\n- \`content-manifest.json\`: supporting inventory, not the file to open. Its checksum describes the initial generated document; record a new checksum after an intentional rebuild.\n`,
     { flag: 'wx' },
   );
   await writeFile(
@@ -62,14 +62,16 @@ if (
       'Usage: npm run project:create -- "C:/path/to/My Landscape" (a new folder)',
     );
   // Uses the built, locked toolkit, without installing anything in the art folder.
-  const { createProject, serializeProjectPackage } =
-    await import('terrain-tools');
+  const { createProject, ProjectPackageWriter } = await import('terrain-tools');
   const project = createProject(128, 256);
   project.name = basename(resolve(directory)).slice(0, 120);
+  project.folderId = randomUUID();
   const file = await writeContentProject(
     directory,
     project.name,
-    serializeProjectPackage(project),
+    new ProjectPackageWriter().encode(project, 'linked'),
   );
-  console.log(`Created project. Open ${file}`);
+  console.log(
+    `Created ${file}. In Terrain Studio, choose Open folder and select ${resolve(directory)}.`,
+  );
 }

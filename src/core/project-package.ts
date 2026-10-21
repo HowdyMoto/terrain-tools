@@ -3,6 +3,10 @@ import type { TerrainProject } from './types';
 import { MAX_TEXTURE_FILE_BYTES } from './texture-limits';
 import { MAX_MODEL_BYTES } from './model-limits';
 import { bytesToBase64, base64ToBytes } from './base64';
+import { parseModelSource } from './model-source';
+import type { ModelSource } from './model-source';
+
+export type ProjectPackageMode = 'portable' | 'linked' | 'recovery';
 
 export const MAX_PROJECT_ASSET_BYTES = 384 * 1024 * 1024;
 export const MAX_PROJECT_PACKAGE_BYTES = 512 * 1024 * 1024;
@@ -93,9 +97,12 @@ export class ProjectPackageWriter {
   clear() {
     this.assets.clear();
   }
-  encode(project: TerrainProject): Blob {
+  encode(project: TerrainProject, mode: ProjectPackageMode = 'portable'): Blob {
     assertProjectCapacity(project);
     const validated = validateProjectData(project, false);
+    if (!['portable', 'linked', 'recovery'].includes(mode))
+      throw new Error('Invalid project package mode.');
+    const version = mode === 'linked' ? 2 : 1;
     const chunks: Chunk[] = [],
       parts: BlobPart[] = [];
     const keep = new Map<string, CachedAsset>();
@@ -161,14 +168,27 @@ export class ProjectPackageWriter {
     };
     const metadata = {
       ...validated,
+      ...(mode === 'portable' ? { folderId: undefined } : {}),
       heights: array(validated.heights),
       holes: array(validated.holes),
       paint: array(validated.paint),
       assets: Object.fromEntries(
-        Object.entries(validated.assets).map(([key, value]) => [
-          key,
-          { ...value, data: asset(value.data) },
-        ]),
+        Object.entries(validated.assets).map(([key, value]) => {
+          const { source, ...model } = value;
+          return [
+            key,
+            {
+              ...model,
+              ...(mode !== 'portable' && source
+                ? { source: parseModelSource(source) }
+                : {}),
+              data:
+                mode === 'linked' && source
+                  ? { external: parseModelSource(source).path }
+                  : asset(value.data),
+            },
+          ];
+        }),
       ),
       materials: validated.materials.map((material) => ({
         ...material,
@@ -205,7 +225,7 @@ export class ProjectPackageWriter {
     const manifest = new TextEncoder().encode(
       JSON.stringify({
         kind: 'terrain-project',
-        version: 1,
+        version,
         project: metadata,
         chunks,
       }),
@@ -219,7 +239,7 @@ export class ProjectPackageWriter {
     const header = new Uint8Array(HEADER),
       view = new DataView(header.buffer);
     header.set(MAGIC);
-    view.setUint32(8, 1, true);
+    view.setUint32(8, version, true);
     view.setUint32(12, manifest.length, true);
     view.setUint32(16, payloadLength, true);
     view.setUint32(20, packageChecksum(manifest), true);
@@ -248,7 +268,7 @@ export function isProjectPackage(buffer: ArrayBuffer) {
   );
 }
 /** Checks bounds, version, references and checksums before accepting an authored document. */
-export function parseProjectPackage(buffer: ArrayBuffer): TerrainProject {
+function readPackageManifest(buffer: ArrayBuffer) {
   if (
     buffer.byteLength < HEADER ||
     buffer.byteLength > MAX_PROJECT_PACKAGE_BYTES ||
@@ -256,7 +276,8 @@ export function parseProjectPackage(buffer: ArrayBuffer): TerrainProject {
   )
     throw new Error('Invalid terrain package size or signature.');
   const view = new DataView(buffer);
-  if (view.getUint32(8, true) !== 1)
+  const version = view.getUint32(8, true);
+  if (version !== 1 && version !== 2)
     throw new Error('Unsupported terrain package version.');
   if (view.getUint32(24, true) || view.getUint32(28, true))
     throw new Error('Invalid terrain package flags.');
@@ -276,13 +297,70 @@ export function parseProjectPackage(buffer: ArrayBuffer): TerrainProject {
   );
   if (
     raw?.kind !== 'terrain-project' ||
-    raw.version !== 1 ||
+    raw.version !== version ||
     !Array.isArray(raw.chunks) ||
     raw.chunks.length > 300 ||
     !raw.project ||
     typeof raw.project !== 'object'
   )
     throw new Error('Invalid terrain package manifest.');
+  return { raw, start, version };
+}
+
+/** Validated project-local references; no filesystem or network access occurs here. */
+export function projectPackageSources(
+  buffer: ArrayBuffer,
+): Record<string, ModelSource> {
+  const { raw, version } = readPackageManifest(buffer);
+  const sources: Record<string, ModelSource> = Object.create(null);
+  if (version !== 2) return sources;
+  if (
+    !raw.project.assets ||
+    typeof raw.project.assets !== 'object' ||
+    Array.isArray(raw.project.assets) ||
+    Object.keys(raw.project.assets).length > 256
+  )
+    throw new Error('Invalid linked project assets.');
+  for (const [id, value] of Object.entries(raw.project.assets)) {
+    if (!/^[a-z][a-z0-9_-]{0,63}$/i.test(id))
+      throw new Error('Invalid linked asset identifier.');
+    const model = value as { data?: { external?: unknown }; source?: unknown };
+    if (model?.data && 'external' in Object(model.data)) {
+      const source = parseModelSource(model.source);
+      if (model.data.external !== source.path)
+        throw new Error('Invalid linked asset reference.');
+      sources[id] = source;
+    }
+  }
+  return sources;
+}
+
+/** Inspect a checksummed folder binding without resolving or decoding model payloads. */
+export function projectPackageFolderId(
+  buffer: ArrayBuffer,
+): string | undefined {
+  const id = readPackageManifest(buffer).raw.project.folderId;
+  if (
+    id !== undefined &&
+    (typeof id !== 'string' ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        id,
+      ))
+  )
+    throw new Error('Invalid project folder identity.');
+  return id;
+}
+
+/** Checks bounds, version, references and checksums before accepting an authored document. */
+export function parseProjectPackage(
+  buffer: ArrayBuffer,
+  externalModels?: ReadonlyMap<string, string>,
+): TerrainProject {
+  const { raw, start, version } = readPackageManifest(buffer);
+  if (version === 2 && !externalModels)
+    throw new Error(
+      'This is a linked project. Use Open project folder to load its source assets.',
+    );
   const chunks: { descriptor: Chunk; bytes: Uint8Array }[] = [];
   let offset = start,
     assetBytes = 0;
@@ -383,8 +461,18 @@ export function parseProjectPackage(buffer: ArrayBuffer): TerrainProject {
   p.paint = floats(p.paint);
   if (!p.assets || typeof p.assets !== 'object' || !Array.isArray(p.materials))
     throw new Error('Invalid terrain package assets.');
-  for (const value of Object.values(p.assets) as { data: unknown }[])
-    value.data = asset(value.data);
+  for (const [id, value] of Object.entries(p.assets) as [
+    string,
+    { data: unknown; source?: unknown },
+  ][]) {
+    const ref = value.data as { external?: unknown };
+    if (version === 2 && ref && typeof ref === 'object' && 'external' in ref) {
+      const source = parseModelSource(value.source);
+      if (ref.external !== source.path || !externalModels?.has(id))
+        throw new Error('Missing linked model: ' + source.path);
+      value.data = externalModels.get(id)!;
+    } else value.data = asset(value.data);
+  }
   for (const material of p.materials) {
     if (!material?.textures || typeof material.textures !== 'object')
       throw new Error('Invalid terrain package maps.');
@@ -396,7 +484,9 @@ export function parseProjectPackage(buffer: ArrayBuffer): TerrainProject {
   if (p.sculpt?.alpha) p.sculpt.alpha.values = floats(p.sculpt.alpha.values);
   if (referenced.size !== chunks.length)
     throw new Error('Unreferenced terrain package data.');
-  return validateProjectData(p);
+  const project = validateProjectData(p);
+  assertProjectCapacity(project);
+  return project;
 }
 
 /** Only model assets unused by every prop, brush and LOD are eligible for cleanup. */

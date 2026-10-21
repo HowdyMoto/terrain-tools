@@ -3,6 +3,7 @@ import type { WaterSettings } from './water';
 import type { ErosionSettings } from './erosion';
 import type { Heightmap } from './heightmap';
 import type { FoliageSubsurface } from './foliage-shading';
+import type { ModelSource } from './model-source';
 export type SculptTool =
   | 'raise'
   | 'lower'
@@ -177,6 +178,8 @@ export interface SculptSettings {
   pressure: boolean;
 }
 export interface TerrainProject {
+  /** Editor folder identity; portable packages omit this binding. */
+  folderId?: string;
   sculpt?: SculptSettings;
   erosion?: ErosionSettings;
   environment?: EnvironmentSettings;
@@ -196,7 +199,7 @@ export interface TerrainProject {
   brushes: FoliageBrush[];
   foliage: FoliageInstance[];
   props: PropInstance[];
-  assets: Record<string, { name: string; data: string }>;
+  assets: Record<string, { name: string; data: string; source?: ModelSource }>;
   wind: {
     enabled: boolean;
     strength: number;

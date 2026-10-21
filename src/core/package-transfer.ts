@@ -1,13 +1,17 @@
 import { ProjectPackageWriter } from './project-package';
+import type { ProjectPackageMode } from './project-package';
 import type { TerrainProject, MaterialLayer } from './types';
 import type { EnvironmentSettings } from './environment';
 
 type ReferenceAsset = { name: string; data: number };
+type ReferenceModelAsset = Omit<TerrainProject['assets'][string], 'data'> & {
+  data: number;
+};
 type ReferenceProject = Omit<
   TerrainProject,
   'assets' | 'materials' | 'environment'
 > & {
-  assets: Record<string, ReferenceAsset>;
+  assets: Record<string, ReferenceModelAsset>;
   materials: (Omit<MaterialLayer, 'textures'> & {
     textures: Record<string, number>;
   })[];
@@ -113,6 +117,7 @@ export interface PackageCapture {
   transfer: ArrayBuffer[];
 }
 export interface PackageRequest {
+  mode?: ProjectPackageMode;
   foliage?: PackedFoliage;
   id: number;
   project: ReferenceProject;
@@ -262,7 +267,7 @@ export class PackageEncodingSession {
           }
         : {}),
     } as TerrainProject;
-    const blob = this.writer.encode(project);
+    const blob = this.writer.encode(project, request.mode);
     this.payloads = keep;
     return blob;
   }

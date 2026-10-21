@@ -7,6 +7,7 @@ import { chromeGPUArgs } from './chrome-gpu.mjs';
 import { benchmarkPower } from './benchmark-power.mjs';
 import { installOceanComputeProbe } from './ocean-compute-probe.mjs';
 import { runtimePackagePage } from '../tests/browser/runtime-package-page.mjs';
+import { portableContentProject } from './read-content-project.mjs';
 
 const option = (name, fallback) =>
   process.argv
@@ -56,7 +57,7 @@ const gpuContext = () => {
 const contextBefore = gpuContext();
 let server, browser, power;
 try {
-  const bytes = await readFile(projectPath);
+  const bytes = await portableContentProject(projectPath);
   power = await benchmarkPower();
   const url = 'http://127.0.0.1:5175';
   if (

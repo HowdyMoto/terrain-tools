@@ -1,0 +1,60 @@
+{
+  "date": "2026-10-20",
+  "scope": "Folder-linked GLB authoring and automatic source refresh; no FPS claim",
+  "environment": {
+    "browser": "Chrome 155.0.8059.82",
+    "gpu": "NVIDIA GeForce RTX 5060 Laptop GPU",
+    "platform": "Windows",
+    "viewport": [1440, 960]
+  },
+  "checks": {
+    "buildTypesDeclarations": "passed",
+    "lint": "passed",
+    "formatting": "passed",
+    "unitCommand": "npm test -- --testTimeout=15000",
+    "unitTests": 378,
+    "unitFiles": 57,
+    "targetedBrowserCases": 10,
+    "finalLinkedBrowserRerun": 3,
+    "browserFiles": [
+      "linked-assets.spec.mjs",
+      "project-package.spec.mjs",
+      "background-package.spec.mjs",
+      "project-settings.spec.mjs"
+    ],
+    "linkedCliScaffoldAndNodeAdapter": "passed"
+  },
+  "coverage": [
+    "Current disk art resolves through v2 relative model references without embedded copies of linked models",
+    "Portable v1 snapshots strip source links and folder identity; recovery v1 retains both and full cached bytes",
+    "Real GLTFLoader accessor failure preserves exact rendered pixels, document, history and IndexedDB recovery",
+    "Completed source export retries automatically and updates painted foliage and props without changing authoring references",
+    "Undo restores prior art; two unchanged metadata polls do not redo it; redo restores the new art",
+    "Root-file saving, external write conflict rejection and byte-identical pre-conversion backup",
+    "Cancelled folder choice and injected new-root write failure preserve the open document and allow same-folder retry",
+    "Recovered unsaved edits survive folder reauthorization after browser reload",
+    "Linked foliage review retains scale and pivot recipe; existing sources can be retargeted or detached",
+    "Source aliases resolve once, path traversal and external GLB dependencies reject, failed reads retry"
+  ],
+  "realContent": {
+    "scene": "Tropical Grove",
+    "originalDocumentBytes": 55176040,
+    "linkedDocumentBytes": 17221704,
+    "models": 37,
+    "foliageInstances": 7323,
+    "changedAsset": "tg-banana-a",
+    "change": "A new uniform 1.02-scale source root, written over the linked GLB",
+    "automaticRefresh": true,
+    "portableSnapshotMatchesExpectedAuthoringData": true,
+    "capturedPageOrRendererErrors": [],
+    "originalProjectUnchanged": true
+  },
+  "limits": [
+    "Browser filesystem checks use real origin-private filesystem handles; native picker functions are stubbed",
+    "OS directory permission dialogs and other-device behavior were not automated",
+    "Real content was copied into ignored QA and a temporary browser profile; artist files were not converted or modified",
+    "Metadata polling refreshes visible idle editors; preserving both size and mtime requires Reload linked assets now",
+    "Loose glTF dependencies, standalone terrain PBR maps and HDR/EXR links remain unimplemented",
+    "This is targeted authoring validation, not a complete browser-suite rerun or production-readiness certification"
+  ]
+}

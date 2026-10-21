@@ -4,11 +4,11 @@
 
 Keep the main `.terrain` file at the **root of its project folder**. Open that file directly; alternate editable scenes belong in `scenes/` and delivery GLBs in `exports/`. See [project folder organization](CONTENT-PROJECTS.md) for creation, source art and credits. Moving an existing document needs no format conversion.
 
-**Save project** downloads a `.terrain` package containing the complete editable document. Terrain buffers and embedded assets are stored as binary chunks; matching asset data URLs share one chunk. This avoids decimal float arrays and repeated base64 payloads in the file. The format is lossless and does not compress already encoded image/model data.
+After **Open folder**, **Save project** writes a version-2 `.terrain` document to the project root, using relative references for linked GLBs. **Download portable project**, or Save without a connected folder, creates a version-1 self-contained snapshot with source links and folder bindings omitted. Embedded buffers/assets use binary chunks; matching data URLs share chunks. The format is lossless and does not recompress images or models. See [linked art iteration](CONTENT-PROJECTS.md#iterate-on-linked-art).
 
 **Open** detects the content signature, so a renamed file still works. Existing version-1 JSON projects, JSON autosaves, and version-1 inline GLB project extensions remain readable. Larger legacy JSON saves can be opened for migration, then saved as `.terrain`. New GLB exports use version 2 of `TERRAIN_tools_project`, pointing to a binary package in a buffer view. Standard viewers retain the static presentation; Terrain Studio restores the authored behavior.
 
-Autosave stores the same immutable package as a Blob in IndexedDB. Writes run in order, and failed writes leave the previous committed record intact. A failed or outdated save cannot mark a newer edit as saved. Existing JSON autosaves migrate on the next successful save. Autosave belongs to the current browser profile and site address; use downloaded files when changing addresses or browsers. Browser storage quota still applies; **Save to file** indicates that local persistence failed. Keep downloaded files as portable backups.
+Autosave stores a self-contained version-1 recovery package, including folder identity and source recipes as a Blob in IndexedDB. Writes run in order, and failed writes leave the previous committed record intact. A failed or outdated save cannot mark a newer edit as saved. Existing JSON autosaves migrate on the next successful save. Autosave belongs to the current browser profile and site address; use downloaded files when changing addresses or browsers. Browser storage quota still applies; **Save to file** indicates that local persistence failed. Keep downloaded files as portable backups. Reconnect the recovered folder to keep unsaved authoring changes; opening its disk document is a separate action.
 
 Props and Foliage show embedded asset usage. **Remove unused models** removes only models unreferenced by every prop, brush, and LOD; it is undoable. Surface maps and HDR images remain part of their authored settings.
 
@@ -48,7 +48,7 @@ const opened = await readProjectFile(file); // Checks Blob/File size before read
 writer.clear(); // Release the reusable encoder cache.
 ```
 
-`serializeProjectPackage(project)` creates a package without retaining an encoder cache. `parseProjectPackage(arrayBuffer)` accepts only native packages. `parseProjectFile(stringOrArrayBuffer)` detects JSON, native packages, and terrain GLBs. `readProjectFile(blob)` provides bounded file loading. `projectAssetBytes`, `assertProjectCapacity`, and `unusedModelAssetIds` support host admission and cleanup workflows. `serializeProject` / `parseProject` retain the legacy JSON API. `loadTerrain` accepts package or GLB ArrayBuffers, browser Files/Blobs, and legacy JSON strings.
+`serializeProjectPackage(project)` creates a package without retaining an encoder cache. `parseProjectPackage(arrayBuffer)` accepts only native packages. `parseProjectFile(stringOrArrayBuffer)` detects JSON, native packages, and terrain GLBs. `readProjectFile(blob)` provides bounded file loading. `projectAssetBytes`, `assertProjectCapacity`, and `unusedModelAssetIds` support host admission and cleanup workflows. `serializeProject` / `parseProject` retain the legacy JSON API. `loadTerrain` accepts package or GLB ArrayBuffers, browser Files/Blobs, and legacy JSON strings. `ProjectPackageWriter.encode(project, "linked")` writes v2 external model references; `"recovery"` retains links and embeds cached model bytes in v1. `readProjectFile(file, source => Promise<string>)` resolves v2 models through a host callback returning a GLB data URL. `prepareLinkedModel(arrayBuffer, source)` validates a self-contained GLB and applies its retained import transform. Without a resolver, a v2 file reports that it needs its project folder. `scripts/read-content-project.mjs` is a read-only Node filesystem adapter, also used by the native tropical benchmark.
 
 ## Background encoding
 
@@ -77,20 +77,20 @@ writer.dispose(); // Terminates the worker, releases caches, rejects outstanding
 
 The default host is a browser Worker bundled beside the library. Serve the complete `lib` directory, including `lib/assets`; the worker URL resolves relative to the module. Other hosts can supply `workerFactory`. The default queue allows four pending snapshots (configurable 1–64); a full exact-save queue rejects instead of growing without bound. One encoding times out after 120 seconds by default. Keep the synchronous `ProjectPackageWriter` API for environments without workers.
 
-## Binary layout, version 1
+## Binary layout, versions 1 and 2
 
 All integer fields and Float32 samples are little-endian. The header is 32 bytes:
 
-| Offset | Field                                           |
-| -----: | ----------------------------------------------- |
-|      0 | Eight-byte signature: `TRNPACK` followed by NUL |
-|      8 | uint32 package version, currently 1             |
-|     12 | uint32 UTF-8 manifest byte length               |
-|     16 | uint32 padded payload byte length               |
-|     20 | uint32 CRC-32 of manifest bytes                 |
-| 24, 28 | Reserved uint32 fields, zero                    |
+| Offset | Field                                                       |
+| -----: | ----------------------------------------------------------- |
+|      0 | Eight-byte signature: `TRNPACK` followed by NUL             |
+|      8 | uint32 package version: 1 (portable/recovery) or 2 (folder) |
+|     12 | uint32 UTF-8 manifest byte length                           |
+|     16 | uint32 padded payload byte length                           |
+|     20 | uint32 CRC-32 of manifest bytes                             |
+| 24, 28 | Reserved uint32 fields, zero                                |
 
-The manifest follows the header, padded to a four-byte boundary. It contains `{ kind: "terrain-project", version: 1, project, chunks }`. The authoring schema remains version 1. Buffer and asset fields in `project` contain `{ chunk: index }` references. Chunk descriptors record `kind` (`float32`, `uint8`, or `asset`), byte length, and CRC-32. Asset descriptors also retain the data-URL prefix, base64 character count, and final characters for legacy spelling compatibility.
+The manifest follows the header, padded to a four-byte boundary. It contains `{ kind: "terrain-project", version: 1 | 2, project, chunks }`. The authoring schema remains version 1. Buffer and asset fields in `project` contain `{ chunk: index }` references. Chunk descriptors record `kind` (`float32`, `uint8`, or `asset`), byte length, and CRC-32. Asset descriptors also retain the data-URL prefix, base64 character count, and final characters for legacy spelling compatibility. In v2, a linked model stores `data: { external: "prepared/Tree.glb" }` and `source: { path, scale, offset, prepared? }` instead of a payload chunk. Paths must be project-local, traversal-free GLB paths. `prepared: true` means the bytes already contain their import transform and requires scale 1 / zero offset. The optional UUID `folderId` associates recovery with a reauthorized directory; absolute paths and browser handles are never serialized. Non-linked models and other art remain ordinary embedded chunks. Portable v1 packages omit both model sources and folder identity; recovery v1 packages retain those fields plus the complete cached payloads.
 
 Payload chunks follow descriptor order, each padded to four bytes. CRC-32 uses the reflected IEEE polynomial `0xEDB88320` and covers unpadded content. Readers validate lengths, supported versions, reference kinds, total budgets, checksums, and the reconstructed project schema. Unreferenced chunks and mismatched asset tails are rejected. Checksums detect accidental corruption; they do not authenticate a file.
 

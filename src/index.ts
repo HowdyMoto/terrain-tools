@@ -27,4 +27,6 @@ export * from './core/foliage-lod';
 export * from './core/props';
 export * from './core/project-package';
 export * from './core/model-limits';
+export * from './core/model-source';
+export * from './core/model-document';
 export * from './core/background-package';

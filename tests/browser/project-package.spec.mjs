@@ -126,6 +126,9 @@ test('explains content manifests, preserves the open document and retries with i
   await page.locator('#redo').click();
   await expect(page.locator('#save-state')).toHaveText('Saved locally');
   await page.reload();
+  await expect(page.locator('#app')).toHaveJSProperty('inert', false, {
+    timeout: 30000,
+  });
   await expect(page.locator('#project-name')).toHaveValue(project.name);
   await page.locator('[data-tab="project"]').click();
   await expect(page.locator('#project-file-location')).toBeVisible();
@@ -204,6 +207,9 @@ test('migrates legacy autosave, recovers package failures, cleans assets with un
     db.close();
   }, legacy);
   await page.reload();
+  await expect(page.locator('#app')).toHaveJSProperty('inert', false, {
+    timeout: 30000,
+  });
   await expect(page.locator('#project-name')).toHaveValue(project.name, {
     timeout: 30000,
   });
@@ -258,6 +264,9 @@ test('migrates legacy autosave, recovers package failures, cleans assets with un
   await page.locator('#project-name').press('Tab');
   await expect(page.locator('#save-state')).toHaveText('Saved locally');
   await page.reload();
+  await expect(page.locator('#app')).toHaveJSProperty('inert', false, {
+    timeout: 30000,
+  });
   await expect(page.locator('#project-name')).toHaveValue('Recovered package');
   const recovered = await download(page, info, 'recovered.terrain');
   expect(decodeDocument(recovered.bytes)).toEqual({
