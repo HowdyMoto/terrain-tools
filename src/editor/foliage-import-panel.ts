@@ -10,6 +10,8 @@ import {
 import type { DecodedModel } from '../render/model-loader';
 import { checkSignal } from '../render/resources';
 import { ImportPreview } from './import-preview';
+import { inspectModel, modelInspectionHTML } from './model-inspection';
+import type { ModelInspection } from './model-inspection';
 import {
   importDialog,
   bindFileDrop,
@@ -36,8 +38,7 @@ interface ReviewedModel {
   data: string;
   bytes: number;
   bounds: THREE.Box3;
-  triangles: number;
-  parts: number;
+  inspection: ModelInspection;
 }
 export function showFoliageImport(
   project: TerrainProject,
@@ -142,8 +143,16 @@ export function showFoliageImport(
         .multiplyScalar(scale());
       const format = (value: number) =>
         value.toLocaleString(undefined, { maximumFractionDigits: 3 });
-      q('#foliage-model-review').textContent =
-        `${model.name} · ${format(size.x)} × ${format(size.y)} × ${format(size.z)} m (width × height × depth). ${model.triangles.toLocaleString()} triangles · ${model.parts} mesh parts · ${fileSize(model.bytes)}. ${String(model.document.json.asset.copyright ?? 'No creator credit embedded in this source.')} ${model.triangles > 100000 ? 'Heavy geometry: add lower-detail models in Distance detail before dense painting.' : ''} ${size.y < 0.02 || size.y > 100 ? 'Unusual height: check Source units.' : ''}`;
+      q('#foliage-model-review').innerHTML =
+        `<strong>${esc(model.name)}</strong><p>${format(size.x)} × ${format(size.y)} × ${format(size.z)} m · ${fileSize(model.bytes)}</p>` +
+        modelInspectionHTML(model.inspection) +
+        `<p class="field-note">${esc(String(model.document.json.asset.copyright ?? 'No creator credit embedded in this source.'))}</p>` +
+        (model.inspection.triangles > 100000
+          ? '<p class="field-note">Heavy geometry: add lower-detail models in Distance detail before dense painting.</p>'
+          : '') +
+        (size.y < 0.02 || size.y > 100
+          ? '<p class="field-note">Unusual height: check Source units.</p>'
+          : '');
       if (decoded) preview?.model(decoded, scale(), ground());
     }
   };
@@ -189,7 +198,7 @@ export function showFoliageImport(
     q('#foliage-sources').innerHTML = models
       .map(
         (model, i) =>
-          `<div class="import-model-row ${i === selected ? 'selected' : ''}"><button data-inspect-model="${i}" aria-pressed="${i === selected}"><strong>${esc(model.name)}</strong><span>${model.triangles.toLocaleString()} triangles · ${fileSize(model.bytes)}</span></button><button data-remove-model="${i}" aria-label="Remove ${esc(model.name)}">×</button></div>`,
+          `<div class="import-model-row ${i === selected ? 'selected' : ''}"><button data-inspect-model="${i}" aria-pressed="${i === selected}"><strong>${esc(model.name)}</strong><span>${model.inspection.triangles.toLocaleString()} triangles · ${model.inspection.textures.length} textures · ${fileSize(model.bytes)}</span></button><button data-remove-model="${i}" aria-label="Remove ${esc(model.name)}">×</button></div>`,
       )
       .join('');
     q('#foliage-sources')
@@ -272,15 +281,11 @@ export function showFoliageImport(
         try {
           checkSignal(ui.signal);
           const bounds = new THREE.Box3();
-          let triangles = 0;
           parsed.parts.forEach((part) => {
             part.geometry.computeBoundingBox();
             bounds.union(
               part.geometry.boundingBox!.clone().applyMatrix4(part.matrix),
             );
-            triangles +=
-              (part.geometry.index?.count ??
-                part.geometry.getAttribute('position').count) / 3;
           });
           if (
             bounds.isEmpty() ||
@@ -296,8 +301,7 @@ export function showFoliageImport(
             data,
             bytes: buffer.byteLength,
             bounds,
-            triangles: Math.ceil(triangles),
-            parts: parsed.parts.length,
+            inspection: inspectModel(parsed.parts),
           });
         } finally {
           parsed.dispose();

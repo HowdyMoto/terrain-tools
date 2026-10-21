@@ -329,6 +329,12 @@ test('editor previews, imports and restores a GPU-compressed foliage GLB', async
     timeout: process.env.CI ? 90000 : 30000,
   });
   await expect(page.locator('#foliage-preview canvas')).toBeVisible();
+  await expect(
+    page.locator('#foliage-model-review [data-texture-size]').first(),
+  ).toHaveText(/\d.* × .* px/);
+  await expect(page.locator('#foliage-model-review')).toContainText(
+    'Compressed',
+  );
   await page.locator('#foliage-import-name').fill('Compressed fern');
   await page.locator('.import-apply').click();
   await expect(page.locator('dialog.asset-import')).toHaveCount(0);

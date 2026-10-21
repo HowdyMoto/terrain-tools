@@ -15,6 +15,7 @@ type Detail = Pick<
 export function foliageDetailControls(
   model: FoliageModel,
   choices: [string, string][],
+  assetDetails: (id: string) => string = () => '',
 ) {
   const number = (
     id: string,
@@ -62,6 +63,7 @@ export function foliageDetailControls(
           '</select></label><button class="text-button" data-import-lod="' +
           i +
           '">Import LOD GLB</button>' +
+          assetDetails(lod.model) +
           number(
             'lod-distance-' + i,
             'Start distance (m)',

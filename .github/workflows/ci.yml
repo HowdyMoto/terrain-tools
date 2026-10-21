@@ -35,7 +35,7 @@ jobs:
           export VK_DRIVER_FILES="$(find /usr/share/vulkan/icd.d -name 'lvp_icd*.json' -print -quit)"
           test -n "$VK_DRIVER_FILES"
           xvfb-run -a vulkaninfo --summary
-          xvfb-run -a npm run test:browser -- --reporter=list --shard=${{ matrix.shard }}/3 tests/browser/ci-smoke.spec.mjs tests/browser/prepared-assets.spec.mjs tests/browser/webgpu.spec.mjs tests/browser/canopy-lighting.spec.mjs tests/browser/temporal-reset.spec.mjs tests/browser/water-staging.spec.mjs tests/browser/terrain-lighting.spec.mjs tests/browser/world-overview.spec.mjs tests/browser/linked-assets.spec.mjs
+          xvfb-run -a npm run test:browser -- --reporter=list --shard=${{ matrix.shard }}/3 tests/browser/ci-smoke.spec.mjs tests/browser/prepared-assets.spec.mjs tests/browser/webgpu.spec.mjs tests/browser/canopy-lighting.spec.mjs tests/browser/temporal-reset.spec.mjs tests/browser/water-staging.spec.mjs tests/browser/terrain-lighting.spec.mjs tests/browser/world-overview.spec.mjs tests/browser/linked-assets.spec.mjs tests/browser/model-inspection.spec.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
