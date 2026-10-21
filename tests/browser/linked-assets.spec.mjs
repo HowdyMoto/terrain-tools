@@ -12,6 +12,7 @@ import { seedEditorProject } from './seed-editor-project.mjs';
 import { triangleGlb, decodeDocument } from './fixtures.mjs';
 // Native shader preparation can exceed the default five-second UI assertion budget.
 const expect = nativeExpect.configure({ timeout: 30000 });
+if (process.env.CI) test.use({ viewport: { width: 960, height: 640 } });
 
 function projectFixture() {
   const p = createProject(16, 32);
@@ -216,7 +217,8 @@ async function autosave(page) {
 test('linked GLBs refresh painted foliage and props, reject broken revisions, undo, save and reopen current disk art', async ({
   page,
 }, info) => {
-  test.setTimeout(120000);
+  // Many complete scene preparations plus GPU readbacks run on a CPU in CI.
+  test.setTimeout(process.env.CI ? 240000 : 120000);
   const { p, glb } = projectFixture();
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
