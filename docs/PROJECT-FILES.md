@@ -2,6 +2,8 @@
 
 ## Save, open, and migrate
 
+Keep the main `.terrain` file at the **root of its project folder**. Open that file directly; alternate editable scenes belong in `scenes/` and delivery GLBs in `exports/`. See [project folder organization](CONTENT-PROJECTS.md) for creation, source art and credits. Moving an existing document needs no format conversion.
+
 **Save project** downloads a `.terrain` package containing the complete editable document. Terrain buffers and embedded assets are stored as binary chunks; matching asset data URLs share one chunk. This avoids decimal float arrays and repeated base64 payloads in the file. The format is lossless and does not compress already encoded image/model data.
 
 **Open** detects the content signature, so a renamed file still works. Existing version-1 JSON projects, JSON autosaves, and version-1 inline GLB project extensions remain readable. Larger legacy JSON saves can be opened for migration, then saved as `.terrain`. New GLB exports use version 2 of `TERRAIN_tools_project`, pointing to a binary package in a buffer view. Standard viewers retain the static presentation; Terrain Studio restores the authored behavior.

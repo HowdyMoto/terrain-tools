@@ -1,9 +1,10 @@
 import { createServer } from 'node:http';
 import { createReadStream } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
-import { resolve, sep, dirname } from 'node:path';
+import { resolve, sep } from 'node:path';
 import { chromium } from '@playwright/test';
 import { createHash } from 'node:crypto';
+import { readContentManifest } from './content-project-manifest.mjs';
 // Profiles the built renderer with an external content project's saved viewpoint.
 // GPU queries use internal targets only for diagnostics; no application debug API.
 const root = resolve('.');
@@ -14,9 +15,7 @@ if (!project)
   );
 const output = process.argv[3] ?? '.qa/forest-render.json';
 const libRoot = resolve(process.argv[4] ?? 'lib');
-const manifest = JSON.parse(
-  await readFile(resolve(dirname(project), '../content-manifest.json'), 'utf8'),
-);
+const manifest = await readContentManifest(project);
 const view = manifest.viewpoints.original ?? manifest.viewpoints.trail;
 if (!view?.position || !view?.target)
   throw new Error('Content manifest needs an original or trail viewpoint.');

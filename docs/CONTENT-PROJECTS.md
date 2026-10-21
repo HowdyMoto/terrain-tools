@@ -1,4 +1,4 @@
-# Keep content projects outside the toolkit
+# Project folders
 
 An artist's landscape is a **`.terrain` document**, not a new application build. Use the same editor and runtime for every landscape. The document embeds its terrain, paint, materials, models, brushes, instances and lighting, so opening it does not require copying art into `src/` or `public/`.
 
@@ -9,29 +9,54 @@ Documents/
   GitHub/terrain-tools/          # Editor, runtime, tests and general documentation
   Terrain Studio Projects/
     My Landscape/
+      My-Landscape.terrain      # OPEN THIS: the main editable project
       README.md                 # Open/rebuild instructions and known limits
       CREDITS.md                # Artists, links, licenses and modifications
       content-manifest.json     # Content manifest, units, versions and checksums
       sources/                  # Original downloads and DCC authoring files
       prepared/                 # Converted heightmaps, texture sets and static GLBs
+      scenes/                   # Alternate scenes and named editable revisions
       tools/                    # This project's conversion/build scripts
-      exports/                  # Editable .terrain files and delivery exports
-      evidence/                 # Local validation logs and screenshots
+      exports/                  # GLBs, baked maps and other delivery files
+      evidence/                 # Optional validation logs and screenshots
 ```
 
-The folder convention is for organization; it is **not a second project format**. Terrain Studio opens the `.terrain` file, not `content-manifest.json` or the directory. A native file is self-contained, while the surrounding directory preserves provenance and reproducible source art.
+The **main `.terrain` file belongs in the root**, like a solution/project file in a desktop tool. Open it directly with **Open** in Terrain Studio. Use one clearly named main document; put lighting studies, alternate scenes and named revisions in `scenes/`. `exports/` is for delivery output, not the working project. Create supporting directories only as needed.
 
-Give the metadata file `"kind": "terrain-content-manifest"` and a `"project"` field containing the document path, such as `"exports/My Landscape.terrain"`. If someone selects that metadata in **Open**, the editor directs them to the document. Older unversioned manifests with a `.terrain` path in `"project"` receive the same guidance.
+This keeps the existing native package version and embedded assets. The document is self-contained; surrounding files preserve source artwork, credits and reproducibility. `content-manifest.json` is supporting inventory. Give it `"kind": "terrain-content-manifest"` and `"project": "My-Landscape.terrain"`, relative to the project root. If selected in **Open**, the editor points to the document. Legacy metadata and documents under `exports/` remain readable.
+
+The Project tab explains the layout and saving behavior:
+
+![Project file guidance in the editor](benchmarks/project-files-2026-10-20.png)
+
+## Create a project folder
+
+From the toolkit checkout, with Node 22.12+ (Node 24 used for development):
+
+```powershell
+npm ci
+npm run build:runtime
+npm run project:create -- "C:/Users/your-name/Documents/Terrain Studio Projects/My Landscape"
+npm run dev
+```
+
+The last path must be a **new folder** inside an existing parent. The command creates a 256 m, 128 × 128 cell editable project named after the folder, a root `.terrain` file, credit/inventory/readme files and the supporting directories above (except optional `evidence/`). It installs no dependencies in the content folder and refuses existing folders, including empty ones. Open the printed `.terrain` path in the editor, then generate/sculpt terrain and import your art. You can also create a folder yourself and place an existing saved document at its root.
 
 ## Work in the editor
 
 1. Run `npm ci` once in the toolkit checkout, then `npm run dev`. Open Vite's printed Local URL.
 2. Use **Open** to select a content project's `.terrain` file. A full project open restores its embedded brushes, maps, instances and lighting.
-3. Use **Save project** after editing. Choose the project's `exports/` directory if the browser asks, or move the downloaded file there. Browser autosave is a recovery copy for the current browser/site address; it is not a directory-backed project library.
-4. To start new content, set its name, generate or import terrain, then import PBR sets and foliage from its `prepared/` folder. Save the resulting document in that project's `exports/` directory.
+3. Use **Save project** after editing. Choose the **project root** if the browser asks, or move the downloaded file there. Deliberately replace the main document when saving ongoing work; put named revisions in `scenes/` so the root has one obvious entry. Browser autosave is a recovery copy for the current browser/site address; it does not update the disk file automatically.
+4. Import PBR sets and foliage from `prepared/`, retaining original downloads and license files in `sources/`. Use **Export scene** for GLB delivery and put the result in `exports/`.
 5. Keep revisions as separate named files or use a dedicated content repository with appropriate large-file storage. Back up both the editable document and the original authoring sources.
 
 Use **Save surface**, **Save brush**, and sculpt presets for reusable content across projects. Keep those files in the content library, then load them through the normal editor controls. The toolkit need not contain a named scene button, a hardcoded local path, or a dependency on a particular artist's asset pack.
+
+## Reorganize an existing project
+
+Move the main document from `exports/` to the root **without regenerating it**. Put other editable scene variants in `scenes/`, and update `project` / `sourceProject` paths in their manifests. Keep source art, prepared assets, credits, undoable authoring data and original filenames intact. Update local build/validation scripts and README links to use the new paths; builders should refuse to overwrite an artist-edited document. Preserve the manifests' generation checksums: moving a file does not change its bytes, and an edited document must not be relabeled as an untouched generated output. Historical evidence can retain its original paths.
+
+The local Namaqualand, Pine Forest and Tropical Grove projects now use this layout. Namaqualand's lighting variants are in `scenes/`. Their art stays outside this repository. The forest inventory lookup accepts both root documents and the old one-level `exports/` arrangement.
 
 ## Convert a DCC scene
 

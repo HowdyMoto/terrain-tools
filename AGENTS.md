@@ -32,6 +32,7 @@ Requires Node.js 22.12+ (Node 24 is used for development), npm, and native WebGP
 - `npm test`: full Vitest suite.
 - `npm test -- tests/runtime.test.ts`: one test file; append `-t "test name"` to select a test.
 - `npm run build`: check types, build the runtime/declarations into `lib/`, and build the editor/examples into `dist/`.
+- `npm run project:create -- "C:/path/to/My Landscape"`: after `npm run build:runtime`, create a new external content folder with its main `.terrain` file at the root, prepared/source assets, scenes, tools and delivery exports. Refuses existing folders. See `docs/CONTENT-PROJECTS.md`.
 - `npm run build:assets:foliage`: rebuild bundled CC0 GLBs from the local original collection and alpha masks; uses pinned meshoptimizer/sharp dev dependencies. Ordinary builds use the prepared assets. See `docs/FOLIAGE-ASSETS.md`.
 - `npm run test:browser`: Playwright against the production build (run `npm run build` first).
 - `npm run test:browser -- tests/browser/settings-recovery.spec.mjs`: one browser test file.

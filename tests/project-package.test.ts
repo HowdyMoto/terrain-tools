@@ -95,14 +95,17 @@ function glb(document: object, binary = new Uint8Array(4)) {
 
 describe('portable project packages', () => {
   it('identifies content manifests and points to their editable document', async () => {
-    for (const kind of [undefined, 'terrain-content-manifest']) {
+    for (const [kind, path] of [
+      [undefined, 'exports/My Landscape.terrain'],
+      ['terrain-content-manifest', 'exports/My Landscape.terrain'],
+      ['terrain-content-manifest', 'My-Landscape.terrain'],
+    ]) {
       const text = JSON.stringify({
         kind,
         name: 'An external landscape',
-        project: 'exports/My Landscape.terrain',
+        project: path,
       });
-      const message =
-        'This file is a content manifest. Open "exports/My Landscape.terrain" instead.';
+      const message = `This file is a content manifest. Open "${path}" instead.`;
       expect(() => parseProjectFile(text)).toThrow(message);
       expect(() =>
         parseProjectFile(new TextEncoder().encode(text).buffer),

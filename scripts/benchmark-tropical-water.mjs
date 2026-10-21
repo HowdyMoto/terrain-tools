@@ -14,7 +14,7 @@ const option = (name, fallback) =>
     ?.slice(name.length + 3) ?? fallback;
 const projectPath = option(
   'project',
-  'C:/Users/wrigh/Documents/Terrain Studio Projects/Tropical Grove/exports/Tropical-Grove.terrain',
+  'C:/Users/wrigh/Documents/Terrain Studio Projects/Tropical Grove/Tropical-Grove.terrain',
 );
 const output = option('output', 'test-results/tropical-water.json');
 const computeOnly = process.argv.includes('--compute-only');

@@ -7,6 +7,7 @@ import {
   serializeProjectPackage,
 } from 'terrain-tools';
 import { decodeDocument, triangleGlb } from './fixtures.mjs';
+import { seedEditorProject } from './seed-editor-project.mjs';
 async function download(page, info, name) {
   const pending = page.waitForEvent('download');
   await page.locator('#save').click();
@@ -50,8 +51,9 @@ test('explains content manifests, preserves the open document and retries with i
 }, info) => {
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
+  await seedEditorProject(page);
   await page.goto('/');
-  await expect(page.locator('#foliage-count')).not.toHaveText('0', {
+  await expect(page.locator('#app')).toHaveJSProperty('inert', false, {
     timeout: 30000,
   });
   const project = createProject(16, 32);
@@ -83,16 +85,18 @@ test('explains content manifests, preserves the open document and retries with i
     .evaluateAll((buttons) =>
       buttons.map((b) => ({ title: b.title, disabled: b.disabled })),
     );
-  for (const kind of [undefined, 'terrain-content-manifest']) {
+  for (const [kind, path] of [
+    [undefined, 'exports/My Landscape.terrain'],
+    ['terrain-content-manifest', 'exports/My Landscape.terrain'],
+    ['terrain-content-manifest', 'My-Landscape.terrain'],
+  ]) {
     await page.locator('#file-open').setInputFiles({
       name: kind ? 'content-manifest.json' : 'project.json',
       mimeType: 'application/json',
-      buffer: Buffer.from(
-        JSON.stringify({ kind, project: 'exports/My Landscape.terrain' }),
-      ),
+      buffer: Buffer.from(JSON.stringify({ kind, project: path })),
     });
     await expect(page.locator('#toast')).toContainText(
-      'This file is a content manifest. Open "exports/My Landscape.terrain" instead.',
+      `This file is a content manifest. Open "${path}" instead.`,
     );
     await expect(page.locator('#project-name')).toHaveValue(project.name);
     expect(
@@ -123,6 +127,14 @@ test('explains content manifests, preserves the open document and retries with i
   await expect(page.locator('#save-state')).toHaveText('Saved locally');
   await page.reload();
   await expect(page.locator('#project-name')).toHaveValue(project.name);
+  await page.locator('[data-tab="project"]').click();
+  await expect(page.locator('#project-file-location')).toBeVisible();
+  await expect(page.locator('#project-file-location')).toContainText('root');
+  await expect(page.locator('#project-folder-layout')).toContainText('scenes/');
+  await expect(page.locator('#project-save-location')).toContainText(
+    'does not update',
+  );
+  await page.screenshot({ path: info.outputPath('project-files.png') });
   expect(errors).toEqual([]);
 });
 test('migrates legacy autosave, recovers package failures, cleans assets with undo, and survives failed local writes', async ({
@@ -143,8 +155,9 @@ test('migrates legacy autosave, recovers package failures, cleans assets with un
       return put.apply(this, args);
     };
   });
+  await seedEditorProject(page);
   await page.goto('/');
-  await expect(page.locator('#foliage-count')).not.toHaveText('0', {
+  await expect(page.locator('#app')).toHaveJSProperty('inert', false, {
     timeout: 30000,
   });
   const project = createProject(32, 64);

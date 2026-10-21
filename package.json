@@ -33,6 +33,7 @@
     "benchmark:history": "node scripts/benchmark-history.mjs",
     "benchmark:persistence": "node scripts/benchmark-persistence.mjs",
     "build:example:upland": "node scripts/build-upland-example.mjs",
+    "project:create": "node scripts/create-content-project.mjs",
     "build:assets:foliage": "node scripts/build-photoreal-foliage.mjs",
     "build:assets:runtime": "node scripts/build-runtime-assets.mjs",
     "benchmark:world": "node scripts/benchmark-world.mjs",
