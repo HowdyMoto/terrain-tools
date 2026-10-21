@@ -61,8 +61,10 @@ if (
     throw new Error(
       'Usage: npm run project:create -- "C:/path/to/My Landscape" (a new folder)',
     );
-  // Uses the built, locked toolkit, without installing anything in the art folder.
-  const { createProject, ProjectPackageWriter } = await import('terrain-tools');
+  // Resolve the built SDK only for CLI execution. Folder-writing helpers must
+  // remain importable by source tests before lib/ has been built.
+  const toolkitURL = import.meta.resolve('terrain-tools');
+  const { createProject, ProjectPackageWriter } = await import(toolkitURL);
   const project = createProject(128, 256);
   project.name = basename(resolve(directory)).slice(0, 120);
   project.folderId = randomUUID();
