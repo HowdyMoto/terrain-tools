@@ -1,6 +1,7 @@
 /// <reference types="@webgpu/types" />
 import { WebGPURenderer, PCFShadowMap } from 'three/webgpu';
 import type { WebGLRenderer, Texture } from 'three';
+import { installShaderRetention } from './shader-cache';
 import { installTerrainLighting } from './node-lighting';
 import { installSharedGeometryOwnership } from './shared-geometry';
 
@@ -27,6 +28,7 @@ export async function createTerrainRenderer({
     await renderer.init();
     gpuDevice(renderer);
     installTerrainLighting(renderer);
+    installShaderRetention(renderer);
     installSharedGeometryOwnership(renderer);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = PCFShadowMap;

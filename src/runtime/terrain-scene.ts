@@ -1,8 +1,14 @@
 import * as THREE from 'three';
+import { timePreparation } from './preparation-timing';
+import type { PreparationTiming } from './preparation-timing';
 import { EditTransaction } from '../render/edit-transaction';
 import { TerrainWater, prepareWaterTerrain } from './water';
 import type { PreparedWater } from './water';
 import { buildMeshData, effectiveHoles, heightAt } from '../core/terrain';
+import type { PreparedTerrainData } from '../core/terrain-preparation';
+import { rememberPreparedTerrain } from './terrain-preparer';
+import { CanopyLighting } from './canopy-lighting';
+import type { PreparedCanopy } from './canopy-lighting';
 import type { TerrainProject } from '../core/types';
 import { TerrainFoliage } from './foliage';
 import type { PreparedFoliage } from './foliage';
@@ -41,6 +47,7 @@ interface TerrainGeometry {
 }
 export type PreparedTerrainGeometry = PreparedResource<TerrainGeometry>;
 interface TerrainResources {
+  canopy: PreparedCanopy;
   water: PreparedWater;
   project: TerrainProject;
   models: PreparedModels;
@@ -52,6 +59,7 @@ interface TerrainResources {
 export type PreparedTerrain = PreparedResource<TerrainResources>;
 /** Render a complete authored terrain in an application's existing Three.js scene. */
 export class TerrainScene extends THREE.Group {
+  readonly canopyLighting: CanopyLighting;
   readonly terrain = new THREE.Group();
   readonly foliage: TerrainFoliage;
   readonly props = new THREE.Group();
@@ -66,12 +74,23 @@ export class TerrainScene extends THREE.Group {
   private retainedGeometry?: Set<THREE.BufferGeometry>;
   private loading?: AbortController;
   private requests = new Set<AbortController>();
+  private terrainData?: PreparedTerrainData;
   project: TerrainProject;
   constructor(
     project: TerrainProject,
     private options: {
       assets?: WorldAssets;
       decoder?: import('../render/model-loader').ModelDecoder;
+      preparedTerrain?: PreparedTerrainData;
+      onPreparationTiming?: (timing: PreparationTiming) => void;
+      yieldPreparation?: (signal: AbortSignal) => Promise<void>;
+      foliageLazyInstances?: boolean;
+      foliageImpostors?: ReadonlyMap<
+        string,
+        import('./foliage-impostor').FoliageImpostor
+      >;
+      foliageClusters?:
+        boolean | import('./foliage-clusters').FoliageClusterOptions;
     } = {},
   ) {
     super();
@@ -86,7 +105,20 @@ export class TerrainScene extends THREE.Group {
     );
     this.name = project.name;
     this.project = project;
-    this.foliage = new TerrainFoliage(project, this.library);
+    this.terrainData = options.preparedTerrain;
+    this.options = { ...options, preparedTerrain: undefined };
+    this.foliage = new TerrainFoliage(project, this.library, {
+      distantClusters: options.foliageClusters,
+      impostors: options.foliageImpostors,
+      lazyInstances: options.foliageLazyInstances,
+    });
+    this.canopyLighting = new CanopyLighting(
+      this,
+      () => this.project,
+      this.library,
+      () => !!this.edit,
+    );
+    this.foliage.onPopulationChanged = () => this.canopyLighting.invalidate();
     this.water = new THREE.Mesh(
       new THREE.PlaneGeometry(1, 1),
       new THREE.MeshStandardMaterial({
@@ -129,26 +161,53 @@ export class TerrainScene extends THREE.Group {
       geometry: PreparedTerrainGeometry | undefined,
       foliage: PreparedFoliage | undefined;
     let water: PreparedWater | undefined;
+    let canopy: PreparedCanopy | undefined;
     const release = () => {
       water?.dispose();
       geometry?.dispose();
       foliage?.dispose();
       models?.dispose();
       material?.dispose();
+      canopy?.dispose();
     };
     controller.signal.addEventListener('abort', release, { once: true });
     try {
-      models = await this.library.prepareAssets(project, controller.signal);
+      const stage = <T>(name: string, work: () => T | Promise<T>) =>
+        timePreparation(name, work, this.options.onPreparationTiming);
+      models = await stage('models', () =>
+        this.library.prepareAssets(project, controller.signal),
+      );
       checkSignal(controller.signal);
       if (materials)
-        material = await this.terrainMaterial.prepare(
-          project,
-          controller.signal,
+        material = await stage('materials', () =>
+          this.terrainMaterial.prepare(project, controller.signal),
         );
       checkSignal(controller.signal);
-      geometry = this.prepareTerrain(undefined, project);
-      foliage = this.foliage.prepare(project, models);
-      const props = this.prepareProps(project, models);
+      await this.options.yieldPreparation?.(controller.signal);
+      geometry = await stage('geometry', () =>
+        this.prepareTerrain(undefined, project),
+      );
+      await this.options.yieldPreparation?.(controller.signal);
+      foliage = await stage('foliage', () =>
+        this.options.yieldPreparation
+          ? this.foliage.prepareAsync(
+              project,
+              models,
+              controller.signal,
+              this.options.yieldPreparation,
+            )
+          : this.foliage.prepare(project, models),
+      );
+      await this.options.yieldPreparation?.(controller.signal);
+      const props = await stage('props', () =>
+        this.prepareProps(project, models),
+      );
+      canopy = await this.canopyLighting.prepare(
+        project,
+        project.environment,
+        models,
+        controller.signal,
+      );
       water = this.waterSystem.prepare(
         project,
         project.water
@@ -158,7 +217,7 @@ export class TerrainScene extends THREE.Group {
       checkSignal(controller.signal);
       return new PreparedResource(
         this,
-        { project, models, material, geometry, foliage, props, water },
+        { project, models, material, geometry, foliage, props, water, canopy },
         release,
       );
     } catch (error) {
@@ -180,6 +239,7 @@ export class TerrainScene extends THREE.Group {
     this.assertTerrain(state.geometry);
     state.foliage.assert(this.foliage);
     if (state.material) this.terrainMaterial.assertPrepared(state.material);
+    state.canopy.assert(this.canopyLighting);
   }
   applyPrepared(prepared: PreparedTerrain) {
     this.assertPrepared(prepared);
@@ -194,6 +254,7 @@ export class TerrainScene extends THREE.Group {
     this.applyTerrain(state.geometry);
     this.foliage.apply(state.foliage);
     this.applyProps(state.props);
+    this.canopyLighting.apply(state.canopy);
   }
   /** Latest request wins. Failed or cancelled preparation retains the current scene. */
   async load(project = this.project, materials = true, signal?: AbortSignal) {
@@ -242,6 +303,15 @@ export class TerrainScene extends THREE.Group {
         ? []
         : [...this.chunks.values()].map((mesh) => mesh.geometry),
       owned = new Set<THREE.BufferGeometry>();
+    const preparedChunks =
+      !region && p === this.project && this.terrainData
+        ? new Map(
+            this.terrainData.chunks.map((chunk) => [
+              chunk.x + ',' + chunk.z,
+              chunk,
+            ]),
+          )
+        : undefined;
     const release = () => {
       for (const geometry of owned) geometry.dispose();
       owned.clear();
@@ -263,7 +333,17 @@ export class TerrainScene extends THREE.Group {
               minZ > region.maxZ + 2 * spacing)
           )
             continue;
-          const data = buildMeshData(p, x, z, nx, nz, holes),
+          const precomputed = preparedChunks?.get(x + ',' + z);
+          if (
+            preparedChunks &&
+            (!precomputed ||
+              precomputed.nx !== nx ||
+              precomputed.nz !== nz ||
+              precomputed.positions.length !== (nx + 1) * (nz + 1) * 3 ||
+              precomputed.normals.length !== precomputed.positions.length)
+          )
+            throw new Error('Invalid prepared terrain chunks.');
+          const data = precomputed ?? buildMeshData(p, x, z, nx, nz, holes),
             geometry = new THREE.BufferGeometry();
           owned.add(geometry);
           geometry.setAttribute(
@@ -275,8 +355,9 @@ export class TerrainScene extends THREE.Group {
             new THREE.BufferAttribute(data.weights, 4),
           );
           geometry.setIndex(new THREE.BufferAttribute(data.indices, 1));
-          const normals = new Float32Array(data.positions.length);
-          for (let i = 0; i < data.positions.length; i += 3) {
+          const normals =
+            precomputed?.normals ?? new Float32Array(data.positions.length);
+          for (let i = 0; !precomputed && i < data.positions.length; i += 3) {
             const px = data.positions[i],
               pz = data.positions[i + 2];
             new THREE.Vector3(
@@ -291,13 +372,25 @@ export class TerrainScene extends THREE.Group {
             'normal',
             new THREE.BufferAttribute(normals, 3),
           );
-          geometry.computeBoundingBox();
-          geometry.computeBoundingSphere();
+          if (precomputed) {
+            geometry.boundingBox = new THREE.Box3(
+              new THREE.Vector3().fromArray(precomputed.bounds, 0),
+              new THREE.Vector3().fromArray(precomputed.bounds, 3),
+            );
+            geometry.boundingSphere = new THREE.Sphere(
+              new THREE.Vector3().fromArray(precomputed.sphere),
+              precomputed.sphere[3],
+            );
+          } else {
+            geometry.computeBoundingBox();
+            geometry.computeBoundingSphere();
+          }
           const key = x + ',' + z,
             candidate = new THREE.Mesh(geometry, this.terrainMaterial.material);
           candidate.name = 'Terrain ' + key;
           candidate.receiveShadow = candidate.castShadow = true;
           candidate.userData = { chunkX: x, chunkZ: z, cellsX: nx, cellsZ: nz };
+          if (precomputed) rememberPreparedTerrain(geometry, precomputed);
           meshes.push(candidate);
           const existing = region ? this.chunks.get(key) : undefined;
           if (existing) {
@@ -343,6 +436,8 @@ export class TerrainScene extends THREE.Group {
     const state = prepared.take(this),
       p = state.project;
     this.geometryRevision++;
+    this.terrainData = undefined;
+    this.canopyLighting.invalidate();
     for (const { mesh, geometry } of state.changes) mesh.geometry = geometry;
     this.chunks = state.chunks;
     if (state.full) this.terrain.clear();
@@ -405,6 +500,7 @@ export class TerrainScene extends THREE.Group {
       this.retainedGeometry = undefined;
       this.edit = undefined;
       this.geometryRevision++;
+      this.canopyLighting.invalidate();
     };
     const edit = new EditTransaction(
       () => {
@@ -483,6 +579,7 @@ export class TerrainScene extends THREE.Group {
   }
   reanchorFoliage(region: TerrainRegion) {
     this.foliage.reanchor(region);
+    this.canopyLighting.invalidate();
   }
   reanchorProps(region: TerrainRegion) {
     const pad = (2 * this.project.size) / this.project.resolution;
@@ -513,6 +610,7 @@ export class TerrainScene extends THREE.Group {
       throw new Error('Terrain update requires a non-negative time delta.');
     this.foliage.update(dt, contacts, camera);
     this.waterSystem.update(dt, camera, this.project);
+    this.canopyLighting.updateTransform();
   }
   clearInteractions() {
     this.foliage.clearInteractions();
@@ -526,6 +624,7 @@ export class TerrainScene extends THREE.Group {
     ];
   }
   dispose() {
+    this.canopyLighting.dispose();
     if (this.disposed) return;
     this.edit?.rollback();
     this.disposed = true;

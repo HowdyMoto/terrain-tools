@@ -1,0 +1,216 @@
+{
+  "date": "2026-10-20",
+  "baselineCommit": "8a8351f",
+  "browser": "Chrome 155 / Windows",
+  "device": "RTX 5060 Laptop GPU selected by scripts/chrome-gpu.mjs",
+  "method": "Native WebGPU; uniform neutral mapped flat terrain under fixed direct sun with environment/ambient fill zero, no fog/shadows/water. Heights 15/60/240m; camera roll -30deg; full/LOD/transformed-LOD terrain; nonuniform scale; MSAA/temporal. Read signed RGBA16F normals and linear HDR color with aligned rows; compare against analytical model/view normal transforms. Read flat-surface GTAO separately and add a contacting box to retain real occlusion.",
+  "groups": [
+    {
+      "temporal": false,
+      "profile": "full",
+      "brightnessRatio": 1.0232606132075472
+    },
+    {
+      "temporal": false,
+      "profile": "lod",
+      "brightnessRatio": 1.0232606132075472
+    },
+    {
+      "temporal": false,
+      "profile": "transformed-lod",
+      "brightnessRatio": 1.0186089764551995
+    },
+    {
+      "temporal": true,
+      "profile": "full",
+      "brightnessRatio": 1.023299921383648
+    },
+    {
+      "temporal": true,
+      "profile": "lod",
+      "brightnessRatio": 1.023240959119497
+    },
+    {
+      "temporal": true,
+      "profile": "transformed-lod",
+      "brightnessRatio": 1.0185987573577502
+    }
+  ],
+  "samples": [
+    {
+      "temporal": false,
+      "profile": "full",
+      "height": 15,
+      "normalError": 0.000337979079383266,
+      "luminance": 0.1986064910888672,
+      "ao": 0.9882352941176468,
+      "expected": [-0.4681645887845223, 0.8108848540793833, 0.3511234415883918]
+    },
+    {
+      "temporal": false,
+      "profile": "full",
+      "height": 60,
+      "normalError": 0.0001598520402614767,
+      "luminance": 0.19483566284179688,
+      "ao": 0.9905024509803919,
+      "expected": [-0.2773500981126145, 0.4803844614152615, 0.8320502943378438]
+    },
+    {
+      "temporal": false,
+      "profile": "full",
+      "height": 240,
+      "normalError": 0.0000657988321437486,
+      "luminance": 0.19409179687499997,
+      "ao": 0.9904411764705879,
+      "expected": [-0.08219949365267884, 0.142373699362875, 0.9863939238321437]
+    },
+    {
+      "temporal": false,
+      "profile": "lod",
+      "height": 15,
+      "normalError": 0.000337979079383266,
+      "luminance": 0.1986064910888672,
+      "ao": 0.9882352941176468,
+      "expected": [-0.4681645887845223, 0.8108848540793833, 0.3511234415883918]
+    },
+    {
+      "temporal": false,
+      "profile": "lod",
+      "height": 60,
+      "normalError": 0.0001598520402614767,
+      "luminance": 0.19483566284179688,
+      "ao": 0.9906249999999999,
+      "expected": [-0.2773500981126145, 0.4803844614152615, 0.8320502943378438]
+    },
+    {
+      "temporal": false,
+      "profile": "lod",
+      "height": 240,
+      "normalError": 0.0000657988321437486,
+      "luminance": 0.19409179687499997,
+      "ao": 0.9899509803921569,
+      "expected": [-0.08219949365267884, 0.142373699362875, 0.9863939238321437]
+    },
+    {
+      "temporal": false,
+      "profile": "transformed-lod",
+      "height": 15,
+      "normalError": 0.00018607230146583387,
+      "luminance": 0.19011878967285156,
+      "ao": 0.9915441176470585,
+      "expected": [-0.6069875797218962, 0.6539946660514658, 0.45150532094271745]
+    },
+    {
+      "temporal": false,
+      "profile": "transformed-lod",
+      "height": 60,
+      "normalError": 0.00016938055531856566,
+      "luminance": 0.1871337890625,
+      "ao": 0.9913602941176474,
+      "expected": [-0.3931089424332418, 0.2835459996139211, 0.8746810993053186]
+    },
+    {
+      "temporal": false,
+      "profile": "transformed-lod",
+      "height": 240,
+      "normalError": 0.00007772980415654551,
+      "luminance": 0.1866455078125,
+      "ao": 0.9856617647058818,
+      "expected": [
+        -0.19416952667915655, -0.061027176100223235, 0.9790678621456352
+      ]
+    },
+    {
+      "temporal": true,
+      "profile": "full",
+      "height": 15,
+      "normalError": 0.000337979079383266,
+      "luminance": 0.19861412048339844,
+      "ao": 0.9882965686274505,
+      "expected": [-0.4681645887845223, 0.8108848540793833, 0.3511234415883918]
+    },
+    {
+      "temporal": true,
+      "profile": "full",
+      "height": 60,
+      "normalError": 0.0001598520402614767,
+      "luminance": 0.19483184814453125,
+      "ao": 0.9908700980392158,
+      "expected": [-0.2773500981126145, 0.4803844614152615, 0.8320502943378438]
+    },
+    {
+      "temporal": true,
+      "profile": "full",
+      "height": 240,
+      "normalError": 0.0000657988321437486,
+      "luminance": 0.19409179687499997,
+      "ao": 0.990563725490196,
+      "expected": [-0.08219949365267884, 0.142373699362875, 0.9863939238321437]
+    },
+    {
+      "temporal": true,
+      "profile": "lod",
+      "height": 15,
+      "normalError": 0.000337979079383266,
+      "luminance": 0.19860267639160156,
+      "ao": 0.9882965686274506,
+      "expected": [-0.4681645887845223, 0.8108848540793833, 0.3511234415883918]
+    },
+    {
+      "temporal": true,
+      "profile": "lod",
+      "height": 60,
+      "normalError": 0.0001598520402614767,
+      "luminance": 0.19483566284179688,
+      "ao": 0.9905024509803921,
+      "expected": [-0.2773500981126145, 0.4803844614152615, 0.8320502943378438]
+    },
+    {
+      "temporal": true,
+      "profile": "lod",
+      "height": 240,
+      "normalError": 0.0000657988321437486,
+      "luminance": 0.19409179687499997,
+      "ao": 0.9900735294117645,
+      "expected": [-0.08219949365267884, 0.142373699362875, 0.9863939238321437]
+    },
+    {
+      "temporal": true,
+      "profile": "transformed-lod",
+      "height": 15,
+      "normalError": 0.00018607230146583387,
+      "luminance": 0.19011688232421875,
+      "ao": 0.9915441176470585,
+      "expected": [-0.6069875797218962, 0.6539946660514658, 0.45150532094271745]
+    },
+    {
+      "temporal": true,
+      "profile": "transformed-lod",
+      "height": 60,
+      "normalError": 0.00016938055531856566,
+      "luminance": 0.1871337890625,
+      "ao": 0.9916666666666669,
+      "expected": [-0.3931089424332418, 0.2835459996139211, 0.8746810993053186]
+    },
+    {
+      "temporal": true,
+      "profile": "transformed-lod",
+      "height": 240,
+      "normalError": 0.00007772980415654551,
+      "luminance": 0.1866455078125,
+      "ao": 0.9862745098039212,
+      "expected": [
+        -0.19416952667915655, -0.061027176100223235, 0.9790678621456352
+      ]
+    }
+  ],
+  "contactOcclusion": 89,
+  "validation": [],
+  "adapter": "WebGPU · nvidia blackwell",
+  "sourceHashes": {
+    "src/render/surface-nodes.ts": "1dc881a07adb85422057c25fb11a6e597413cf8c7cf60813e754b3e9a5c68607",
+    "src/runtime/webgpu-pipeline.ts": "7cc8dd8c849aa4ce495ce0b8cbe054302f01448322c3bc53220b10bb4b4fc6e1"
+  },
+  "screenshots": "Reference world before/after captures at 240m camera height offset; unchanged sun/exposure settings. Qualitative correction captures, not an arbitrary-scene or photorealism certification.",
+  "limits": "Local native RTX rendering checks. Full browser suite, other hardware and FPS were not rebenchmarked. Existing performance runs predate the corrected normals."
+}

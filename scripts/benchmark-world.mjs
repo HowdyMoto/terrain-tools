@@ -2,7 +2,10 @@ import { chromium } from '@playwright/test';
 import { spawn } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromeGPUArgs } from './chrome-gpu.mjs';
+import { benchmarkPower } from './benchmark-power.mjs';
 const quick = process.argv.includes('--quick');
+const steady = process.argv.includes('--steady');
+const nearClusters = process.argv.includes('--near-clusters');
 const captures = !process.argv.includes('--no-captures');
 const output =
   process.argv.find((a) => a.startsWith('--output='))?.slice(9) ??
@@ -10,7 +13,7 @@ const output =
 const url =
   process.argv.find((a) => a.startsWith('--url='))?.slice(6) ??
   'http://127.0.0.1:5175';
-let server, browser;
+let server, browser, powerSession;
 const percentile = (values, q) => {
   const sorted = values.slice().sort((a, b) => a - b);
   return (
@@ -25,6 +28,8 @@ const summarize = (values) => ({
   max: Math.max(0, ...values),
 });
 try {
+  powerSession = await benchmarkPower();
+  console.log('Power state: ' + JSON.stringify(powerSession.power));
   if (
     !(await fetch(url)
       .then((r) => r.ok)
@@ -72,12 +77,29 @@ try {
   page.on('console', (m) => {
     if (m.type() === 'error') errors.push(m.text());
   });
+  let profileSession;
+  if (process.argv.includes('--profile')) {
+    profileSession = await page.context().newCDPSession(page);
+    await profileSession.send('Profiler.enable');
+    await profileSession.send('Profiler.setSamplingInterval', {
+      interval: 1000,
+    });
+    await profileSession.send('Profiler.start');
+  }
   const loadStarted = performance.now();
   console.log('Loading the production world.');
+  const parameters = new URLSearchParams();
+  if (process.argv.includes('--full-detail')) parameters.set('full-detail', '');
+  if (nearClusters) parameters.set('near-clusters', '');
+  if (process.argv.includes('--wide-clusters'))
+    parameters.set('wide-clusters', '');
+  if (process.argv.includes('--impostors')) parameters.set('impostors', '');
+  if (process.argv.includes('--no-water-prewarm'))
+    parameters.set('no-water-prewarm', '');
+  if (process.argv.includes('--eager-instances'))
+    parameters.set('eager-instances', '');
   await page.goto(
-    url +
-      '/world.html' +
-      (process.argv.includes('--full-detail') ? '?full-detail' : ''),
+    url + '/world.html' + (parameters.size ? '?' + parameters : ''),
   );
   await page.waitForFunction(() => window.worldExample, undefined, {
     timeout: 180000,
@@ -86,6 +108,18 @@ try {
   const initialReadyMs = performance.now() - loadStarted;
   const initial = await page.evaluate(() => ({
     adapter: window.worldExample.adapter,
+    entryScripts: [...document.scripts]
+      .map((script) => script.src)
+      .filter(Boolean),
+    prewarm:
+      window.worldExample.preparationConfiguration?.fullGPU ??
+      !!window.worldExample.world.options.prepareGPU,
+    waterPrewarm:
+      window.worldExample.preparationConfiguration?.waterGPU ?? false,
+    nearClusters: !!window.worldExample.world.options.foliageClusters?.nearby,
+    nearbyCellSize: window.worldExample.world.options.foliageClusters?.nearby
+      ? (window.worldExample.world.options.foliageClusters.nearbyCellSize ?? 64)
+      : null,
     stats: window.worldExample.world.stats,
     failures: [...window.worldExample.world.streaming.errors].map(([k, e]) => [
       k,
@@ -107,24 +141,77 @@ try {
   if (initial.stats.failedTiles)
     throw new Error('World has failed tiles: ' + JSON.stringify(initial));
   await page.waitForTimeout(quick ? 1000 : 5000);
-  const measurementStarted = await page.evaluate(() => {
-    window.worldExample.start();
-    return performance.now();
-  });
   const laps = quick ? 1 : 3,
     seconds = quick ? 3 : 12;
-  console.log('Measuring ' + laps + ' laps, ' + seconds + ' seconds per view.');
-  await page.evaluate(
-    ([laps, seconds]) => window.worldExample.traverse(laps, seconds),
-    [laps, seconds],
-  );
-  console.log('Traversal complete; waiting for final tile loads.');
-  await page.evaluate(() => window.worldExample.ready());
-  const raw = await page.evaluate(() => ({
-    ...window.worldExample.stop(),
-    measurementEnded: performance.now(),
-  }));
-  const measurementWallMs = raw.measurementEnded - measurementStarted;
+  let raw, measurementWallMs;
+  if (steady) {
+    const views = [],
+      samples = [];
+    for (const name of ['forest', 'open', 'coast']) {
+      await page.evaluate(async (name) => {
+        window.worldExample.view(name);
+        await window.worldExample.ready();
+      }, name);
+      await page.waitForTimeout(quick ? 1000 : 5000);
+      const started = await page.evaluate(() => {
+        window.worldExample.start();
+        return performance.now();
+      });
+      await page.waitForTimeout(seconds * 1000);
+      const sample = await page.evaluate(() => ({
+        ...window.worldExample.stop(),
+        measurementEnded: performance.now(),
+      }));
+      const duration = sample.measurementEnded - started;
+      views.push({
+        name,
+        measurementWallMs: duration,
+        averageFPS: sample.cpu.length / (duration / 1000),
+        frameMs: summarize(sample.frames.slice(1)),
+        cpuMs: summarize(sample.cpu),
+        gpuMs: summarize(sample.gpu),
+        stats: sample.stats,
+        residentTiles: sample.snapshots.map((s) => s.stats.residentTiles),
+      });
+      samples.push(sample);
+      console.log('Steady ' + JSON.stringify(views.at(-1)));
+    }
+    raw = { ...samples.at(-1), steadyViews: views };
+    for (const key of ['cpu', 'gpu', 'longTasks', 'snapshots'])
+      raw[key] = samples.flatMap((sample) => sample[key]);
+    raw.frames = samples.flatMap((sample) => sample.frames.slice(1));
+    measurementWallMs = views.reduce(
+      (sum, view) => sum + view.measurementWallMs,
+      0,
+    );
+  } else {
+    const measurementStarted = await page.evaluate(() => {
+      window.worldExample.start();
+      return performance.now();
+    });
+    console.log(
+      'Measuring ' + laps + ' laps, ' + seconds + ' seconds per view.',
+    );
+    await page.evaluate(
+      ([laps, seconds]) => window.worldExample.traverse(laps, seconds),
+      [laps, seconds],
+    );
+    console.log('Traversal complete; waiting for final tile loads.');
+    await page.evaluate(() => window.worldExample.ready());
+    raw = await page.evaluate(() => ({
+      ...window.worldExample.stop(),
+      measurementEnded: performance.now(),
+    }));
+    measurementWallMs = raw.measurementEnded - measurementStarted;
+  }
+  if (profileSession) {
+    const { profile } = await profileSession.send('Profiler.stop');
+    await writeFile(
+      output.replace(/\.json$/, '') + '-profile.json',
+      JSON.stringify(profile),
+    );
+    await profileSession.detach();
+  }
   console.log(`Recorded ${raw.frames.length} frames; releasing resources.`);
   // Capture outside the timing interval: screenshot readback stalls are instrumentation.
   for (const name of captures ? ['forest', 'open', 'coast'] : []) {
@@ -147,6 +234,7 @@ try {
     };
   });
   const result = {
+    power: powerSession.power,
     date: new Date().toISOString(),
     browser: browser.version(),
     configuration: {
@@ -154,6 +242,9 @@ try {
       resolution: 128,
       tileSize: 250,
       maxResidentTiles: 12,
+      mode: steady ? 'resident-views' : 'streaming-traversal',
+      nearClusters: initial.nearClusters,
+      nearbyCellSize: initial.nearbyCellSize,
       laps,
       secondsPerView: seconds,
       proceduralTileSource: true,
@@ -162,14 +253,20 @@ try {
       captures,
     },
     initialReadyMs,
+    initialBuild: {
+      entryScripts: initial.entryScripts,
+      prewarm: initial.prewarm,
+      waterPrewarm: initial.waterPrewarm,
+    },
     measurementWallMs,
     averageFPS: raw.cpu.length / (measurementWallMs / 1000),
-    frameTimeNote:
-      'Frame interval percentiles exclude the first sample, which begins before recording. Average FPS counts submitted frames over the browser-clock recording window, including final tile loading. This is not display scanout or GPU completion rate.',
+    frameTimeNote: steady
+      ? 'Three fixed camera views, each fully loaded and warmed before recording. Timed windows exclude transitions/loading and exclude each first frame sample. FPS counts submissions, not display scanout or GPU completion.'
+      : 'Frame interval percentiles exclude the first sample, which begins before recording. Average FPS counts submitted frames over the browser-clock recording window, including final tile loading. This is not display scanout or GPU completion rate.',
     ...raw,
     cleanup,
     summary: {
-      frameMs: summarize(raw.frames.slice(1)),
+      frameMs: summarize(steady ? raw.frames : raw.frames.slice(1)),
       cpuMs: summarize(raw.cpu),
       gpuMs: summarize(raw.gpu),
       loadMs: summarize(raw.loadMilliseconds),
@@ -179,9 +276,15 @@ try {
       'CPU/GPU residency counters estimate typed buffers/textures. Heap is main-thread JS only. Driver allocations, workers and host source documents are not directly measured.',
     errors,
   };
+  result.meetsStreamingResponsiveness =
+    result.summary.frameMs.max < 250 &&
+    result.summary.frameMs.p95 <= 33.5 &&
+    !errors.length &&
+    !raw.stats.failedTiles;
   result.meets30FPS =
     raw.frames.length > 30 &&
     result.summary.frameMs.p95 <= 33.5 &&
+    (!steady || raw.steadyViews.every((view) => view.frameMs.p95 <= 33.5)) &&
     !raw.stats.failedTiles &&
     !errors.length;
   await writeFile(output, JSON.stringify(result, null, 2) + '\n');
@@ -212,4 +315,5 @@ try {
 } finally {
   await browser?.close();
   server?.kill();
+  await powerSession?.close();
 }

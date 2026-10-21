@@ -1,3 +1,6 @@
+import { validateGPU } from '../render/renderer';
+import { compileInRenderContext } from '../render/prepare-geometry';
+import { checkSignal } from '../render/resources';
 import {
   RenderTarget,
   DepthTexture,
@@ -43,7 +46,6 @@ import {
   output,
   mrt,
   normalView,
-  packNormalToRGB,
   nodeObject,
   convertToTexture,
   rtt,
@@ -56,6 +58,7 @@ import { TerrainWater } from './water';
 import { terrainIndirect } from '../render/node-lighting';
 import { beginFoliageMotionFrame } from '../render/foliage-motion';
 import { TerrainVelocityNode } from '../render/native-velocity';
+import { temporalHistoryConfidence } from '../render/temporal-history';
 
 /** Contracts: all intermediate color is linear HDR; depth is native WebGPU
  * [0,1]. Only RenderPipeline owns display conversion. Targets own their textures;
@@ -63,11 +66,14 @@ import { TerrainVelocityNode } from '../render/native-velocity';
 export const terrainPassContract = {
   color: 'linear-srgb-hdr',
   depth: 'webgpu-zero-to-one',
+  normal: 'signed-view-space',
+  velocity: 'xy-ndc-motion-alpha-history-confidence',
   outputs: ['output', 'normal', 'indirect', 'velocity'],
   displayOwner: 'post-processing',
 } as const;
 
 class WaterCapture {
+  callDepth = 2;
   readonly target = new RenderTarget(1, 1, {
     type: HalfFloatType,
     count: 4,
@@ -101,7 +107,7 @@ class WaterCapture {
       this.underwater,
     );
     this.material.fragmentNode = mrt({
-      output: vec4(resolved, 1),
+      output: vec4(resolved, source.a),
       normal: texture(this.target.textures[1]),
       indirect: texture(this.target.textures[2]),
       velocity: texture(this.target.textures[3]),
@@ -118,10 +124,8 @@ class WaterCapture {
         waters.push(o);
     });
     const r = this.renderer;
-    if (!waters.length) {
-      r.render(scene, camera);
-      return;
-    }
+    this.callDepth =
+      (r as WebGPURenderer & { _callDepth: number })._callDepth + 1;
     const target = r.getRenderTarget()!,
       autoClear = r.autoClear,
       background = scene.background;
@@ -148,6 +152,7 @@ class WaterCapture {
       }
       this.inverseProjection.value.copy(camera.projectionMatrixInverse);
       this.quad.render(r);
+      if (!surfaces.length) return;
       scene.traverseVisible((o) => {
         if (
           (o instanceof Mesh ||
@@ -227,9 +232,15 @@ function terrainOutputs(velocity: TerrainVelocityNode) {
   })();
   return mrt({
     output,
-    normal: packNormalToRGB(normalView),
+    // GTAO r186 consumes signed view normals directly. RGBA16F preserves them;
+    // packing into [0,1] tilts the AO normal and causes camera-dependent shading.
+    normal: normalView,
     indirect: vec4(indirect, 1),
-    velocity,
+    velocity: vec4(
+      nodeObject(velocity) as unknown as Node<'vec2'>,
+      0,
+      temporalHistoryConfidence,
+    ),
   });
 }
 
@@ -243,6 +254,8 @@ const outputGraphs = new WeakMap<
 
 export class WebGPUPipeline {
   private motionFrame = 0;
+  private historyReset = true;
+  private compilation = Promise.resolve();
   private motionEpoch = {};
   private velocity: TerrainVelocityNode;
   private pass?: TerrainPass;
@@ -270,8 +283,60 @@ export class WebGPUPipeline {
     this.outputs = graph.outputs;
     this.velocity = graph.velocity;
   }
+  /** Prepares expensive water programs in the actual overlay MRT before tile
+   * admission. Existing scene frames continue while native pipelines compile. */
+  prepareWater(
+    scene: Scene,
+    camera: Camera,
+    water: TerrainWater,
+    signal: AbortSignal,
+  ) {
+    const operation = this.compilation
+      .catch(() => {})
+      .then(async () => {
+        checkSignal(signal);
+        if (!this.pass || !water.surfaces.length) return;
+        const target = this.pass.renderTarget;
+        const size = this.renderer.getDrawingBufferSize(new Vector2());
+        water.capture(
+          this.water.target.texture,
+          this.water.target.depthTexture!,
+          size,
+          camera,
+          true,
+        );
+        for (const mesh of water.surfaces) {
+          checkSignal(signal);
+          await validateGPU(this.renderer, () => {
+            const visible = mesh.visible,
+              culling = mesh.frustumCulled;
+            try {
+              mesh.visible = true;
+              mesh.frustumCulled = false;
+              return compileInRenderContext(
+                this.renderer,
+                mesh,
+                camera,
+                scene,
+                target,
+                this.outputs,
+                signal,
+                this.water.callDepth,
+              );
+            } finally {
+              mesh.visible = visible;
+              mesh.frustumCulled = culling;
+            }
+          });
+        }
+      });
+    this.compilation = operation;
+    return operation;
+  }
   reset() {
-    this.key = '';
+    // Teleports invalidate history, not the render graph or compiled scene programs.
+    this.historyReset = true;
+    this.motionEpoch = {};
   }
   render(
     scene: Scene,
@@ -289,12 +354,7 @@ export class WebGPUPipeline {
       settings.ambientOcclusion?.enabled,
       settings.temporalAA,
     ]);
-    if (
-      !this.post ||
-      this.camera !== camera ||
-      key !== this.key ||
-      !size.equals(this.size)
-    ) {
+    if (!this.post || this.camera !== camera || key !== this.key) {
       this.releasePasses();
       this.key = key;
       this.camera = camera;
@@ -357,6 +417,44 @@ export class WebGPUPipeline {
           this.pass.getTextureNode('velocity'),
           camera,
         );
+        // r186 has no public history reset. Seed its existing resolve/history
+        // after the scene input updates instead of destroying the scene pass.
+        // Keep this small version-specific adapter beside our other TRAA ownership fixes.
+        const updateTemporal = temporal.updateBefore.bind(temporal);
+        temporal.updateBefore = (frame) => {
+          updateTemporal(frame);
+          if (this.historyReset) {
+            const targets = temporal as typeof temporal & {
+              _historyRenderTarget: RenderTarget;
+              _resolveRenderTarget: RenderTarget;
+              setSize(width: number, height: number): void;
+            };
+            const input = temporal.beautyNode as typeof temporal.beautyNode & {
+              isRTTNode?: boolean;
+              renderTarget: RenderTarget;
+              passNode: { renderTarget: RenderTarget };
+            };
+            const source = input.isRTTNode
+              ? input.renderTarget
+              : input.passNode.renderTarget;
+            // An RTT input can acquire its actual size during the first resolve draw.
+            // TRAA inspected its 1x1 bootstrap before that draw; seed at the now-current size.
+            targets.setSize(source.width, source.height);
+            const beauty = source.texture;
+            this.renderer.initRenderTarget(targets._historyRenderTarget);
+            this.renderer.initRenderTarget(targets._resolveRenderTarget);
+            this.renderer.copyTextureToTexture(
+              beauty,
+              targets._historyRenderTarget.texture,
+            );
+            this.renderer.copyTextureToTexture(
+              beauty,
+              targets._resolveRenderTarget.texture,
+            );
+            this.historyReset = false;
+          }
+          return undefined;
+        };
         // Three r186's TRAANode replaces its initial depth texture after the
         // first frame, but does not release it in dispose(). Retain ownership
         // here, separately from the history target that replaces its value.
@@ -375,7 +473,11 @@ export class WebGPUPipeline {
           }
         )._historyRenderTarget;
         this.renderer.initRenderTarget(history);
-        result = mix(nodeObject(result), temporal, color.a);
+        result = mix(
+          nodeObject(result),
+          temporal,
+          this.pass.getTextureNode('velocity').a,
+        );
         {
           const sharpenInput = convertToTexture(result);
           if (sharpenInput.isRTTNode) this.effects.push(sharpenInput);
@@ -396,6 +498,11 @@ export class WebGPUPipeline {
         this.renderer,
         nodeObject(result).context({ velocity: this.velocity }),
       );
+    }
+    if (!size.equals(this.size)) {
+      this.size.copy(size);
+      this.pass?.setSize(size.x, size.y);
+      this.reset();
     }
     if (this.occlusion && settings.ambientOcclusion) {
       this.occlusion.radius.value = settings.ambientOcclusion.radius;
@@ -445,6 +552,7 @@ export class WebGPUPipeline {
   }
   private releasePasses() {
     this.motionEpoch = {};
+    this.historyReset = true;
     this.effects.forEach((effect) => effect.dispose());
     this.effects = [];
     this.occlusion = undefined;

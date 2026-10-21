@@ -1,6 +1,115 @@
 # Performance evidence
 
+The world example now adds coarse terrain and coastal water beyond detailed residency, with a 3 km overview radius and longer fog/clipping distances. The timed runs below predate that additional coverage and the subsequent normal-space corrections. They are historical measurements, not FPS acceptance for the current larger view. See [current distance behavior and correctness evidence](RUNTIME.md#distant-world-coverage).
+
 The editor and interactive runtime examples use native WebGPU. The first optimization pass removes repeated shader construction and reduces native streaming stalls; steady 30 FPS remains a separate acceptance target. Other measurements are **WebGL baselines** unless explicitly marked otherwise. See [WebGPU scope](WEBGPU.md). `benchmark:surfaces`, `benchmark:foliage` and `benchmark-forest.mjs` still exercise explicit legacy WebGL paths.
+
+## Generated tree impostors and streamed responsiveness — 20 October 2026
+
+The optional **`/world.html?impostors&wide-clusters`** profile generates relightable distant pine views from the existing source model, uses two vertex-oriented cards (four triangles), and groups compatible near/intermediate draws into 128 m cells. Ordinary 64 m near grouping and default distant-only grouping remain available. Authored placements, LOD distances/densities, terrain error, lighting and shadows are unchanged; the final tree representation changes. Exports retain full primary meshes. This runtime prototype needs no new artist-authored assets; editor preview/apply controls remain #17.
+
+The streaming work also shares Standard water graphs, retains up to 64 unused runtime programs / 8 MiB of generated source, seeds temporal history in place, yields detached foliage/collider preparation around frames, and asynchronously prepares water in its actual target/MRT/nested render context. Detailed source draw arrays allocate on first selection; admission reserves their possible growth. Decoded source/base geometry and combined draw storage remain bounded by cell/resource limits rather than fully paged per plant. The example now permits only **one unfinished composed GPU frame**. Earlier unfenced submission FPS is not directly comparable.
+
+Timed source `46f8dd6` was frozen during the sequential optimized/default/optimized traversal runs below. No local builds, tests, source edits or encoders overlapped timing. All use **Chrome 155, RTX 5060 Laptop GPU, AC power, 1920 × 1080**, the same three-lap 108-second forest/open/coast route, full-detail Rapier collision, default Natural lighting and staged water. Subsequent final review snapshots the caller's atlas registry at world construction to preserve fixed memory reservations. That ownership fix does not change the measured frame/render path; the report records its fingerprints separately. Comparison links and final tests/documentation were also added after timing.
+
+| Configuration                    | Average FPS | Frame p95 / p99 | Worst interval | CPU submission p95 | GPU render p95 |
+| -------------------------------- | ----------: | --------------: | -------------: | -----------------: | -------------: |
+| Default mesh foliage             |        34.2 |  50.1 / 50.4 ms |         183 ms |            28.7 ms |       12.22 ms |
+| Impostors + 128 m groups, first  |        43.9 |  33.4 / 66.6 ms |         117 ms |            14.1 ms |       11.40 ms |
+| Impostors + 128 m groups, repeat |        38.9 |  33.5 / 66.7 ms |         217 ms |            20.1 ms |       11.35 ms |
+
+**Both optimized runs meet the reference traversal criteria: p95 ≤33.5 ms and no intervals ≥250 ms.** The default mesh configuration still misses frame p95. One default run and two optimized runs establish local profile acceptance, not a universal speedup. Loading changes resident content: average sampled residents are 10.04 default / 9.81–10.46 optimized, with a maximum of 12 and brief empty views after teleports. Optimized tile-load p95 is 728–1,120 ms, versus 987 ms default; complete tile preparation can exceed three seconds. Render timing includes the visible work during these loads. It does not certify continuously complete coverage during arbitrary teleports.
+
+A separate loaded-and-warmed 12-second measurement per optimized view records:
+
+| View        |  FPS | Frame p95 | CPU median | GPU median | Resident tiles |
+| ----------- | ---: | --------: | ---------: | ---------: | -------------: |
+| Forest      | 30.5 |   33.5 ms |     8.5 ms |   10.47 ms |              9 |
+| Open ground | 50.2 |   33.4 ms |     8.3 ms |    4.52 ms |             12 |
+| Coast       | 58.6 |   16.8 ms |     7.2 ms |    4.50 ms |             12 |
+
+These fixed views have stable residents and no measured long tasks. FPS counts submissions with a bounded GPU queue, not monitor scanout. GPU render queries omit independent compute; this reference uses Standard water. The fuller external tropical composition and spectral-water quality settings need their own acceptance runs.
+
+The pine atlas stores 40 views of sRGB albedo/coverage, numeric normal/depth and roughness/metalness/leaf mask, using **30 MiB on each of CPU and GPU**. World admission counts each borrowed atlas once; source ownership and source exports remain intact. Sampled optimized residency estimates peak around 477 MiB CPU / 440 MiB GPU, excluding driver allocations, worker heaps, host documents and post targets. Dry views now retain the four-attachment opaque capture and blit to avoid changing shader context when water appears; its additional attachments/depth reserve about 71.2 MiB at 1080p. Wider groups can submit more off-screen geometry; sampled coastal triangle counts increase in this comparison. All accepted runs have no captured errors or failed tiles and return tracked world/asset/renderer allocations to zero. The bounded unused-program cache persists until renderer disposal.
+
+Correctness checks include cancellation/retry and restored renderer state during baking; first-visible water with zero new shader builds or pipeline creations; repeated teleport/resize history seeding; exact grouped transforms, IDs, contacts, fades and source exports; and bounded cell work with 64-fold world-area growth and revisits. Native 64/128 m grouping images match the separate-draw reference across four view/sun combinations per mode. The six-view pine impostor comparison is approximate: dark-canopy coverage is 84–92% of the full source and silhouette overlap is 0.70–0.83. It is not close-up parity, full multi-layer parallax, exact per-leaf motion/history, or calibrated CryEngine fidelity. No mipmaps are generated yet. See [capture workflow and limits](FOLIAGE.md#generate-distant-tree-impostors).
+
+All **362 unit tests**, typecheck, lint and production/runtime/declaration builds pass. Final native RTX checks cover both world profiles, impostor baking, grouping, temporal resets and water staging. The full browser suite and other hardware browsers were not locally rerun. [Raw runs, source fingerprints, validation and limits](benchmarks/impostors-streaming-2026-10-20.json) include the earlier failed profiles; the 80-triangle prototype was rejected, and a 32-unused-program cache allowed forest-return recompilation. Neither is presented as the final result.
+
+Reproduce these separately from tests, builds, source edits and encoders:
+
+```sh
+npm ci
+npm run build
+npm run benchmark:world -- --wide-clusters --impostors --no-captures --output=.qa/world-optimized.json
+npm run benchmark:world -- --no-captures --output=.qa/world-default.json
+npm run benchmark:world -- --wide-clusters --impostors --no-captures --output=.qa/world-optimized-repeat.json
+npm run benchmark:world -- --steady --wide-clusters --impostors --no-captures --output=.qa/world-optimized-resident.json
+```
+
+## Changed-cluster updates and optional near grouping — 20 October 2026
+
+The follow-up removes retained-source version scans from settled wind-only frames. Placement, contact, fades and bounds changes invalidate only the affected clusters. Source buffers remain available for authoring/export; unchanged frames retain their packed state. Alpha-blended and refractive materials keep separate object sorting. A regression observes **zero source-version reads across 30 settled frames**, followed by correct resynchronization after reanchoring. Primary exports omit the internal source marker.
+
+`foliageClusters: { nearby: true }` optionally groups compatible primary/intermediate representations into 64 m cells; default clustering remains distant-only. The [native CC0 pine test](../tests/browser/foliage-clusters.spec.mjs) compares two sun directions at near/distant views, including primary/intermediate cross-fades, with matching pixels within the test tolerance. CPU checks compare exact packed transforms, IDs, contact and fade values through motion, culling, recovery, reanchoring, rollback and rebuild. All **353 unit tests**, typecheck, lint and build pass. Eleven targeted RTX Chrome cases pass across this iteration, including five final cases after option wiring; the full browser suite and other devices were not locally rerun.
+
+The new **RTX 5060 / Chrome 155 / AC / 1080p** default-path world comparison runs baseline/candidate/candidate/baseline, with source edits, builds, tests and encoders stopped. Forest submission FPS ranges **43.2–45.1 baseline / 42.6–47.8 candidate**, with 33.4 ms p95 in all four runs. Open-view FPS ranges **59.1–59.8 / 48.3–59.8**; the slower candidate run reaches 33.4 ms p95 versus 16.8 ms in the others. Coast stays about 60 FPS. Resident tiles and terrain detail match. **No reliable default-path FPS gain is established.** These quiet fixed views meet the local 33.5 ms p95 threshold; they do not resolve streaming stalls or prove sustained dense-world acceptance. Earlier near-field prototypes measured while source edits could trigger background work are excluded from performance claims.
+
+The separate external **7,323-plant Tropical Grove** comparison uses Standard water, the complete native shadow/sky/GTAO/temporal pipeline, 90 warmup frames, 10-second coast/canopy windows in forward/reverse order, and one unfinished GPU frame. The optional near mode preserves selected plants and triangles in each matching phase:
+
+| View                     | Selected batches default → nearby | CPU submission median default → nearby | GPU render median default → nearby |
+| ------------------------ | --------------------------------: | -------------------------------------: | ---------------------------------: |
+| Coast, forward / reverse |             293 / 321 → 104 / 110 |                  9.4–10.2 → 5.6–5.9 ms |         9.67–10.21 → 9.71–10.22 ms |
+| Canopy                   |                         416 → 183 |                 10.9–11.2 → 7.6–7.8 ms |           9.08–9.09 → 9.03–9.12 ms |
+
+Default cadence stays about 30 FPS. Near mode records 30.7–31.7 FPS coast and about 30 FPS canopy, with 33.4–33.5 ms p95. This supports reduced submission cost in these views, with similar measured GPU cost; it is one run per configuration, not a universal speedup or a geometry reduction. Coast forward/reverse select 1,495/1,840 plants because of LOD history; compare configurations within the same phase. Canopy selects 3,424 plants in every case. Tracked renderer storage increases by 0.24–1.87 MiB across matching phases, excluding CPU source buffers and driver allocations. Wider clusters can submit extra off-screen geometry in other scenes. The option remains off by default. All accepted runs have no captured rendering/GPU errors and release tracked allocations to zero. See [full measurements, hashes, validation and limits](benchmarks/foliage-cluster-updates-2026-10-20.json).
+
+After saving a baseline built `lib/` inside the workspace and building the candidate, reproduce the tropical configurations sequentially:
+
+```sh
+npm run benchmark:tropical-water -- --runtime-lib=.qa/baseline/lib --variants=standard --no-canopy --output=.qa/tropical-baseline.json
+npm run benchmark:tropical-water -- --variants=standard --no-canopy --output=.qa/tropical-default.json
+npm run benchmark:tropical-water -- --variants=standard --no-canopy --near-clusters --output=.qa/tropical-near.json
+```
+
+The source project is read-only. Pass `--project="C:/path/to/scene.terrain"` to use another document. `npm run benchmark:world -- --steady --no-captures` checks the default resident views; add `--near-clusters` for the optional mode. These harnesses have different queue policies, so do not compare their FPS directly.
+
+## Forest streaming, clusters and canopy light — 20 October 2026
+
+TerrainWorldScene now moves chunk geometry, normals, bounds, LODs and morph bounds to a bounded worker pool, yields between main-thread preparation stages, and offers a staged GPU warmup hook before admitting a tile. `/world.html?prewarm` opts into serialized `compileAsync` work. Requiring compilation before admission delayed visible content, so it is off by default. Equal wind/fade/leaf-lighting configurations reuse node graphs across tiles with independent per-material wind values. These changes target load hitches and repeated shader preparation; they do not guarantee that every shadow/MRT pipeline or asset upload is already warm.
+
+Compatible distant LODs combine draws into 128 m cells. In the native CC0 pine image test, clustered and separate batches retain the same triangles, wind, cutout shadows and pixels across two sun directions while using fewer than half as many active draw batches. Source batches stay resident for authoring; larger cells trade culling precision and extra instance storage for fewer submissions. This is not baked impostor geometry or plant residency streaming. See [foliage behavior](FOLIAGE.md#distance-and-detail).
+
+Optional [canopy lighting](ENVIRONMENT.md) adds a 38,016-byte, terrain-following visibility/tint field. It is worker-baked from crown ellipsoids and local material tints, not traced triangle GI. Tests compare indirect-only shade, direct sunlight preservation, bounded bounce, a night-time solar cycle, object isolation and rigid terrain transforms. Failed CPU/GPU allocation preserves the document, pixels, redo and autosave; retry/undo/redo/reload are covered. Full GI and calibrated production reference scenes remain work in progress.
+
+After the game was closed, the AC-powered **1920 × 1080 / RTX 5060 Laptop GPU / Chrome 155** resident-view comparison loaded and warmed every view before recording 12 seconds. Baseline is main commit `506554a`; candidate uses workers, shared graphs and clustering, with canopy lighting and prewarming off. Resident tile counts stay constant at 9/12/12 and selected terrain triangles match at 34,368/38,928/43,024. These are submission rates, not completed frames or monitor scanout.
+
+| Resident view | Baseline FPS → candidate FPS | Frame p95 before → after | CPU submission median before → after |
+| ------------- | ---------------------------: | -----------------------: | -----------------------------------: |
+| Forest        |                  22.9 → 29.1 |           50.1 → 50.0 ms |                       42.5 → 33.4 ms |
+| Open          |                  33.2 → 57.2 |           50.0 → 16.9 ms |                       27.4 → 15.7 ms |
+| Coast         |                  46.8 → 54.4 |           33.4 → 33.3 ms |                       20.6 → 16.9 ms |
+
+This single pair supports improved CPU submission in these views, with workstation/clock variability still present. **The dense forest still fails the 30 FPS frame-time target.** Aggregating all views hides that failure; the harness now requires each resident view's p95 to pass. The separate three-lap candidate traversal records 41.1 submitted FPS, 33.4 ms p95, 66.7 ms p99 and a 2.50-second worst interval, with 37 long tasks. Resident content changes during traversal, so its aggregate is not a quality-matched FPS comparison. Earlier prewarm-on trials also spent more time with missing tiles and are excluded from improvement claims. All accepted runs have no captured errors and return tracked resources to zero. See [raw world comparison and qualifications](benchmarks/forest-streaming-2026-10-20.json).
+
+The clean **7,323-plant Tropical Grove** integrated water run uses one unfinished GPU frame, 90 warmup frames and 10-second coastal/canopy windows in forward/reverse order. Standard records **21.1–29.6 FPS**, Balanced **25.1–29.8**, and High **21.6–29.8**. Most frame p95 values are 50 ms. The order/clock variation prevents a reliable FPS ranking or incremental canopy-cost claim. The optional canopy field bakes in 1.82 s on its worker and adds 38,016 texture bytes. CPU submission remains substantial; render GPU medians are about 9–11 ms, excluding FFT compute. No errors or tracked cleanup residue occur. See [clean integrated report](benchmarks/tropical-water-clean-2026-10-20.json). The earlier [game-contended diagnostic](benchmarks/tropical-water-contention-2026-10-20.json) is retained only as rejected timing evidence.
+
+A separate instrumented coastal run timestamps the ocean simulation compute pass directly, including FFT and foam. Balanced records **0.096 ms median / 0.112 ms p95**; High records **0.470 / 0.491 ms**, with 91 timed samples each. The 366 total warmup/timed timestamp readbacks report no probe errors. These narrow-pass costs do not include water shading, reflection capture or the forest; its short instrumented FPS is not used for whole-scene acceptance. Balanced/High simulation reservations remain about 13.17/84.67 MiB. See [compute probe and exact source hashes](benchmarks/tropical-water-compute-2026-10-20.json). Standard remains the default; the dense scene has not met sustained 30 FPS.
+
+To reproduce after closing GPU-heavy applications:
+
+```sh
+npm ci
+npm run build
+npm run benchmark:world -- --no-captures --output=.qa/world-current.json
+npm run benchmark:world -- --steady --no-captures --output=.qa/world-resident.json
+npm run benchmark:tropical-water -- --project="C:/path/to/Tropical-Grove.terrain" --output=.qa/tropical-water.json --seconds=10
+npm run benchmark:tropical-water -- --project="C:/path/to/Tropical-Grove.terrain" --compute-only --output=.qa/ocean-compute.json
+```
+
+Run these sequentially and separately from tests, builds and asset encoding. Water testing uses the public built runtime, a read-only external project, native RTX 5060, 1920 × 1080, the Natural look, wind, shadows, GTAO and temporal stabilization. It compares both coastal and canopy views in forward/reverse renderer order, then checks the canopy field. Each iteration observes the queue fence before its next animation frame, limiting unfinished GPU frames to one. CPU samples exclude that wait; native render timestamps exclude FFT compute, while frame intervals include integrated work. `--compute-only` instead adds native timestamp queries around the ocean compute pass and runs a shorter coast-only probe. Water reports include source/project hashes, power state and NVIDIA context. Driver memory is a point sample, not attributed process accounting; monitor scanout is not measured. Windows tests/these benchmarks use a temporary execution request to avoid Modern Standby and release it at exit; saved power configuration is unchanged.
+
+At that checkpoint, the 2 km world script could queue GPU work; its FPS is not directly comparable with the fence-bounded water harness or the newer bounded world profile above. Keep that distinction when reviewing these historical measurements. All 348 unit tests, typecheck, lint, build and changed-file formatting passed. Seventeen distinct targeted Chrome cases passed across that iteration, including eight final canopy/recovery/clustering/world cases. See [validation record and retry details](benchmarks/forest-streaming-validation-2026-10-20.json). The full unit command is `npm test -- --maxWorkers=4 --testTimeout=30000`; the existing full-size sculpt-preset fixture can exceed its default 5 s timeout under workstation load. Its isolated default-timeout retry passed. No assertion was weakened. Full browser-suite and other-device validation remain outstanding.
 
 ## Terrain LOD preparation cache — 20 October 2026
 
@@ -161,7 +270,7 @@ GitHub Actions runs locked installation, lint, unit tests, type/build checks and
 
 ## Forest rendering on the RTX 5060
 
-Build with `npm run build:runtime`, then run `node scripts/benchmark-forest.mjs "C:/path/to/content-project/exports/scene.terrain" .qa/forest-render.json`. The native document and its parent folder's `content-manifest.json` stay outside the source tree. The manifest needs `viewpoints.original` or `viewpoints.trail`, each with three-number `position` and `target` arrays. An optional third argument selects another runtime directory within the workspace. No additional dependencies or running editor server are needed beyond `npm ci` and installed Windows Chrome.
+Build with `npm run build:runtime`, then run `node scripts/benchmark-forest.mjs "C:/path/to/content-project/scene.terrain" .qa/forest-render.json`. The native document and its root `content-manifest.json` stay outside the source tree. The inventory lookup also accepts documents one level down in `scenes/` or legacy `exports/`. The manifest needs `viewpoints.original` or `viewpoints.trail`, each with three-number `position` and `target` arrays. An optional third argument selects another runtime directory within the workspace. No additional dependencies or running editor server are needed beyond `npm ci` and installed Windows Chrome.
 
 The harness checks the actual NVIDIA RTX 5060 adapter, uses 1920 × 1080 at device scale 1, warms up 160 rendered frames, then measures 240 frames along a repeating short camera path at FOV 75. It preserves the authored lighting, shadows, foliage, terrain-following eye offset and fixed simulation steps. One unfinished GPU frame is allowed, with nonblocking checks on animation callbacks. GPU timer queries cover render-target segments and are drained before reporting; disjoint measurements fail. FPS is submission cadence, not physical display scanout. The viewpoint can differ from entering a ground-level walk in the editor. Run benchmarks separately from builds and other GPU work.
 

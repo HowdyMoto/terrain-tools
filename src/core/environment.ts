@@ -2,6 +2,8 @@ import { defaultTimeOfDay, parseTimeOfDay } from './daylight';
 import type { TimeOfDaySettings } from './daylight';
 
 export interface EnvironmentSettings {
+  /** Optional approximate static canopy visibility and local ground bounce. */
+  canopyLighting?: { enabled: boolean; strength: number; bounce: number };
   /** Optional astronomical sun path and atmospheric sky; omitted preserves static lighting. */
   timeOfDay?: TimeOfDaySettings;
   mode: 'none' | 'sky' | 'image';
@@ -175,6 +177,27 @@ export function parseEnvironmentSettings(value: unknown): EnvironmentSettings {
     shadowPadding: [0, 1000],
   };
   const record = result as unknown as Record<string, unknown>;
+  if (raw.canopyLighting !== undefined) {
+    const canopy = raw.canopyLighting as Record<string, unknown>;
+    if (
+      !canopy ||
+      typeof canopy.enabled !== 'boolean' ||
+      typeof canopy.strength !== 'number' ||
+      !Number.isFinite(canopy.strength) ||
+      canopy.strength < 0 ||
+      canopy.strength > 1 ||
+      typeof canopy.bounce !== 'number' ||
+      !Number.isFinite(canopy.bounce) ||
+      canopy.bounce < 0 ||
+      canopy.bounce > 1
+    )
+      throw new Error('Invalid canopy lighting settings.');
+    result.canopyLighting = {
+      enabled: canopy.enabled,
+      strength: canopy.strength,
+      bounce: canopy.bounce,
+    };
+  }
   if (raw.backgroundIntensity !== undefined) {
     if (
       typeof raw.backgroundIntensity !== 'number' ||

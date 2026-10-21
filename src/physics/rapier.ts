@@ -1,3 +1,4 @@
+import { yieldPreparation } from '../render/resources';
 import type { TerrainProject, TerrainRegion } from '../core/types';
 import { buildMeshData, effectiveHoles } from '../core/terrain';
 import RAPIER from '@dimforge/rapier3d-compat';
@@ -241,7 +242,7 @@ export function createWorldCollisionSource(
           created.push(collider);
           // Estimate mesh/BVH retained WASM storage separately from source buffers.
           cpuBytes += (mesh.positions.byteLength + mesh.indices.byteLength) * 3;
-          await new Promise<void>((resolve) => setTimeout(resolve, 0));
+          await yieldPreparation(signal);
         }
         if (signal.aborted)
           throw new DOMException(

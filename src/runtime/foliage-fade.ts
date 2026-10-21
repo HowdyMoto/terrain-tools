@@ -2,10 +2,11 @@ import { nodeGraphKey } from '../render/node-uniforms';
 import * as THREE from 'three';
 import { configureFadeNodes } from './foliage-nodes';
 export const FOLIAGE_FADE_ATTRIBUTE = 'terrainFade';
+const alwaysEnabled = () => true;
 /** Complementary per-instance coverage in every camera/shadow pass. */
 export function configureFoliageFade(
   material: THREE.Material,
-  enabled: () => boolean = () => true,
+  enabled: () => boolean = alwaysEnabled,
 ) {
   configureFadeNodes(material, enabled);
   const previous = material.onBeforeCompile;

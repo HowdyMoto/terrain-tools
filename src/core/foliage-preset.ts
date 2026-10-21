@@ -23,7 +23,9 @@ export function serializeFoliageBrush(
     brush,
     surfaceIds: project.materials.map((m) => m.id),
     assets: Object.fromEntries(
-      Object.entries(project.assets).filter(([id]) => ids.has(id)),
+      Object.entries(project.assets)
+        .filter(([id]) => ids.has(id))
+        .map(([id, asset]) => [id, { name: asset.name, data: asset.data }]),
     ),
   });
   if (text.length > 100_000_000 || new Blob([text]).size > 100_000_000)
@@ -74,7 +76,7 @@ export function importFoliageBrush(
     let destination = id;
     while (Object.hasOwn(next.assets, destination))
       destination = 'asset-' + next.nextId++;
-    next.assets[destination] = asset;
+    next.assets[destination] = { name: asset.name, data: asset.data };
     remapped.set(id, destination);
   }
   brush.model = remapped.get(brush.model) ?? brush.model;

@@ -362,6 +362,10 @@ export class Viewport {
       checkSignal(signal);
       if (onProgress) await onProgress('terrain');
       terrain = await this.content.prepareLoad(p, materials, signal);
+      await this.content.canopyLighting.prepareGPU(
+        terrain.value.canopy,
+        this.renderer,
+      );
       if (onProgress) await onProgress('shaders');
       await this.preflightSurface(
         terrain.value.geometry.value.meshes,
@@ -575,6 +579,7 @@ export class Viewport {
     this.project.materials = state.project.materials;
     this.project.paint = state.project.paint;
     this.project.view.textureResolution = state.project.view.textureResolution;
+    this.content.canopyLighting.invalidate();
   }
   rebuildTerrain(region?: TerrainRegion, waterPreview = false) {
     const terrain = this.content.prepareTerrain(region, this.project, {

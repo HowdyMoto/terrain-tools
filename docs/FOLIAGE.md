@@ -2,7 +2,52 @@
 
 The Foliage inspector opens on **Paint**, with radius, density, spacing, surface rules and Populate together. Use **Models** for brush composition and scale/yaw, **Effects** for leaf lighting, contact and flexibility, **Detail** for LOD/culling, and **Library** for imports, default brushes, portable brush files and asset cleanup. The active brush is always available; the model selector stays visible on pages that edit a model.
 
+## Generate distant tree impostors
+
+No new art is required. The native runtime can generate relightable distant representations from an already loaded static tree using `bakeFoliageImpostor(parts, options)`. `/world.html?impostors` automatically prepares the bundled CC0 pine; its progress is shown before the world opens. This is an opt-in runtime prototype; editor preview/apply controls are tracked in #17.
+
+The default bake captures eight azimuths and five elevations (-30 to +90 degrees) into sRGB albedo/coverage, model-space normal/depth and roughness/metalness/leaf-mask atlases. It submits four triangles per tree, orients two cards to the closest capture views and dithers between them independently for the camera and shadow cameras, and reconstructs depth. Scene lighting, roughness and leaf transmission remain dynamic. This differs from draw grouping, which retains all original triangles.
+
+```ts
+import { bakeFoliageImpostor, TerrainScene } from 'terrain-tools/three';
+
+// source.library belongs to an already loaded TerrainScene.
+const impostor = await bakeFoliageImpostor(source.library.get(model.model), {
+  renderer,
+  resolution: 256,
+  tint: model.color,
+  subsurface: model.subsurface,
+  signal,
+  onProgress: (completed, total) => console.log(completed / total),
+});
+const candidate = new TerrainScene(project, {
+  foliageImpostors: new Map([[model.model, impostor]]),
+  foliageLazyInstances: true,
+});
+await candidate.load();
+candidate.update(0, [], camera); // Select/allocate the needed representations.
+// The last authored LOD uses the impostor; primary meshes and complete exports remain.
+// The host adds/replaces its scene only after successful preparation.
+// Retire candidate before releasing the bake it borrows:
+candidate.dispose();
+impostor.dispose();
+```
+
+Models need an authored LOD to replace; primary geometry is never substituted. Density, culling, placements and stable IDs retain their authored settings. A 256-pixel, eight-azimuth bake uses **30 MiB for its three atlases**, excluding geometry and driver allocations. Options support 128/256/512 pixels and 8/16 azimuths; `maxBytes` defaults to 64 MiB and rejects larger requests before rendering. Higher settings can require an explicit larger budget. World admission counts shared atlas bytes once, including the numeric maps used only by shaders. Hosts own atlas lifetime and must rebuild after source geometry, material tint or baked material-selection changes. Do not dispose a bake while a scene still borrows it.
+
+`TerrainWorldScene` snapshots the supplied atlas registry at construction so later edits to the caller's map cannot bypass fixed reservations or change later tile loads. Recreate the world to use a different registry; keep its borrowed bakes alive until that world is retired.
+
+Cancellation, allocation failure and progress-handler errors release the candidate; renderer target/MRT/clear state is restored before every asynchronous wait. Bakes and projects remain separate: generated atlases are runtime resources, not new checked-in project art, and original model credits remain authoritative. The pine reference uses the existing [CC0 source and author acknowledgments](../public/foliage/photoreal/CREDITS.txt).
+
+This first implementation supports opaque/cutout PBR trees; blended/refractive materials are rejected. It captures a rest pose and approximates distant wind on the cards; it does not reproduce individual leaf motion, deep multi-layer parallax or every possible material extension. View changes reject old temporal coverage conservatively. Atlas filtering, extreme upward views below -30 degrees, large-leaf tropical assets and close-range use need further validation. Close trees retain their authored meshes. This is not a claim of CryEngine parity or a universal FPS improvement.
+
+`TerrainWorldScene` allocates source LOD draw arrays when first selected (`foliageLazyInstances`, default true); single-terrain/editor behavior defaults to eager allocation. Detailed arrays stay unallocated for distant cells until needed. Lazy scenes must be updated with their render camera before drawing. Compatible combined far groups still reserve their draw arrays, and full source models/base geometry remain available for authoring/export. Admission reserves the maximum possible matrix/contact/fade/motion growth, so lazy allocation does not bypass the world memory ceiling. Buffers retire with their streamed cell; this is not a complete geometry/texture paging system. Use `foliageLazyInstances: false` or `/world.html?eager-instances` for comparison.
+
 ## Motion and temporal stabilization
+
+Leaf coverage and anti-aliasing history confidence are separate in native WebGPU. Confidence uses the existing velocity attachment's alpha channel, leaving material alpha available for smooth/MSAA coverage. Per-instance fade bounds and validity use flat interpolation so a completed fade cannot round below one and continually reject history. Distant cards accumulate normally when the camera rests; camera/zoom changes, skipped views and resets temporarily reduce their history reuse. Wind and contact still use their motion vectors.
+
+The stationary-camera regression freezes the simulation while temporal sampling continues, then compares consecutive images in both world foliage modes. The RTX 5060 diagnostic reduces mean adjacent-frame RGB variation by about 94%, with residual subpixel/atlas/screen-space variation. See [method and raw metrics](benchmarks/foliage-stationary-2026-10-20.json), [before](benchmarks/foliage-stationary-before-2026-10-20.png) and [after](benchmarks/foliage-stationary-after-2026-10-20.png). These are stability checks, not new FPS measurements or beauty references.
 
 Native `TerrainScene` foliage supplies motion vectors for current/previous wind, contact deformation and instance placement. Existing **Light → View → Stable foliage edges (temporal)** uses them automatically. Authored plant IDs match history after LOD packing, so a plant does not borrow another plant's previous transform. Wind speed, strength, gusts and direction retain their previous drawn values, rather than assuming one fixed simulation timestep. A still pose produces zero leaf motion; moving the camera still reprojects normally.
 
@@ -10,11 +55,13 @@ Opaque cutout leaves reject temporal history when first drawn or returning after
 
 Camera projection bindings remain stable through temporal pipeline rebuilds. Rendering restores perspective aspect as well as the camera view/projection matrices; jitter must not change the next frame's camera setup. Resize and environment history invalidation reset deformation and camera histories together. Runtime hosts should call `environment.invalidateHistory()` after teleports or discontinuous scene changes. Independent cameras/renderers retain separate CPU histories. Streamed tile admission reserves conservatively for one view; hosts with additional views must budget their history separately.
 
-This is native renderer state, not saved project content. Existing documents, undo/redo and exports keep their formats. Ordinary GLB exports remain static. Explicit WebGL hosts retain their existing temporal implementation; custom host meshes outside `TerrainScene` do not acquire foliage deformation history automatically. Blended transparent foliage retains its opacity semantics and does not receive the opaque-cutout reactive-alpha policy. Motion vectors do not eliminate subpixel aliasing, lighting/shadow animation, screen-space omissions or every temporal artifact.
+This is native renderer state, not saved project content. Existing documents, undo/redo and exports keep their formats. Ordinary GLB exports remain static. Explicit WebGL hosts retain their existing temporal implementation; custom host meshes outside `TerrainScene` do not acquire foliage deformation history automatically. Blended transparent foliage retains its opacity semantics and does not receive the opaque-cutout history rejection policy. Motion vectors do not eliminate subpixel aliasing, lighting/shadow animation, screen-space omissions or every temporal artifact.
 
 Validation and the bounded 1080p comparison are documented in [performance evidence](PERFORMANCE.md#foliage-motion-history--19-october-2026). The fixture uses checked-in CC0 Poly Haven fern derivatives by Rico Cilliers (modeling) and Rob Tuytel (scanning); [asset credits](../public/foliage/photoreal/CREDITS.txt) remain included.
 
 ## Import plants into a brush
+
+With a project folder connected, **Choose linked GLBs from project** stores source paths and the reviewed unit/pivot transform. Exporting over those files refreshes painted plants automatically; brush behavior, LOD references and placements stay intact. **Project → Files** can link existing assets, extract embedded models or detach a source. Invalid exports retain the last working art and retry after another file change. See [folder workflow and recovery](CONTENT-PROJECTS.md#iterate-on-linked-art). Loose glTF dependency folders remain supported by the embedded importer; live links currently require self-contained GLBs.
 
 Choose **Foliage → Library → Import foliage assets**. Drop a complete model folder or select **Choose model folder** for extracted glTF packages; this includes the `.gltf`, companion `.bin` and nested textures. Selecting a `.gltf` file alone gives the browser access to that file only. Missing dependencies now show **Locate model folder**, and the importer remembers the failed selection so you can add just the missing files and retry. Folder drops read every directory batch and preserve relative paths. A multi-file chooser can resolve unique dependency basenames; folder imports require the correct relative paths. Missing/ambiguous dependencies name the file to include, and external URLs are never fetched.
 
@@ -122,6 +169,12 @@ Each selected model has **Distance & detail** controls. Add up to three LODs, ch
 **Retained density** keeps a deterministic subset at each LOD. It must stay the same or decrease with distance. **Cull distance** hides the model beyond a final distance; 0 means unlimited. Distances measure from the camera to each plant's terrain anchor in local metres, including camera height. The default 10% hysteresis switches outward above 110% of a threshold and inward below 90%, preventing rapid switching around that boundary. Initial loading selects immediately at the authored distance.
 
 All referenced meshes load up front. Each LOD reserves instance buffers for its deterministic retained-density subset; primary meshes retain capacity for every authored plant. A 0% level has no instance capacity. Fades can overlap levels without exceeding these reservations. Native packed buffers upload only their active slots when placement/contact/fade data changes; unchanged passes reuse them. This is not asset streaming: hidden primary plants, anchor/contact state and referenced assets remain resident. Keep level and part counts within the target memory budget. Full-density tree LODs retain every tree; reduced reservations apply when an artist has already chosen density thinning, usually for ground cover.
+
+The third and fourth representations (LOD index 2 or 3) with authored start distances of at least 96 m can combine compatible 32 m source batches into 128 m draw cells. This reduces distant submissions without changing geometry, density, authored IDs, dither coverage, wind or shadow materials. Only opaque/cutout materials combine; alpha-blended and refractive materials retain separate object sorting. The renderer retains source batches for authoring/export and allocates combined streams, so CPU storage can increase. Larger cells reduce culling precision; this is not an impostor or a residency system. Set `new TerrainScene(project, { foliageClusters: false })` or the matching world option for a controlled comparison. The world example accepts `?unclustered`.
+
+For submission-heavy scenes, `foliageClusters: { nearby: true }` also combines primary and intermediate representations into 64 m cells. It preserves plant geometry and material settings but can submit more off-screen triangles and retain more instance storage. Measure CPU and GPU frame time in the target scene before enabling it. This runtime option does not change the saved document; existing scenes retain distant-only clustering by default. Preview it at `/world.html?near-clusters`, or pass `--near-clusters` to the world/tropical benchmarks. Draw clusters update only after affected placement, contact, fade or bounds change; settled wind-only frames do not scan retained source buffers. Static exports contain every primary plant and omit the runtime source marker.
+
+`foliageClusters: { nearby: true, nearbyCellSize: 128 }` uses wider primary/intermediate cells for CPU submission-heavy worlds. The default is 64 m; the only supported sizes are 64 and 128 m. Wider cells can increase off-screen geometry and shadow work. `/world.html?wide-clusters` and `benchmark:world -- --wide-clusters` select 128 m; `--impostors` can be combined independently. Neither option thins authored populations or changes their shading.
 
 **Transition time (s)** adds a timed dithered cross-fade when a plant changes LOD, disappears through density/far culling, or returns. The first LOD added to a previously unconfigured model starts at 0.25 seconds. Zero switches instantly; older files with no duration retain instant switching. The first camera selection after loading is immediate, so a scene does not start by fading every primary plant.
 

@@ -51,7 +51,8 @@ import {
 } from 'three/tsl';
 import type { WindUniforms } from './wind';
 import type { FoliageSubsurface } from '../core/foliage-shading';
-import { nodeUniforms } from '../render/node-uniforms';
+import { impostorVertex } from '../render/impostor-nodes';
+import { materialNodeUniforms } from '../render/node-uniforms';
 import {
   foliageMatrixAttribute,
   foliagePreviousAttribute,
@@ -60,6 +61,13 @@ import {
 } from '../render/native-foliage';
 
 type N = Node<'vec3'>;
+const windGraphs = new Map<
+  string,
+  { positionNode: Node; terrainHistoryNode: Node }
+>();
+const windMaterialUniforms = materialNodeUniforms('terrainWindUniforms');
+const fadeGraphs = new WeakMap<() => boolean, Node>();
+const leafGraphs = new Map<string, Record<string, unknown>>();
 const matrix3 = (a: N, b: N, c: N) => mat3(a, b, c);
 const matrix4 = mat4;
 // Matrix indexing is supported by TSL; published declarations restrict element to arrays.
@@ -308,7 +316,14 @@ export function configureWindNodes(
   uniforms: WindUniforms,
   root?: number,
 ) {
-  const u = nodeUniforms(uniforms);
+  Object.assign(material, { terrainWindUniforms: uniforms });
+  const graphKey = amount + '|' + root;
+  const cached = windGraphs.get(graphKey);
+  if (cached) {
+    Object.assign(material, cached);
+    return;
+  }
+  const u = windMaterialUniforms;
   const matrices = new WeakMap<InstancedMesh, Node<'mat4'>>();
   const positionNode = Fn((builder: NodeBuilder) => {
     const mesh = builder.object as InstancedMesh;
@@ -343,12 +358,18 @@ export function configureWindNodes(
       matrix = matrix4(columns[0], columns[1], columns[2], columns[3]);
       matrices.set(mesh, matrix);
     }
+    const impostor = builder.geometry.hasAttribute('terrainImpostorCorner')
+      ? impostorVertex(
+          matrix,
+          builder.geometry.getAttribute('terrainImpostorAzimuths').getX(0),
+        )
+      : undefined;
     const tangent = builder.geometry.hasAttribute('tangent');
     const deformed = (root === undefined ? windDeformation : maskedDeformation)(
       {
         m: matrix,
-        sourcePosition: positionGeometry,
-        sourceNormal: normalGeometry,
+        sourcePosition: impostor?.position ?? positionGeometry,
+        sourceNormal: impostor?.normal ?? normalGeometry,
         sourceTangent: tangent ? tangentGeometry.xyz : vec3(1, 0, 0),
         flex:
           root === undefined
@@ -371,7 +392,7 @@ export function configureWindNodes(
         root === undefined ? previousWindPosition : previousMaskedPosition
       )({
         m: attributeMatrix(foliagePreviousAttribute),
-        p: positionGeometry,
+        p: impostor?.position ?? positionGeometry,
         flex:
           root === undefined
             ? float(0)
@@ -389,9 +410,9 @@ export function configureWindNodes(
     if (tangent) tangentLocal.assign(column3(deformed, 2));
     return column3(deformed, 0);
   })();
-  Object.assign(material, {
+  const graph = {
     positionNode,
-    outputNode: Fn((builder: NodeBuilder) => {
+    terrainHistoryNode: Fn((builder: NodeBuilder) => {
       if (
         !builder.geometry.hasAttribute(foliagePreviousStateAttribute) ||
         !(
@@ -399,14 +420,16 @@ export function configureWindNodes(
         ).needsPreviousData() ||
         builder.material.transparent
       )
-        return output;
+        return output.a;
       let history: Node<'float'> = varying(
         attribute(foliagePreviousStateAttribute, 'vec2').y,
-      );
+      ).setInterpolation('flat');
       if (builder.geometry.hasAttribute('terrainFade')) {
+        // These bounds belong to an instance, not the leaf surface. Perspective
+        // interpolation can turn a settled 1 into <1 and reject history forever.
         const fade = varying(
           attribute(foliageCurrentStateAttribute, 'vec4').yzw,
-        );
+        ).setInterpolation('flat');
         history = history.mul(
           select(
             fade.x.greaterThan(0).or(fade.y.lessThan(1)),
@@ -415,22 +438,26 @@ export function configureWindNodes(
           ),
         );
       }
-      // The native compositor already uses HDR alpha as temporal history weight.
       // Fresh/cross-fading cutouts should not inherit unrelated old coverage.
-      return vec4(output.rgb, output.a.mul(history));
+      // Keep this separate from the alpha used for smooth leaf coverage.
+      return history;
     })(),
-  });
+  };
+  windGraphs.set(graphKey, graph);
+  if (windGraphs.size > 32) windGraphs.delete(windGraphs.keys().next().value!);
+  Object.assign(material, graph);
 }
 
 export function configureFadeNodes(material: Material, enabled: () => boolean) {
-  Object.assign(material, {
-    maskNode: Fn((builder: NodeBuilder) => {
+  let maskNode = fadeGraphs.get(enabled);
+  if (!maskNode) {
+    maskNode = Fn((builder: NodeBuilder) => {
       if (!enabled()) return float(1);
       const fade = varying(
         builder.geometry.hasAttribute(foliageCurrentStateAttribute)
           ? attribute(foliageCurrentStateAttribute, 'vec4').yzw
           : attribute('terrainFade', 'vec3'),
-      );
+      ).setInterpolation('flat');
       const noise = fract(
         fract(
           dot(floor(screenCoordinate.xy), vec2(0.06711056, 0.00583715)).add(
@@ -439,14 +466,29 @@ export function configureFadeNodes(material: Material, enabled: () => boolean) {
         ).mul(52.9829189),
       );
       return noise.greaterThanEqual(fade.x).and(noise.lessThan(fade.y));
-    })(),
-  });
+    })();
+    fadeGraphs.set(enabled, maskNode);
+  }
+  Object.assign(material, { maskNode });
 }
 
 export function configureLeafNodes(
   material: Material,
   settings: FoliageSubsurface,
+  strengthMask?: Node<'float'>,
 ) {
+  const key = JSON.stringify([
+    settings.strength,
+    settings.thickness,
+    settings.tint,
+    settings.wrap,
+    strengthMask?.getCacheKey(),
+  ]);
+  const cached = leafGraphs.get(key);
+  if (cached) {
+    Object.assign(material, cached);
+    return;
+  }
   const strength = uniform(settings.strength),
     thickness = uniform(settings.thickness),
     tint = color(settings.tint),
@@ -465,18 +507,22 @@ export function configureLeafNodes(
           .mul(diffuseColor.rgb)
           .mul(tint)
           .mul(strength)
+          .mul(strengthMask ?? float(1))
           .mul(through)
           .mul(absorption)
           .mul(1 / Math.PI),
       );
     }
   }
-  Object.assign(material, {
+  const graph = {
     // Include the custom lighting inputs in NodeMaterial's graph cache key.
     terrainLeafStrengthNode: strength,
     terrainLeafThicknessNode: thickness,
     terrainLeafTintNode: tint,
     terrainLeafWrapNode: wrap,
     setupLightingModel: () => new LeafLighting(),
-  });
+  };
+  leafGraphs.set(key, graph);
+  if (leafGraphs.size > 32) leafGraphs.delete(leafGraphs.keys().next().value!);
+  Object.assign(material, graph);
 }

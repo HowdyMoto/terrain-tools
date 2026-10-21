@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { createProject, serializeProject } from 'terrain-tools';
 import { decodeDocument } from './fixtures.mjs';
+import { seedEditorProject } from './seed-editor-project.mjs';
 
 async function save(page, info, name) {
   const pending = page.waitForEvent('download');
@@ -52,8 +53,9 @@ async function setup(page) {
       });
     }
   });
+  await seedEditorProject(page);
   await page.goto('/');
-  await expect(page.locator('#app')).not.toHaveAttribute('inert', {
+  await expect(page.locator('#app')).toHaveJSProperty('inert', false, {
     timeout: 30000,
   });
   const project = createProject(64, 64);
@@ -119,6 +121,9 @@ test('saves first-person eye height, validates edits, and restores it through un
   await expect(page.locator('#eye-height')).toHaveValue('2.4');
   await expect(page.locator('#save-state')).toHaveText('Saved locally');
   await page.reload();
+  await expect(page.locator('#app')).toHaveJSProperty('inert', false, {
+    timeout: 30000,
+  });
   await expect(page.locator('#app')).not.toHaveAttribute('inert');
   await page.locator('[data-tab="project"]').click();
   await expect(page.locator('#eye-height')).toHaveValue('2.4');
@@ -203,6 +208,9 @@ test('resizes existing sculpting atomically, preserves edits and scenery, and re
   await expect(page.locator('#terrain-size')).toHaveValue('128');
   await expect(page.locator('#save-state')).toHaveText('Saved locally');
   await page.reload();
+  await expect(page.locator('#app')).toHaveJSProperty('inert', false, {
+    timeout: 30000,
+  });
   await expect(page.locator('#size-label')).toHaveText('128 × 128 m');
   await page.locator('[data-tab="project"]').click();
   await number(page, 'terrain-size', 256);

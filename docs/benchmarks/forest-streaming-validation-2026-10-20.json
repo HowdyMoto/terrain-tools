@@ -1,0 +1,98 @@
+{
+  "date": "2026-10-20T17:58:19.667Z",
+  "branch": "work/forest-streaming-quality",
+  "baselineCommit": "506554a8577e24d300c4b62a7ac9f2fcb5f8464f",
+  "environment": {
+    "os": "Windows",
+    "node": "24.18.1",
+    "browser": "Google Chrome 155.0.8059.82",
+    "renderer": "native WebGPU",
+    "gpu": "NVIDIA GeForce RTX 5060 Laptop GPU",
+    "driver": "617.42",
+    "three": "0.186.1"
+  },
+  "checks": {
+    "unit": {
+      "command": "npm test -- --maxWorkers=4 --testTimeout=30000",
+      "files": 52,
+      "tests": 348,
+      "passed": true,
+      "note": "Existing full-size sculpt-preset fixture exceeded default 5 seconds under load earlier; isolated default-timeout retry passed. No assertion weakened."
+    },
+    "typecheck": {
+      "command": "npm run typecheck",
+      "passed": true
+    },
+    "lint": {
+      "command": "npm run lint",
+      "passed": true
+    },
+    "build": {
+      "command": "npm run build",
+      "passed": true,
+      "note": "Runtime, declarations, editor and examples built. Existing Vite chunk-size warning remains."
+    },
+    "format": {
+      "command": "Prettier check on every modified/untracked TS, MJS, MD, JSON and YAML source/evidence file",
+      "passed": true,
+      "note": "Repository-wide check has seven preexisting unchanged benchmark JSON formatting warnings; these files were not reformatted."
+    },
+    "diffCheck": {
+      "command": "git diff --check",
+      "passed": true
+    },
+    "finalBrowser": {
+      "command": "npm run test:browser -- tests/browser/canopy-lighting.spec.mjs tests/browser/settings-recovery.spec.mjs tests/browser/foliage-clusters.spec.mjs tests/browser/webgpu-world.spec.mjs",
+      "distinctCases": 8,
+      "passed": true,
+      "note": "Seven passed in the combined run. The canopy test had a leftover debug-variable reference, removed and rerun successfully with unchanged assertions. No production shader change was needed.",
+      "canopyGPU": {
+        "darkenedPixels": 126950,
+        "brightenedPixels": 15521,
+        "directSunError": 0,
+        "foreignObjectError": 0,
+        "nightBounceError": 0,
+        "movedTerrainError": 0,
+        "textureBytes": 38016,
+        "gpuValidationErrors": [],
+        "trackedCleanupBytes": 0
+      },
+      "recovery": [
+        "CPU allocation failure",
+        "GPU allocation failure",
+        "held worker cancellation",
+        "unchanged document and pixels",
+        "unchanged autosave and redo",
+        "successful retry",
+        "one-step undo/redo",
+        "autosave reload"
+      ]
+    },
+    "additionalEarlierBrowser": {
+      "passed": true,
+      "files": [
+        "foliage-batching.spec.mjs",
+        "foliage-density.spec.mjs",
+        "foliage-motion.spec.mjs",
+        "terrain-batching.spec.mjs",
+        "web-ocean.spec.mjs"
+      ],
+      "note": "Nine additional distinct targeted cases passed earlier in this iteration; the final eight-case set rechecks canopy binding, authoring recovery, clustering and streaming after the last runtime changes. A physics undo wait timed out at the old 5-second helper limit; after using the established preparation timeout it passed."
+    }
+  },
+  "evidence": {
+    "world": "forest-streaming-2026-10-20.json",
+    "water": "tropical-water-clean-2026-10-20.json",
+    "compute": "tropical-water-compute-2026-10-20.json",
+    "rejectedContention": "tropical-water-contention-2026-10-20.json",
+    "controls": "canopy-controls-2026-10-20.png"
+  },
+  "remaining": [
+    "Full browser suite not rerun. Linux/software checks are delegated to CI and were not locally run.",
+    "No sustained dense-forest 30 FPS acceptance: resident forest p95 remains 50 ms; tropical integrated modes range about 21–30 FPS.",
+    "Clusters retain source buffers and real geometry. True impostors and plant residency remain open (#9).",
+    "Canopy lighting approximates static crown visibility and ground tints, not triangle/alpha GI or calibrated reference parity (#11).",
+    "FFT compute is inexpensive in the measured coastal view, but complete water/forest performance acceptance and breaking surf remain open (#13).",
+    "Other GPUs, 4K, mobile and longer sessions were not validated. External Tropical Grove artwork is not included in this repository."
+  ]
+}

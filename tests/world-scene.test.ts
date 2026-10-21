@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { createProject, buildMeshData } from '../src/core/terrain';
 import { buildTerrainLods } from '../src/core/terrain-lod';
+import { editFoliageModels } from '../src/core/foliage';
 import { TerrainWorldScene } from '../src/runtime/world-scene';
 import { TerrainScene } from '../src/runtime/terrain-scene';
 import { TerrainLod } from '../src/runtime/terrain-lod';
@@ -194,4 +195,215 @@ describe('streamed rendered world', () => {
     await world.whenIdle();
     physics.dispose();
   });
+});
+
+it('stages optional GPU work before collision/admission and releases failure or cancelled work before retry', async () => {
+  let fail = true,
+    hold = false,
+    release: (() => void) | undefined;
+  const disposed: boolean[] = [],
+    collisionPrepared: TerrainScene[] = [];
+  const world = new TerrainWorldScene(manifest, {
+    materials: false,
+    radius: 48,
+    maxResidentTiles: 2,
+    load: async (d) => tile(d, true),
+    prepareGPU: async (terrain) => {
+      expect(terrain.parent).toBeNull();
+      const index = disposed.push(false) - 1;
+      (terrain.terrain.children[0] as THREE.Mesh).geometry.addEventListener(
+        'dispose',
+        () => {
+          disposed[index] = true;
+        },
+      );
+      if (terrain.position.x === 48 && fail) {
+        fail = false;
+        throw new Error('Injected shader warmup failure');
+      }
+      if (terrain.position.x === 16 && hold)
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+    },
+    collision: {
+      prepare: async (terrain) => {
+        collisionPrepared.push(terrain);
+        return { cpuBytes: 0, activate() {}, dispose() {} };
+      },
+    },
+  });
+  try {
+    world.update(camera(), 0);
+    await world.whenIdle();
+    expect(world.tiles).toHaveLength(1);
+    const retained = world.tiles[0];
+    expect(world.streaming.errors.get('1,0')?.message).toContain('Injected');
+    expect(disposed.filter(Boolean)).toHaveLength(1);
+    expect(collisionPrepared).toHaveLength(1);
+    world.streaming.retry('1,0');
+    await world.whenIdle();
+    expect(world.tiles).toHaveLength(2);
+    expect(world.tiles).toContain(retained);
+    expect(world.streaming.errors.size).toBe(0);
+    world.update(camera(5000), 0);
+    await world.whenIdle();
+    hold = true;
+    world.update(camera(), 0);
+    await vi.waitFor(() => expect(release).toBeTypeOf('function'));
+    world.update(camera(5000), 0);
+    release!();
+    await world.whenIdle();
+    expect(world.tiles).toHaveLength(0);
+    expect(world.stats.cpuBytes).toBe(0);
+    hold = false;
+    world.update(camera(), 0);
+    await world.whenIdle();
+    expect(world.tiles).toHaveLength(2);
+    expect(world.streaming.errors.size).toBe(0);
+  } finally {
+    release?.();
+    world.dispose();
+    await world.whenIdle();
+  }
+  expect(disposed.every(Boolean)).toBe(true);
+});
+
+it('reserves borrowed impostor atlases once per world without disposing host-owned bakes', async () => {
+  const bake = {
+    parts: [],
+    views: 40,
+    memoryBytes: 32 * 1024 ** 2,
+    sourceTriangles: 1000,
+    triangles: 4,
+    dispose: vi.fn(),
+  };
+  const options = {
+    load: async (descriptor: WorldTile) => tile(descriptor, true),
+    radius: 0,
+    maxResidentTiles: 1,
+    materials: false as const,
+    foliageImpostors: new Map([
+      ['pine', bake],
+      ['same-bake', bake],
+    ]),
+  };
+  expect(
+    () =>
+      new TerrainWorldScene(manifest, {
+        ...options,
+        cpuByteLimit: bake.memoryBytes - 1,
+      }),
+  ).toThrow('Impostor atlases exceed');
+  const world = new TerrainWorldScene(manifest, {
+    ...options,
+    cpuByteLimit: 64 * 1024 ** 2,
+    gpuByteLimit: 64 * 1024 ** 2,
+  });
+  options.foliageImpostors.clear();
+  options.foliageImpostors.set('later', {
+    ...bake,
+    memoryBytes: 128 * 1024 ** 2,
+  });
+  expect(world.options.foliageImpostors).not.toBe(options.foliageImpostors);
+  expect([...world.options.foliageImpostors!.keys()]).toEqual([
+    'pine',
+    'same-bake',
+  ]);
+  world.update(camera(16), 0);
+  await world.whenIdle();
+  expect(world.stats.impostorBytes).toBe(bake.memoryBytes);
+  expect(world.stats.cpuBytes - world.streaming.stats.cpuBytes).toBe(
+    bake.memoryBytes,
+  );
+  expect(world.stats.gpuBytes - world.streaming.stats.gpuBytes).toBe(
+    bake.memoryBytes,
+  );
+  world.dispose();
+  await world.whenIdle();
+  expect(world.stats.cpuBytes).toBe(0);
+  expect(world.stats.gpuBytes).toBe(0);
+  expect(bake.dispose).not.toHaveBeenCalled();
+});
+
+it('bounds rendered cell work when authored world area grows 64-fold and retains placements after revisiting', async () => {
+  const measure = async (side: number) => {
+    const expanded: TerrainWorld = {
+      ...manifest,
+      tiles: Array.from({ length: side * side }, (_, index) => ({
+        x: index % side,
+        z: Math.floor(index / side),
+        source: String(index),
+      })),
+    };
+    const world = new TerrainWorldScene(expanded, {
+      radius: 32,
+      maxResidentTiles: 4,
+      materials: false,
+      foliageClusters: { nearby: true, nearbyCellSize: 128 },
+      load: async (descriptor) => {
+        const p = tile(descriptor, true),
+          brush = p.brushes[0],
+          model = editFoliageModels(brush, [])[0];
+        for (let index = 0; index < 64; index++)
+          p.foliage.push({
+            id: p.nextId++,
+            brushId: brush.id,
+            modelId: model.id,
+            x: (index % 8) * 4 - 14,
+            z: Math.floor(index / 8) * 4 - 14,
+            rotation: index * 0.1,
+            scale: 1,
+          });
+        return p;
+      },
+    });
+    const view = camera(48);
+    view.position.z = 48;
+    const settle = async () => {
+      view.updateMatrixWorld();
+      world.update(view, 0);
+      await world.whenIdle();
+      expect([...world.streaming.errors.values()]).toEqual([]);
+      world.update(view, 0.1);
+      const tiles = world.tiles;
+      return {
+        residents: tiles.length,
+        instances: tiles.reduce((n, t) => n + t.foliage.viewStats.instances, 0),
+        batches: tiles.reduce((n, t) => n + t.foliage.viewStats.batches, 0),
+        triangles: tiles.reduce((n, t) => n + t.foliage.viewStats.triangles, 0),
+        placements: tiles
+          .flatMap((t) =>
+            t.project.foliage.map((p) =>
+              [
+                t.position.x,
+                t.position.z,
+                p.id,
+                p.x,
+                p.z,
+                p.rotation,
+                p.scale,
+              ].join(':'),
+            ),
+          )
+          .sort(),
+      };
+    };
+    try {
+      const initial = await settle();
+      expect(initial.residents).toBe(4);
+      expect(initial.instances).toBe(256);
+      view.position.set(80, 10, 80);
+      await settle();
+      view.position.set(48, 10, 48);
+      expect(await settle()).toEqual(initial);
+      return initial;
+    } finally {
+      world.dispose();
+      await world.whenIdle();
+      expect(world.stats.cpuBytes).toBe(0);
+      expect(world.stats.gpuBytes).toBe(0);
+    }
+  };
+  expect(await measure(32)).toEqual(await measure(4));
 });

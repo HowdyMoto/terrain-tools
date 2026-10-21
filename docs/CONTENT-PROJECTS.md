@@ -1,6 +1,6 @@
-# Keep content projects outside the toolkit
+# Project folders
 
-An artist's landscape is a **`.terrain` document**, not a new application build. Use the same editor and runtime for every landscape. The document embeds its terrain, paint, materials, models, brushes, instances and lighting, so opening it does not require copying art into `src/` or `public/`.
+An artist's landscape has a **root `.terrain` document** and editable art alongside it. Folder projects link GLB files; exporting over a linked file refreshes its foliage, LODs and props automatically. Portable project downloads embed the current art for sharing. Both use the same editor/runtime and keep project artwork outside `src/` and `public/`.
 
 Keep each content project in its own directory, preferably outside the toolkit checkout:
 
@@ -9,29 +9,68 @@ Documents/
   GitHub/terrain-tools/          # Editor, runtime, tests and general documentation
   Terrain Studio Projects/
     My Landscape/
+      My-Landscape.terrain      # OPEN THIS: the main editable project
       README.md                 # Open/rebuild instructions and known limits
       CREDITS.md                # Artists, links, licenses and modifications
       content-manifest.json     # Content manifest, units, versions and checksums
       sources/                  # Original downloads and DCC authoring files
-      prepared/                 # Converted heightmaps, texture sets and static GLBs
+      prepared/                 # Editable GLBs, texture sets and heightmaps
+      scenes/                   # Alternate scenes and named editable revisions
       tools/                    # This project's conversion/build scripts
-      exports/                  # Editable .terrain files and delivery exports
-      evidence/                 # Local validation logs and screenshots
+      exports/                  # GLBs, baked maps and other delivery files
+      evidence/                 # Optional validation logs and screenshots
 ```
 
-The folder convention is for organization; it is **not a second project format**. Terrain Studio opens the `.terrain` file, not `content-manifest.json` or the directory. A native file is self-contained, while the surrounding directory preserves provenance and reproducible source art.
+The **main `.terrain` file belongs in the root**, like a solution/project file in a desktop tool. Choose **Open folder** in Terrain Studio and select its containing directory. Use one clearly named main document; put lighting studies, alternate scenes and named revisions in `scenes/`. `exports/` is for delivery output, not the working project. Create supporting directories only as needed.
 
-Give the metadata file `"kind": "terrain-content-manifest"` and a `"project"` field containing the document path, such as `"exports/My Landscape.terrain"`. If someone selects that metadata in **Open**, the editor directs them to the document. Older unversioned manifests with a `.terrain` path in `"project"` receive the same guidance.
+**Open folder** grants the editor access to that project directory. **Save project** then updates its root document directly. Version-2 folder packages store relative GLB references and import settings without embedding those linked models. **Download portable project** creates a version-1 self-contained snapshot with source links removed. Existing portable/native/legacy projects remain readable. `content-manifest.json` remains optional supporting inventory; use `"kind": "terrain-content-manifest"` and `"project": "My-Landscape.terrain"`. The actual document contains the scene and asset bindings.
+
+The Project tab explains the layout and saving behavior:
+
+![Project file guidance in the editor](benchmarks/project-files-2026-10-20.png)
+
+## Create a project folder
+
+From the toolkit checkout, with Node 22.12+ (Node 24 used for development):
+
+```powershell
+npm ci
+npm run build:runtime
+npm run project:create -- "C:/Users/your-name/Documents/Terrain Studio Projects/My Landscape"
+npm run dev
+```
+
+The path must be a **new folder** inside an existing parent. The command creates a 256 m, 128 × 128 cell folder project, a root `.terrain` file, credit/inventory/readme files and supporting directories (except optional `evidence/`). It installs no dependencies in the content folder and refuses existing folders, including empty ones. In the editor, choose **Open folder** and select the printed directory.
+
+You can also use **Project → Files → Save as folder project** to save the current landscape into a new directory. It extracts embedded models as editable GLBs under `prepared/models/` and writes a linked root document. Existing project directories are opened rather than overwritten by this command.
 
 ## Work in the editor
 
 1. Run `npm ci` once in the toolkit checkout, then `npm run dev`. Open Vite's printed Local URL.
-2. Use **Open** to select a content project's `.terrain` file. A full project open restores its embedded brushes, maps, instances and lighting.
-3. Use **Save project** after editing. Choose the project's `exports/` directory if the browser asks, or move the downloaded file there. Browser autosave is a recovery copy for the current browser/site address; it is not a directory-backed project library.
-4. To start new content, set its name, generate or import terrain, then import PBR sets and foliage from its `prepared/` folder. Save the resulting document in that project's `exports/` directory.
+2. Choose **Open folder**, selecting the directory containing one root `.terrain` file. Existing embedded projects open this way too. For old projects, **Project → Files → Make embedded models editable** extracts their GLBs and adds source links. The first save of an existing portable document preserves its old bytes in `scenes/*-before-links-*.terrain`.
+3. **Save project** writes the connected root document. Browser autosave separately keeps a complete recovery snapshot, including the last working model bytes and link metadata. After a browser restart, use **Reconnect recovered project folder** to preserve recovered unsaved edits while reauthorizing access. **Open folder** deliberately loads the disk document. A file-only **Open** remains available for portable projects; its Save downloads a portable file.
+4. In **Foliage → Library → Import foliage**, choose **Choose linked GLBs from project**. Export self-contained GLBs into `prepared/foliage/` (or another project-local folder) from your DCC, then select them. Review size, units, pivot and brush behavior normally. The retained import transform applies to later exports. The usual file/folder importer still supports embedded GLB/glTF+BIN+texture imports. Import terrain PBR sets from `prepared/`, retaining downloads/licenses in `sources/`; standalone terrain-map linking is not implemented yet.
 5. Keep revisions as separate named files or use a dedicated content repository with appropriate large-file storage. Back up both the editable document and the original authoring sources.
 
 Use **Save surface**, **Save brush**, and sculpt presets for reusable content across projects. Keep those files in the content library, then load them through the normal editor controls. The toolkit need not contain a named scene button, a hardcoded local path, or a dependency on a particular artist's asset pack.
+
+## Iterate on linked art
+
+Export over the displayed GLB path. The editor polls metadata every two seconds while visible and idle, and waits for two stable observations before reading changed bytes. Fresh path lookups support atomic file replacement. New GPU resources stage before the live scene changes; asset IDs, placements, brush behavior and LOD references remain stable. Keep the exported units/pivot and material names consistent. The original import's scale/offset is retained, rather than refitting each revision.
+
+Incomplete, missing or undecodable models leave their last working art intact. Other valid source files can still refresh; aliases and import recipes for the same source update together. Each accepted source revision has its own undo step. Completing a new export changes the file stamp and retries automatically. **Reload linked assets now** forces a reread/retry of every source, including with automatic refresh off and for tools that preserve timestamps. Disable automatic refresh when freezing art for review. One undo restores a refreshed art version without writing back to the GLB; unchanged disk files do not silently redo that undo.
+
+Folder Save verifies that linked GLBs reproduce the open scene and remain unchanged through the staged write. After undoing an art refresh, choose **Embed instead** to save that older version, or **Reload linked assets now** to return to the current disk art. A mismatched or missing source rejects the save, preserving the existing root document and the open scene; a portable download also preserves the current art. Opening a folder verifies the root document again after scene preparation so an external edit cannot silently commit an outdated scene.
+
+**Project → Files → Model source** shows each model's path, including assets used by props and LODs. **Link / replace source** retargets the existing asset ID; **Embed instead** detaches it and preserves its current bytes in the project. Linked sources must be self-contained project-local GLBs. Their embedded textures/materials refresh with the model. Direct `.gltf` dependency watching, loose terrain PBR maps, HDR/EXR source links and cross-project absolute links remain future work.
+
+Folder access uses desktop Chrome/Edge's [File System Access API](https://developer.chrome.com/docs/capabilities/web-apis/file-system-access). Only chosen directories are accessed; opening a single File does not grant sibling-file access. Native-picker permission dialogs are controlled by the browser. Document writes publish on stream close and reject detected external file changes; save a portable copy or reopen the folder to resolve a conflict.
+
+## Reorganize an existing project
+
+Move the main document from `exports/` to the root **without regenerating it**. Put other editable scene variants in `scenes/`, and update `project` / `sourceProject` paths in their manifests. Keep source art, prepared assets, credits, undoable authoring data and original filenames intact. Update local build/validation scripts and README links to use the new paths; builders should refuse to overwrite an artist-edited document. Preserve the manifests' generation checksums: moving a file does not change its bytes, and an edited document must not be relabeled as an untouched generated output. Historical evidence can retain its original paths.
+
+The local Namaqualand, Pine Forest and Tropical Grove projects now use this layout. Namaqualand's lighting variants are in `scenes/`. Their art stays outside this repository. The forest inventory lookup accepts both root documents and the old one-level `exports/` arrangement.
 
 ## Convert a DCC scene
 
@@ -45,6 +84,8 @@ Validate the native package, then open it in a fresh browser profile, inspect cl
 
 ## Sharing and hosting
 
-Share the `.terrain` document together with credits. Share the source directory separately when collaborators need to rebuild or re-author the artwork. The runtime's `loadTerrain` accepts the native file as a Blob or ArrayBuffer; a separate content host may supply it over HTTP. A deployed viewer can load content URLs without bundling every landscape into the editor build. Configure the content host's access and CORS policy explicitly.
+Share a **portable project download** with credits for a self-contained snapshot. Share the whole folder for continued art iteration: a linked `.terrain` alone does not contain its models. The runtime can load a portable native Blob/ArrayBuffer directly. Hosts can resolve linked files with `readProjectFile(file, source => ...)` and `prepareLinkedModel(bytes, source)`, then pass the hydrated project to `loadTerrain`. `scripts/read-content-project.mjs` provides a read-only Node adapter with bounded, project-local file access. The tropical benchmark snapshots current source art into its portable payload and fingerprint.
 
-Project directories, linked external assets, a recent-project library, and automatic saving back to the opened filesystem path are not implemented. Embedded packages and explicit browser downloads are the current supported workflow.
+Directory handles stay in the editor session and are never serialized as absolute paths. A recent-project library, automatic OS-wide watching and loose PBR-map links remain unimplemented. Current linked models retain the existing 320 MiB per-model and 384 MiB aggregate live-asset admission limits; linking reduces disk duplication, not decoded/GPU memory. Credits and original DCC authoring files remain part of the project directory.
+
+Verification covers 380 unit tests, ten initial targeted Chrome cases and a final five-case linked-workflow rerun after adversarial review. The reviewer found three correctness issues and an alias race; the fixes cover Undo/Save mismatches, independent source failures, root edits during opening and source edits during staged saving, with preserved recovery/history and successful retries. The second review found no remaining material issues in those changes. A copied Tropical Grove scene refreshed a linked banana GLB on the RTX 5060 while preserving all 37 models and 7,323 plants in its expected portable snapshot. Its working document was 17,221,704 bytes, with linked model payloads stored separately, versus 55,176,040 bytes for the original embedded document. The original content stayed unchanged. Native browser filesystem handles are exercised with picker functions stubbed; OS permission-dialog automation and other devices remain unverified. See [recorded checks and limits](benchmarks/linked-assets-2026-10-20.json).

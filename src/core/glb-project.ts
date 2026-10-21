@@ -6,7 +6,12 @@ import {
 import {
   parseProjectPackage,
   MAX_PROJECT_PACKAGE_BYTES,
+  projectPackageSources,
+  MAX_PROJECT_ASSET_BYTES,
 } from './project-package';
+import type { ModelSource } from './model-source';
+import { base64ByteLength } from './base64';
+import { checkModelDataURL } from './model-limits';
 import type { TerrainProject } from './types';
 export const PROJECT_EXTENSION = 'TERRAIN_tools_project';
 export const MAX_TERRAIN_GLB_BYTES = 1024 * 1024 * 1024;
@@ -162,7 +167,10 @@ export function parseProjectFile(input: string | ArrayBuffer): TerrainProject {
 }
 
 /** Bounds file allocation before reading a browser File or IndexedDB Blob. */
-export async function readProjectFile(file: Blob): Promise<TerrainProject> {
+export async function readProjectFile(
+  file: Blob,
+  resolveModel?: (source: ModelSource) => Promise<string>,
+): Promise<TerrainProject> {
   const head = await file.slice(0, 8).arrayBuffer();
   const magic =
     head.byteLength >= 4 ? new DataView(head).getUint32(0, true) : 0;
@@ -174,5 +182,32 @@ export async function readProjectFile(file: Blob): Promise<TerrainProject> {
         : MAX_LEGACY_PROJECT_CHARACTERS;
   if (file.size > maximum)
     throw new Error('Project file exceeds the supported size limit.');
-  return parseProjectFile(await file.arrayBuffer());
+  const buffer = await file.arrayBuffer();
+  if (
+    magic === 0x504e5254 &&
+    buffer.byteLength >= 32 &&
+    new DataView(buffer).getUint32(8, true) === 2 &&
+    resolveModel
+  ) {
+    const models = new Map<string, string>();
+    const unique = new Map<string, string>();
+    const resolved = new Map<string, string>();
+    let bytes = 0;
+    for (const [id, source] of Object.entries(projectPackageSources(buffer))) {
+      const key = JSON.stringify(source);
+      let data = resolved.get(key) ?? (await resolveModel(source));
+      checkModelDataURL(data);
+      if (!unique.has(data)) {
+        unique.set(data, data);
+        bytes += base64ByteLength(data.slice(data.indexOf(',') + 1));
+      }
+      data = unique.get(data)!;
+      resolved.set(key, data);
+      if (bytes > MAX_PROJECT_ASSET_BYTES)
+        throw new Error('Linked models exceed the project asset budget.');
+      models.set(id, data);
+    }
+    return parseProjectPackage(buffer, models);
+  }
+  return parseProjectFile(buffer);
 }

@@ -45,6 +45,32 @@ export function cancelled() {
 export function checkSignal(signal?: AbortSignal) {
   if (signal?.aborted) throw cancelled();
 }
+/** Let a visible frame run before the next preparation slice. The timeout keeps
+ * hidden/headless hosts progressing when RAF is suspended. Cancellation drains
+ * both callbacks and never waits for a visible window. */
+export async function yieldPreparation(signal: AbortSignal) {
+  checkSignal(signal);
+  await new Promise<void>((resolve) => {
+    if (typeof requestAnimationFrame === 'undefined') {
+      setTimeout(resolve, 0);
+      return;
+    }
+    let frame = 0;
+    const done = () => {
+      clearTimeout(timer);
+      cancelAnimationFrame(frame);
+      signal.removeEventListener('abort', done);
+      resolve();
+    };
+    let timer = setTimeout(done, 50);
+    frame = requestAnimationFrame(() => {
+      clearTimeout(timer);
+      timer = setTimeout(done, 0);
+    });
+    signal.addEventListener('abort', done, { once: true });
+  });
+  checkSignal(signal);
+}
 /** Link a task to its owner and optional caller; unlink after settlement. */
 export function linkedController(signal?: AbortSignal) {
   const controller = new AbortController(),

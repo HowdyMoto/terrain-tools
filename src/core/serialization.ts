@@ -10,6 +10,7 @@ import { parseErosionSettings } from './erosion';
 import type { TerrainProject } from './types';
 import { MAX_TEXTURE_DATA_URL_CHARACTERS } from './texture-limits';
 import { checkModelDataURL } from './model-limits';
+import { parseModelSource } from './model-source';
 
 export const MAX_PROJECT_JSON_CHARACTERS = 100_000_000;
 /** Read larger legacy saves for migration; new large saves use binary packages. */
@@ -106,6 +107,14 @@ export function validateProjectData(
       throw new Error('Duplicate ' + label + '.');
   };
   const p = object(raw, 'project');
+  if (
+    p.folderId !== undefined &&
+    (typeof p.folderId !== 'string' ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        p.folderId,
+      ))
+  )
+    throw new Error('Invalid project folder identity.');
   const documentPath =
     typeof p.project === 'string' &&
     p.project.length <= 240 &&
@@ -218,6 +227,7 @@ export function validateProjectData(
     const asset = object(value, 'model asset');
     name(asset.name, 'asset name');
     checkModelDataURL(asset.data);
+    if (asset.source !== undefined) parseModelSource(asset.source);
   }
   const model = (v: unknown) => {
     if (

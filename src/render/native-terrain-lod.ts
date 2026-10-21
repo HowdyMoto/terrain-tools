@@ -1,3 +1,4 @@
+import { getCanopyBinding, setCanopyBinding } from './canopy-binding';
 import { BufferGeometry, Mesh } from 'three';
 import type { WebGPURenderer } from 'three/webgpu';
 import { registerSharedGeometry } from './shared-geometry';
@@ -70,6 +71,7 @@ export function installNativeTerrainLod(renderer: WebGPURenderer) {
     }
     proxy.geometry = view;
     proxy.material = material;
+    setCanopyBinding(proxy, getCanopyBinding(source));
     proxy.morphTargetInfluences = source.morphTargetInfluences;
     proxy.castShadow = source.castShadow;
     proxy.receiveShadow = source.receiveShadow;

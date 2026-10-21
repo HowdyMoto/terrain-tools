@@ -1,0 +1,270 @@
+{
+  "date": "2026-10-20T17:42:15.025Z",
+  "power": {
+    "ac": 1,
+    "keepAwake": true,
+    "batteryPercent": 60
+  },
+  "contextBefore": {
+    "gpu": "name, temperature.gpu, utilization.gpu [%], power.draw [W], clocks.current.graphics [MHz], memory.used [MiB]\r\nNVIDIA GeForce RTX 5060 Laptop GPU, 51, 0 %, 5.06 W, 180 MHz, 96 MiB",
+    "processes": "pid, process_name\r\n12076, C:\\Windows\\SystemApps\\MicrosoftWindows.Client.CoreAI_cw5n1h2txyewy\\ClickToDo.exe"
+  },
+  "contextAfter": {
+    "gpu": "name, temperature.gpu, utilization.gpu [%], power.draw [W], clocks.current.graphics [MHz], memory.used [MiB]\r\nNVIDIA GeForce RTX 5060 Laptop GPU, 60, 35 %, 42.41 W, 1305 MHz, 169 MiB",
+    "processes": "pid, process_name\r\n12076, C:\\Windows\\SystemApps\\MicrosoftWindows.Client.CoreAI_cw5n1h2txyewy\\ClickToDo.exe\r\n39416, C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+  },
+  "browser": "155.0.8059.82",
+  "projectPath": "C:\\Users\\wrigh\\Documents\\Terrain Studio Projects\\Tropical Grove\\exports\\Tropical-Grove.terrain",
+  "projectSHA256": "3bfb67334d1180e765fd6f09aa7f81aea431edf4a61ae1d3f068b7c2a50a9142",
+  "source": {
+    "gitHead": "506554a8577e24d300c4b62a7ac9f2fcb5f8464f",
+    "runtimeSHA256": "26ff13d0f29169d569a5d5c3686f0a947a05a173177d103b525304eb70aba6b9",
+    "coreSHA256": "399bb4a148e59fb9575e2f560acd380edd3de170bdbc09e8cc0d49a4c866f322"
+  },
+  "viewport": [1920, 1080],
+  "secondsPerView": 3,
+  "computeOnly": true,
+  "note": "At most one unfinished GPU frame, matching editor admission: each iteration observes the queue fence before its next RAF. FPS counts completed work, not monitor scanout. CPU timing excludes fence waits. Native render timestamp excludes FFT compute passes; frame intervals include integrated work. Driver memory is not measured. External project is loaded read-only; settings are temporary.",
+  "adapter": "WebGPU · NVIDIA GeForce RTX 5060 Laptop GPU",
+  "compute": {
+    "supported": true,
+    "samples": 366,
+    "errors": []
+  },
+  "project": {
+    "name": "Tropical Grove — banana trail",
+    "size": 88,
+    "plants": 7323,
+    "assets": 37,
+    "seaLevel": 1.0785553097724914
+  },
+  "runs": [
+    {
+      "computeMs": {
+        "samples": 0,
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "max": null
+      },
+      "round": "forward",
+      "variant": "standard",
+      "view": "coast",
+      "frames": 91,
+      "wallMs": 3008.2000000000007,
+      "fps": 30.03003002991189,
+      "frameMs": {
+        "samples": 90,
+        "p50": 33.30000000000109,
+        "p95": 33.400000000001455,
+        "p99": 33.5,
+        "max": 33.5
+      },
+      "cpuMs": {
+        "samples": 91,
+        "p50": 10.899999976158142,
+        "p95": 14.300000011920929,
+        "p99": 16.5,
+        "max": 16.5
+      },
+      "gpuRenderMs": {
+        "samples": 91,
+        "p50": 9.780992000000001,
+        "p95": 10.841216,
+        "p99": 14.777248000000002,
+        "max": 14.777248000000002
+      },
+      "ocean": {
+        "simulations": 0,
+        "bufferBytes": 0
+      },
+      "foliage": {
+        "instances": 1495,
+        "culled": 5828,
+        "batches": 293,
+        "triangles": 1589363,
+        "levels": [2, 528, 965, 0],
+        "transitioning": 0,
+        "drawnInstances": 1495
+      },
+      "memory": {
+        "attributes": 3027,
+        "attributesSize": 6906400,
+        "geometries": 323,
+        "indexAttributes": 58,
+        "indexAttributesSize": 1405152,
+        "indirectStorageAttributes": 0,
+        "indirectStorageAttributesSize": 0,
+        "programs": 60,
+        "programsSize": 1269396,
+        "readbackBuffers": 0,
+        "readbackBuffersSize": 0,
+        "renderTargets": 13,
+        "storageAttributes": 0,
+        "storageAttributesSize": 0,
+        "textures": 130,
+        "texturesSize": 830526405,
+        "uniformBuffers": 663,
+        "uniformBuffersSize": 308864,
+        "total": 840416217
+      }
+    },
+    {
+      "computeMs": {
+        "samples": 91,
+        "p50": 0.09568,
+        "p95": 0.111872,
+        "p99": 0.138592,
+        "max": 0.138592
+      },
+      "round": "forward",
+      "variant": "balanced",
+      "view": "coast",
+      "frames": 91,
+      "wallMs": 3002.89999998808,
+      "fps": 30.09557826515817,
+      "frameMs": {
+        "samples": 90,
+        "p50": 33.30000000000291,
+        "p95": 33.400000000001455,
+        "p99": 33.5,
+        "max": 33.5
+      },
+      "cpuMs": {
+        "samples": 91,
+        "p50": 8.700000047683716,
+        "p95": 11.699999988079071,
+        "p99": 12.700000047683716,
+        "max": 12.700000047683716
+      },
+      "gpuRenderMs": {
+        "samples": 91,
+        "p50": 10.166144,
+        "p95": 11.645344,
+        "p99": 12.77008,
+        "max": 12.77008
+      },
+      "ocean": {
+        "simulations": 1,
+        "bufferBytes": 7864688
+      },
+      "foliage": {
+        "instances": 1495,
+        "culled": 5828,
+        "batches": 293,
+        "triangles": 1589363,
+        "levels": [2, 528, 965, 0],
+        "transitioning": 0,
+        "drawnInstances": 1495
+      },
+      "memory": {
+        "attributes": 3028,
+        "attributesSize": 8620584,
+        "geometries": 323,
+        "indexAttributes": 58,
+        "indexAttributesSize": 2584800,
+        "indirectStorageAttributes": 0,
+        "indirectStorageAttributesSize": 0,
+        "programs": 60,
+        "programsSize": 1272746,
+        "readbackBuffers": 0,
+        "readbackBuffersSize": 0,
+        "renderTargets": 13,
+        "storageAttributes": 0,
+        "storageAttributesSize": 0,
+        "textures": 136,
+        "texturesSize": 836466899,
+        "uniformBuffers": 667,
+        "uniformBuffersSize": 311104,
+        "total": 849256133
+      }
+    },
+    {
+      "computeMs": {
+        "samples": 91,
+        "p50": 0.469952,
+        "p95": 0.49088,
+        "p99": 0.60176,
+        "max": 0.60176
+      },
+      "round": "forward",
+      "variant": "high",
+      "view": "coast",
+      "frames": 91,
+      "wallMs": 3010.2000000238404,
+      "fps": 30.007254500852262,
+      "frameMs": {
+        "samples": 90,
+        "p50": 33.29999999999927,
+        "p95": 33.5,
+        "p99": 33.5,
+        "max": 33.5
+      },
+      "cpuMs": {
+        "samples": 91,
+        "p50": 9.199999988079071,
+        "p95": 12.099999964237213,
+        "p99": 13.899999976158142,
+        "max": 13.899999976158142
+      },
+      "gpuRenderMs": {
+        "samples": 91,
+        "p50": 9.965440000000003,
+        "p95": 10.617408,
+        "p99": 12.642112000000001,
+        "max": 12.642112000000001
+      },
+      "ocean": {
+        "simulations": 1,
+        "bufferBytes": 31457648
+      },
+      "foliage": {
+        "instances": 1495,
+        "culled": 5828,
+        "batches": 293,
+        "triangles": 1589363,
+        "levels": [2, 528, 965, 0],
+        "transitioning": 0,
+        "drawnInstances": 1495
+      },
+      "memory": {
+        "attributes": 3028,
+        "attributesSize": 8620584,
+        "geometries": 323,
+        "indexAttributes": 58,
+        "indexAttributesSize": 2584800,
+        "indirectStorageAttributes": 0,
+        "indirectStorageAttributesSize": 0,
+        "programs": 60,
+        "programsSize": 1272746,
+        "readbackBuffers": 0,
+        "readbackBuffersSize": 0,
+        "renderTargets": 13,
+        "storageAttributes": 0,
+        "storageAttributesSize": 0,
+        "textures": 136,
+        "texturesSize": 887834276,
+        "uniformBuffers": 671,
+        "uniformBuffersSize": 313024,
+        "total": 900625430
+      }
+    }
+  ],
+  "canopyBakeMs": 0,
+  "canopyBytes": 0,
+  "canopyFrames": [],
+  "beforeDispose": {
+    "simulations": 1,
+    "bufferBytes": 31457648
+  },
+  "cleanup": {
+    "ocean": {
+      "simulations": 0,
+      "bufferBytes": 0
+    },
+    "memory": 0
+  },
+  "validation": [],
+  "errors": [],
+  "evidenceNote": "Clean dedicated-GPU pass timing, instrumented FFT/foam only. Short probe FPS does not replace the longer integrated scene run."
+}

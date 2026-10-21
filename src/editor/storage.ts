@@ -14,8 +14,8 @@ async function database() {
     request.onerror = () => reject(request.error);
   });
 }
-export function projectDownload(project: TerrainProject) {
-  return writer.encode(project);
+export function projectDownload(project: TerrainProject, linked = false) {
+  return writer.encode(project, linked ? 'linked' : 'portable');
 }
 export async function saveLocal(project: TerrainProject) {
   // Capture before yielding; pending autosaves share the newest immutable result.

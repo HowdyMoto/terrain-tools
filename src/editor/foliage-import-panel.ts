@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { TerrainProject } from '../core/types';
+import type { ProjectFolder } from './project-folder';
 import { MODEL_SIZE_LABEL } from '../core/model-limits';
 import {
   MAX_PROJECT_ASSET_BYTES,
@@ -29,6 +30,7 @@ import type {
 } from './foliage-import';
 
 interface ReviewedModel {
+  sourcePath?: string;
   name: string;
   document: ModelDocument;
   data: string;
@@ -46,6 +48,7 @@ export function showFoliageImport(
     options: FoliageImportOptions,
     signal: AbortSignal,
   ) => Promise<boolean>,
+  folder?: ProjectFolder,
 ) {
   const brush = project.brushes[targetBrush];
   const ui = importDialog(
@@ -68,6 +71,31 @@ export function showFoliageImport(
     </fieldset></div><aside class="import-inspection"><div id="foliage-preview" class="import-preview"><p>Model preview</p></div><p class="preview-caption">Neutral studio lighting · drag to orbit · scroll to zoom<br/>Preview shows the static rest pose.</p><div id="foliage-model-review" class="import-review">Size, geometry and embedded creator credits appear here.</div></aside></div>`,
   );
   const q = ui.query;
+  const linkedFiles = new WeakMap<File, string>();
+  if (folder) {
+    const button = document.createElement('button');
+    button.id = 'foliage-linked-files';
+    button.type = 'button';
+    button.className = 'primary full-button';
+    button.textContent = 'Choose linked GLBs from project…';
+    q('#foliage-drop').append(button);
+    const note = document.createElement('p');
+    note.className = 'field-note';
+    note.textContent =
+      'Linked GLBs refresh automatically after you export over their files. Choose files / model folder below imports embedded copies instead.';
+    q('#foliage-drop').after(note);
+    button.onclick = async () => {
+      try {
+        const chosen = await folder.chooseModels();
+        if (ui.signal.aborted) return;
+        for (const item of chosen) linkedFiles.set(item.file, item.path);
+        await receive(chosen.map((item) => item.file));
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === 'AbortError'))
+          ui.status('Could not link files: ' + String(error), true);
+      }
+    };
+  }
   let models: ReviewedModel[] = [],
     selected = 0,
     preview: ImportPreview | undefined,
@@ -262,6 +290,7 @@ export function showFoliageImport(
           )
             throw new Error(`${file.name} has invalid bounds.`);
           added.push({
+            sourcePath: linkedFiles.get(file),
             name: file.name.replace(/\.(glb|gltf)$/i, ''),
             document,
             data,
@@ -361,6 +390,9 @@ export function showFoliageImport(
           : [0, 0, 0];
         const size = model.bounds.getSize(new THREE.Vector3());
         plants.push({
+          ...(model.sourcePath
+            ? { source: { path: model.sourcePath, scale: scale(), offset } }
+            : {}),
           name: model.name,
           data: transformModel(model.document, scale(), offset),
           width: Math.max(size.x, size.z) * scale(),

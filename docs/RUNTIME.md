@@ -1,5 +1,9 @@
 # Runtime integration
 
+Native world loading now yields preparation/collider work around visible frames, bounds the reference renderer to one unfinished GPU frame, and retains a small cache of unused generated runtime shaders across tile unloads. Camera-history invalidation seeds the existing temporal targets; teleports and resizes keep the scene pass instead of recompiling it. `shaderCacheStats(renderer)` reports retained program count, source-text bytes and reuse hits. The cache retains at most 64 unused programs / 8 MiB of generated shader source; that byte figure excludes node graphs and driver allocations. Arbitrary bake/third-party programs are not retained, and renderer disposal clears the cache.
+
+Optional `foliageImpostors: ReadonlyMap<string, FoliageImpostor>` on `TerrainScene`/`TerrainWorldScene` replaces each matching model's last authored LOD. `bakeFoliageImpostor` creates these resources automatically; see [workflow, budgets and limits](FOLIAGE.md#generate-distant-tree-impostors). World source draw arrays allocate lazily by default while admission reserves their possible growth. `stats.foliageDrawArrayBytes` reports allocated authored matrix/contact/fade arrays including combined groups; native current/previous streams, shared geometry and textures are separate.
+
 Build with `npm run build:runtime`. To use the toolkit from another local project, run `npm pack` in this repository and install the generated tarball there. The package is private and this command does not publish it. It includes JavaScript, TypeScript declarations, and documentation. Reference-scene art and native packages belong to the editor build in `dist/examples/`; the reusable library build does not copy `public/` assets.
 
 Three.js ^0.186.1 is a peer dependency so the host and toolkit use the same Three instance. Rapier is optional: consumers can omit optional dependencies when using another physics engine. Importing the core or Three entry does not initialize or load the physics engine.
@@ -108,7 +112,44 @@ Tiles are immutable while resident; unload/reload after edits. Hosts can transla
 
 Streamed oceans use finite per-cell patches with a shared world wave phase/time and no internal boundary walls. The current ocean-connectivity flood remains tile-local: author coast tiles accordingly. Arbitrary connected basins spanning multiple tiles need a world-wide hydrology/preparation layer; this example does not establish that capability.
 
+## Distant world coverage
+
+Detailed residency and view distance are separate. The example retains its 340 m / 12-cell detailed terrain, foliage and collision budget, while `TerrainWorldOverview` renders coarse height/paint/material data over the full authored 2 × 2 km extent. It uses a 3 km horizontal selection radius, a 4 km camera far plane and fog from 1.2 to 3.5 km. It does not create terrain outside the manifest. A larger world needs more authored tiles and a suitable overview tile/byte budget.
+
+```ts
+import { TerrainWorldOverview } from 'terrain-tools/three';
+
+const distant = new TerrainWorldOverview(manifest, {
+  assets, // share the prepared material library with detailed tiles
+  radius: 3000,
+  maxResidentTiles: 512,
+  cpuByteLimit: 32 * 1024 ** 2,
+  gpuByteLimit: 32 * 1024 ** 2,
+  load: async (tile, signal) =>
+    readHeightPaintAndMaterials(tile.source, signal),
+});
+scene.add(distant); // same parent transform as worldScene
+
+worldScene.update(camera, deltaSeconds, drawingBufferHeight);
+distant.update(camera, worldScene.streaming.residentKeys);
+// At shutdown, before disposing borrowed WorldAssets:
+distant.dispose();
+await distant.whenIdle();
+```
+
+The loader returns a `TerrainProject` with the same authoritative height grid, paint, material definitions and texture resolution as its detailed counterpart. Serve a height/material-only payload to avoid transferring unused embedded models. Overview preparation never decodes models or creates foliage, collision or water. Shared prepared texture arrays use the existing asset leases. Source documents are not modified or retained after preparation. GPU/CPU limits account for retained overview geometry; shared textures have their separate `WorldAssets` budget, and temporary loader documents/driver overhead are not included.
+
+The default interior grid targets 16 coarse cells per tile; every original outer boundary vertex remains, joined with triangle fans. Matching authored edge samples therefore meet detailed tiles without vertical skirts or coplanar overlap. Input edges/material palettes must match; the overview does not repair incompatible source grids. Holes and prop cutouts retain full topology conservatively and reject preparation when that fallback exceeds a single-cell geometry budget. Coarse meshes receive light/shadows but do not cast inaccurate distant shadows.
+
+Pass only admitted detailed keys to `update()`. Their overview meshes stay resident but hidden, then restore when those keys leave the detailed tier. `stats` reports separate residency, visible cells, triangles and bytes; `streaming.errors`/`retry()` and cancellation follow the existing streamer contract. Near cells retain their authoritative `heightAt()` and physics behavior. Distant foliage/forest canopy HLOD is not provided by this terrain layer.
+
+The reference example also prepares one coarse, bounded Standard ocean over its authored coastal cells. Its index buffer omits detailed cells, preserving their water and shore effects without overlapping surfaces. It shares world wave time/phase, but its 64-cell bathymetry is a distant approximation, not a new water-authoring or world-wide hydrology system. Reference telemetry includes the separate distant terrain and ocean triangle counts. Earlier FPS reports predate this additional coverage and are not a performance result for the new view range.
+
+Validation: 368 units, strict build/types, lint and four targeted RTX 5060 Chrome cases pass. The distance fixture actually renders a cell 2.5 km from the camera, verifies its height and detailed-cell handoff, and releases all tracked GPU allocations. Both prepared world profiles cover all 64 authored cells while keeping nearby residency at 12 or fewer; moving/aerial and stationary-tree checks remain active. Geometry tests cover full shared edges, winding, paint, holes, cancellation, budget rejection and retry. See [coverage/resource record](benchmarks/world-distance-2026-10-20.json), [emulated previous cutoff](benchmarks/world-distance-before-2026-10-20.png) and [extended view](benchmarks/world-distance-after-2026-10-20.png). This is not a full browser/device or sustained FPS validation.
+
 ## Prepared runtime assets
+
+The sample ground uses generated albedo images, not an authored PBR material set. Its analytic normal/height arrays are compression-test fixtures and have zero shading strength in the bundled palettes. Applying those periodic fixtures to the landscape creates a waffle pattern that becomes especially obvious from the air. Imported PBR materials retain their authored normal and height controls.
 
 `npm run build:assets:runtime` creates `public/runtime-assets` from checked-in CC0 pine/fern derivatives and the separately credited generated Upland ground images. It preserves source hashes, authors/license references, bounds, existing mesh LODs and low-detail collision-input references in `manifest.json`. Meshopt compresses geometry; KTX2 uses UASTC quality 3, mipmaps and no RDO, with sRGB color and linear normal/ORM/height settings. It is deliberately quality-oriented: these sample GLBs download **larger** than the PNG originals, while GPU texture storage falls substantially. The original material/mesh derivatives remain in their existing source locations. Encoded output and wall-clock preparation timing are separate so the manifest can reproduce byte-for-byte.
 
@@ -310,3 +351,15 @@ GPU-compressed foliage imports retain their original GLB payload in the editable
 `exportTerrainGLB(terrain)` writes a standard static presentation and an optional `TERRAIN_tools_project` extension. Version 2 of the extension references a binary `.terrain` package in a GLB buffer view. It retains schema-version-1 project data, embedded image/GLB assets, all foliage and prop instances, rules, hole masks, lighting/HDRI, wind, and response settings. Readers also accept the older version-1 inline extension. See [project files and encoding APIs](PROJECT-FILES.md). `projectFromGLB` validates this document without decoding the presentation meshes. Ordinary GLB viewers ignore the extension and see the static geometry. Default exports use baked terrain colors; `exportTerrainGLB(terrain, { surface: 'pbr', renderer, resolution: 2048 })` adds standard base-color, ORM, and normal atlases. Full procedural appearance and animation require this runtime. See [PBR export](EXPORT.md) for ownership, cancellation, and sampling limits.
 
 This is an authoring-state round-trip. Transient physics bodies and currently compressed plant poses are not part of the editable document. The static GLB presentation includes every primary foliage instance regardless of camera/LOD/density selection, and may reflect the current whole-plant transform pose. Masked foliage exports its rest pose; wind is not baked. Loading the authored project resets transient interaction. Direct callers of `foliage.forExport()` own the returned meshes, cloned geometries, and cloned static materials (dispose each unique resource once). Textures remain borrowed from the live scene. Transient fade attributes and shader hooks are excluded, so the group can also render as a complete static presentation.
+
+## Streaming preparation and shader admission
+
+`TerrainWorldScene` defaults to worker terrain preparation when `Worker` is available. Its bounded pool uses up to eight workers (limited by `maxConcurrentLoads`), with a 32-job pending limit and a 120 s job timeout. Workers receive copied height/paint/hole buffers and small authoring metadata, never embedded GLBs, HDRIs or surface image payloads. They return transferable chunk geometry, normals, bounds and terrain LOD/morph bounds. Live project arrays remain owned by the caller. Aborting active work terminates that worker; disposal rejects queued work and releases the pool. Non-browser hosts retain main-thread preparation; `terrainPreparation: 'main'` requests it explicitly. `/world.html?main-thread` exposes that comparison.
+
+Tile preparation yields between material, geometry and foliage stages. The optional async `prepareGPU(terrain, signal)` world hook runs after geometry/LOD preparation and before collision/residency admission. Hosts can serialize renderer compilation there, as `/world.html?prewarm` does with `renderer.compileAsync(terrain, camera, scene)`. The example leaves this off by default because precompilation delayed visible tile admission in measurements. Fallible work stays outside the resident scene; failure/cancellation releases staged resources before retry. This precompiles native material graphs; it does not promise that all MRT, shadow or future quality variants have warmed. Uploads, physics and asset decode can still hitch.
+
+Identical wind/fade/transmission configurations reuse bounded node graphs across tiles while material references retain each tile's independent animation uniforms. Distant draw clustering is enabled by default; `foliageClusters: false` disables it. `foliageClusters: { nearby: true }` additionally groups compatible primary/intermediate draws into 64 m cells, with a memory/culling tradeoff. The typed `FoliageClusterOptions` is exported from `terrain-tools/three`. Blended/refractive materials retain their separate draws. Only changed clusters resynchronize their buffers; wind-only frames retain the existing packed state. These options are runtime behavior and do not alter saved documents. See [foliage grouping and limits](FOLIAGE.md#distance-and-detail).
+
+For a submission-heavy host, `nearbyCellSize: 128` optionally widens the near groups; 64 m remains the default. Measure added off-screen GPU work alongside CPU savings. The reference supports `?wide-clusters` and the world benchmark accepts `--wide-clusters`, independently of `--impostors`.
+
+`environment.stageWater(terrain.waterSystem, camera, signal)` stages water shader/pipeline work in the actual native overlay context. Use it from `WorldSceneOptions.prepareGPU` after positioning the candidate and after the host environment has rendered once. Compilation keeps target/MRT classification stable across asynchronous builder stages while live frames continue; cancellation rejects before tile/collider admission. Cancel pending preparation when changing the render-pass layout. The world example uses this selectively by default (`?no-water-prewarm` disables it for diagnosis); `?prewarm` remains the separate all-variant diagnostic.

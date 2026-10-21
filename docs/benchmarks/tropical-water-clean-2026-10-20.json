@@ -1,0 +1,861 @@
+{
+  "date": "2026-10-20T17:36:11.020Z",
+  "power": {
+    "ac": 1,
+    "keepAwake": true,
+    "batteryPercent": 47
+  },
+  "contextBefore": {
+    "gpu": "name, temperature.gpu, utilization.gpu [%], power.draw [W], clocks.current.graphics [MHz], memory.used [MiB]\r\nNVIDIA GeForce RTX 5060 Laptop GPU, 52, 0 %, 5.02 W, 180 MHz, 96 MiB",
+    "processes": "pid, process_name\r\n12076, C:\\Windows\\SystemApps\\MicrosoftWindows.Client.CoreAI_cw5n1h2txyewy\\ClickToDo.exe"
+  },
+  "contextAfter": {
+    "gpu": "name, temperature.gpu, utilization.gpu [%], power.draw [W], clocks.current.graphics [MHz], memory.used [MiB]\r\nNVIDIA GeForce RTX 5060 Laptop GPU, 60, 2 %, 14.75 W, 667 MHz, 206 MiB",
+    "processes": "pid, process_name\r\n12076, C:\\Windows\\SystemApps\\MicrosoftWindows.Client.CoreAI_cw5n1h2txyewy\\ClickToDo.exe\r\n39344, C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+  },
+  "browser": "155.0.8059.82",
+  "projectPath": "C:\\Users\\wrigh\\Documents\\Terrain Studio Projects\\Tropical Grove\\exports\\Tropical-Grove.terrain",
+  "projectSHA256": "3bfb67334d1180e765fd6f09aa7f81aea431edf4a61ae1d3f068b7c2a50a9142",
+  "source": {
+    "gitHead": "506554a8577e24d300c4b62a7ac9f2fcb5f8464f",
+    "runtimeSHA256": "26ff13d0f29169d569a5d5c3686f0a947a05a173177d103b525304eb70aba6b9",
+    "coreSHA256": "399bb4a148e59fb9575e2f560acd380edd3de170bdbc09e8cc0d49a4c866f322"
+  },
+  "viewport": [1920, 1080],
+  "secondsPerView": 10,
+  "note": "At most one unfinished GPU frame, matching editor admission: each iteration observes the queue fence before its next RAF. FPS counts completed work, not monitor scanout. CPU timing excludes fence waits. Native render timestamp excludes FFT compute passes; frame intervals include integrated work. Driver memory is not measured. External project is loaded read-only; settings are temporary.",
+  "adapter": "WebGPU · NVIDIA GeForce RTX 5060 Laptop GPU",
+  "project": {
+    "name": "Tropical Grove — banana trail",
+    "size": 88,
+    "plants": 7323,
+    "assets": 37,
+    "seaLevel": 1.0785553097724914
+  },
+  "runs": [
+    {
+      "round": "forward",
+      "variant": "standard",
+      "view": "coast",
+      "frames": 287,
+      "wallMs": 10025.700000011922,
+      "fps": 28.562329571499422,
+      "frameMs": {
+        "samples": 286,
+        "p50": 33.30000000000291,
+        "p95": 50,
+        "p99": 50.20000000000073,
+        "max": 50.29999999999927
+      },
+      "cpuMs": {
+        "samples": 287,
+        "p50": 13,
+        "p95": 18.30000001192093,
+        "p99": 21.30000001192093,
+        "max": 23.30000001192093
+      },
+      "gpuRenderMs": {
+        "samples": 287,
+        "p50": 9.94768,
+        "p95": 10.873792000000002,
+        "p99": 12.202143999999999,
+        "max": 15.377887999999999
+      },
+      "ocean": {
+        "simulations": 0,
+        "bufferBytes": 0
+      },
+      "foliage": {
+        "instances": 1495,
+        "culled": 5828,
+        "batches": 293,
+        "triangles": 1589363,
+        "levels": [2, 528, 965, 0],
+        "transitioning": 0,
+        "drawnInstances": 1495
+      },
+      "memory": {
+        "attributes": 3027,
+        "attributesSize": 6906400,
+        "geometries": 323,
+        "indexAttributes": 58,
+        "indexAttributesSize": 1405152,
+        "indirectStorageAttributes": 0,
+        "indirectStorageAttributesSize": 0,
+        "programs": 60,
+        "programsSize": 1269396,
+        "readbackBuffers": 0,
+        "readbackBuffersSize": 0,
+        "renderTargets": 13,
+        "storageAttributes": 0,
+        "storageAttributesSize": 0,
+        "textures": 130,
+        "texturesSize": 830526405,
+        "uniformBuffers": 663,
+        "uniformBuffersSize": 308864,
+        "total": 840416217
+      }
+    },
+    {
+      "round": "forward",
+      "variant": "standard",
+      "view": "canopy",
+      "frames": 297,
+      "wallMs": 10007.200000011922,
+      "fps": 29.606738772865477,
+      "frameMs": {
+        "samples": 296,
+        "p50": 33.30000000000291,
+        "p95": 33.69999999999709,
+        "p99": 50,
+        "max": 50.19999999999709
+      },
+      "cpuMs": {
+        "samples": 297,
+        "p50": 14.399999976158142,
+        "p95": 17.899999976158142,
+        "p99": 20,
+        "max": 20.200000047683716
+      },
+      "gpuRenderMs": {
+        "samples": 297,
+        "p50": 9.118560000000002,
+        "p95": 9.775967999999997,
+        "p99": 13.253312,
+        "max": 16.437951999999996
+      },
+      "ocean": {
+        "simulations": 0,
+        "bufferBytes": 0
+      },
+      "foliage": {
+        "instances": 3424,
+        "culled": 3899,
+        "batches": 416,
+        "triangles": 3984394,
+        "levels": [290, 1803, 1331, 0],
+        "transitioning": 0,
+        "drawnInstances": 3424
+      },
+      "memory": {
+        "attributes": 4469,
+        "attributesSize": 15957560,
+        "geometries": 487,
+        "indexAttributes": 81,
+        "indexAttributesSize": 2307420,
+        "indirectStorageAttributes": 0,
+        "indirectStorageAttributesSize": 0,
+        "programs": 60,
+        "programsSize": 1269396,
+        "readbackBuffers": 0,
+        "readbackBuffersSize": 0,
+        "renderTargets": 13,
+        "storageAttributes": 0,
+        "storageAttributesSize": 0,
+        "textures": 185,
+        "texturesSize": 1082110803,
+        "uniformBuffers": 933,
+        "uniformBuffersSize": 425472,
+        "total": 1102070651
+      }
+    },
+    {
+      "round": "forward",
+      "variant": "balanced",
+      "view": "coast",
+      "frames": 294,
+      "wallMs": 10036.700000011922,
+      "fps": 29.210714569554465,
+      "frameMs": {
+        "samples": 293,
+        "p50": 33.30000000000291,
+        "p95": 49.80000000000291,
+        "p99": 50.099999999998545,
+        "max": 50.30000000000291
+      },
+      "cpuMs": {
+        "samples": 294,
+        "p50": 13.399999976158142,
+        "p95": 16.5,
+        "p99": 17.80000001192093,
+        "max": 17.900000035762787
+      },
+      "gpuRenderMs": {
+        "samples": 294,
+        "p50": 10.713536,
+        "p95": 11.593984,
+        "p99": 15.79104,
+        "max": 17.47088
+      },
+      "ocean": {
+        "simulations": 1,
+        "bufferBytes": 7864688
+      },
+      "foliage": {
+        "instances": 1840,
+        "culled": 5483,
+        "batches": 321,
+        "triangles": 1873531,
+        "levels": [5, 740, 1095, 0],
+        "transitioning": 0,
+        "drawnInstances": 1840
+      },
+      "memory": {
+        "attributes": 4780,
+        "attributesSize": 17938584,
+        "geometries": 489,
+        "indexAttributes": 81,
+        "indexAttributesSize": 3487068,
+        "indirectStorageAttributes": 0,
+        "indirectStorageAttributesSize": 0,
+        "programs": 60,
+        "programsSize": 1272746,
+        "readbackBuffers": 0,
+        "readbackBuffersSize": 0,
+        "renderTargets": 13,
+        "storageAttributes": 0,
+        "storageAttributesSize": 0,
+        "textures": 191,
+        "texturesSize": 1088051297,
+        "uniformBuffers": 999,
+        "uniformBuffersSize": 479664,
+        "total": 1111229359
+      }
+    },
+    {
+      "round": "forward",
+      "variant": "balanced",
+      "view": "canopy",
+      "frames": 273,
+      "wallMs": 10021.100000011924,
+      "fps": 27.1620169538421,
+      "frameMs": {
+        "samples": 272,
+        "p50": 33.400000000001455,
+        "p95": 50.099999999998545,
+        "p99": 50.200000000004366,
+        "max": 51.79999999998836
+      },
+      "cpuMs": {
+        "samples": 273,
+        "p50": 16,
+        "p95": 21,
+        "p99": 23.099999964237213,
+        "max": 23.19999998807907
+      },
+      "gpuRenderMs": {
+        "samples": 273,
+        "p50": 9.29888,
+        "p95": 11.116864,
+        "p99": 14.45824,
+        "max": 18.770656000000002
+      },
+      "ocean": {
+        "simulations": 1,
+        "bufferBytes": 7864688
+      },
+      "foliage": {
+        "instances": 3424,
+        "culled": 3899,
+        "batches": 416,
+        "triangles": 3984394,
+        "levels": [290, 1803, 1331, 0],
+        "transitioning": 0,
+        "drawnInstances": 3424
+      },
+      "memory": {
+        "attributes": 4780,
+        "attributesSize": 17938584,
+        "geometries": 489,
+        "indexAttributes": 81,
+        "indexAttributesSize": 3487068,
+        "indirectStorageAttributes": 0,
+        "indirectStorageAttributesSize": 0,
+        "programs": 60,
+        "programsSize": 1272746,
+        "readbackBuffers": 0,
+        "readbackBuffersSize": 0,
+        "renderTargets": 13,
+        "storageAttributes": 0,
+        "storageAttributesSize": 0,
+        "textures": 191,
+        "texturesSize": 1088051297,
+        "uniformBuffers": 999,
+        "uniformBuffersSize": 479664,
+        "total": 1111229359
+      }
+    },
+    {
+      "round": "forward",
+      "variant": "high",
+      "view": "coast",
+      "frames": 276,
+      "wallMs": 10018.800000011921,
+      "fps": 27.479639180357278,
+      "frameMs": {
+        "samples": 275,
+        "p50": 33.39999999999418,
+        "p95": 50.09999999999127,
+        "p99": 50.30000000000291,
+        "max": 50.40000000000873
+      },
+      "cpuMs": {
+        "samples": 276,
+        "p50": 14.099999964237213,
+        "p95": 19.100000023841858,
+        "p99": 21.69999998807907,
+        "max": 22.19999998807907
+      },
+      "gpuRenderMs": {
+        "samples": 276,
+        "p50": 10.665856,
+        "p95": 12.455263999999998,
+        "p99": 17.208416,
+        "max": 18.631328
+      },
+      "ocean": {
+        "simulations": 1,
+        "bufferBytes": 31457648
+      },
+      "foliage": {
+        "instances": 1840,
+        "culled": 5483,
+        "batches": 321,
+        "triangles": 1873531,
+        "levels": [5, 740, 1095, 0],
+        "transitioning": 0,
+        "drawnInstances": 1840
+      },
+      "memory": {
+        "attributes": 4780,
+        "attributesSize": 17938584,
+        "geometries": 489,
+        "indexAttributes": 81,
+        "indexAttributesSize": 3487068,
+        "indirectStorageAttributes": 0,
+        "indirectStorageAttributesSize": 0,
+        "programs": 60,
+        "programsSize": 1272746,
+        "readbackBuffers": 0,
+        "readbackBuffersSize": 0,
+        "renderTargets": 13,
+        "storageAttributes": 0,
+        "storageAttributesSize": 0,
+        "textures": 191,
+        "texturesSize": 1139418674,
+        "uniformBuffers": 1003,
+        "uniformBuffersSize": 481584,
+        "total": 1162598656
+      }
+    },
+    {
+      "round": "forward",
+      "variant": "high",
+      "view": "canopy",
+      "frames": 299,
+      "wallMs": 10007.099999988073,
+      "fps": 29.811459963942628,
+      "frameMs": {
+        "samples": 298,
+        "p50": 33.30000000000291,
+        "p95": 33.59999999999127,
+        "p99": 49.89999999999418,
+        "max": 50.09999999999127
+      },
+      "cpuMs": {
+        "samples": 299,
+        "p50": 12,
+        "p95": 15.5,
+        "p99": 17.399999976158142,
+        "max": 19.400000035762787
+      },
+      "gpuRenderMs": {
+        "samples": 299,
+        "p50": 9.168639999999998,
+        "p95": 9.955680000000001,
+        "p99": 19.471776,
+        "max": 28.530271999999997
+      },
+      "ocean": {
+        "simulations": 1,
+        "bufferBytes": 31457648
+      },
+      "foliage": {
+        "instances": 3424,
+        "culled": 3899,
+        "batches": 416,
+        "triangles": 3984394,
+        "levels": [290, 1803, 1331, 0],
+        "transitioning": 0,
+        "drawnInstances": 3424
+      },
+      "memory": {
+        "attributes": 4780,
+        "attributesSize": 17938584,
+        "geometries": 489,
+        "indexAttributes": 81,
+        "indexAttributesSize": 3487068,
+        "indirectStorageAttributes": 0,
+        "indirectStorageAttributesSize": 0,
+        "programs": 60,
+        "programsSize": 1272746,
+        "readbackBuffers": 0,
+        "readbackBuffersSize": 0,
+        "renderTargets": 13,
+        "storageAttributes": 0,
+        "storageAttributesSize": 0,
+        "textures": 191,
+        "texturesSize": 1139418674,
+        "uniformBuffers": 1003,
+        "uniformBuffersSize": 481584,
+        "total": 1162598656
+      }
+    },
+    {
+      "round": "reverse",
+      "variant": "high",
+      "view": "coast",
+      "frames": 232,
+      "wallMs": 10026.000000023836,
+      "fps": 23.056588022527365,
+      "frameMs": {
+        "samples": 231,
+        "p50": 49.89999999999418,
+        "p95": 50.19999999999709,
+        "p99": 50.39999999999418,
+        "max": 50.5
+      },
+      "cpuMs": {
+        "samples": 232,
+        "p50": 17.600000023841858,
+        "p95": 21.30000001192093,
+        "p99": 22.5,
+        "max": 24.099999964237213
+      },
+      "gpuRenderMs": {
+        "samples": 232,
+        "p50": 10.661343999999998,
+        "p95": 15.139935999999999,
+        "p99": 18.212832,
+        "max": 18.581920000000004
+      },
+      "ocean": {
+        "simulations": 1,
+        "bufferBytes": 31457648
+      },
+      "foliage": {
+        "instances": 1840,
+        "culled": 5483,
+        "batches": 321,
+        "triangles": 1873531,
+        "levels": [5, 740, 1095, 0],
+        "transitioning": 0,
+        "drawnInstances": 1840
+      },
+      "memory": {
+        "attributes": 4780,
+        "attributesSize": 17938584,
+        "geometries": 489,
+        "indexAttributes": 81,
+        "indexAttributesSize": 3487068,
+        "indirectStorageAttributes": 0,
+        "indirectStorageAttributesSize": 0,
+        "programs": 60,
+        "programsSize": 1272746,
+        "readbackBuffers": 0,
+        "readbackBuffersSize": 0,
+        "renderTargets": 13,
+        "storageAttributes": 0,
+        "storageAttributesSize": 0,
+        "textures": 191,
+        "texturesSize": 1139418674,
+        "uniformBuffers": 1007,
+        "uniformBuffersSize": 483504,
+        "total": 1162600576
+      }
+    },
+    {
+      "round": "reverse",
+      "variant": "high",
+      "view": "canopy",
+      "frames": 217,
+      "wallMs": 10014.700000023848,
+      "fps": 21.59461826285154,
+      "frameMs": {
+        "samples": 216,
+        "p50": 49.89999999999418,
+        "p95": 50.30000000000291,
+        "p99": 50.40000000000873,
+        "max": 50.5
+      },
+      "cpuMs": {
+        "samples": 217,
+        "p50": 19.5,
+        "p95": 22,
+        "p99": 23.900000035762787,
+        "max": 25.600000023841858
+      },
+      "gpuRenderMs": {
+        "samples": 217,
+        "p50": 9.711136,
+        "p95": 12.198592,
+        "p99": 15.212992000000002,
+        "max": 20.602303999999997
+      },
+      "ocean": {
+        "simulations": 1,
+        "bufferBytes": 31457648
+      },
+      "foliage": {
+        "instances": 3424,
+        "culled": 3899,
+        "batches": 416,
+        "triangles": 3984394,
+        "levels": [290, 1803, 1331, 0],
+        "transitioning": 0,
+        "drawnInstances": 3424
+      },
+      "memory": {
+        "attributes": 4780,
+        "attributesSize": 17938584,
+        "geometries": 489,
+        "indexAttributes": 81,
+        "indexAttributesSize": 3487068,
+        "indirectStorageAttributes": 0,
+        "indirectStorageAttributesSize": 0,
+        "programs": 60,
+        "programsSize": 1272746,
+        "readbackBuffers": 0,
+        "readbackBuffersSize": 0,
+        "renderTargets": 13,
+        "storageAttributes": 0,
+        "storageAttributesSize": 0,
+        "textures": 191,
+        "texturesSize": 1139418674,
+        "uniformBuffers": 1007,
+        "uniformBuffersSize": 483504,
+        "total": 1162600576
+      }
+    },
+    {
+      "round": "reverse",
+      "variant": "balanced",
+      "view": "coast",
+      "frames": 252,
+      "wallMs": 10018.000000011933,
+      "fps": 25.07013669190604,
+      "frameMs": {
+        "samples": 251,
+        "p50": 33.5,
+        "p95": 50.20000000001164,
+        "p99": 50.39999999999418,
+        "max": 50.5
+      },
+      "cpuMs": {
+        "samples": 252,
+        "p50": 16.200000047683716,
+        "p95": 20.19999998807907,
+        "p99": 21.299999952316284,
+        "max": 21.599999964237213
+      },
+      "gpuRenderMs": {
+        "samples": 252,
+        "p50": 10.959008,
+        "p95": 14.377184000000002,
+        "p99": 17.687839999999998,
+        "max": 20.278592000000003
+      },
+      "ocean": {
+        "simulations": 1,
+        "bufferBytes": 7864688
+      },
+      "foliage": {
+        "instances": 1840,
+        "culled": 5483,
+        "batches": 321,
+        "triangles": 1873531,
+        "levels": [5, 740, 1095, 0],
+        "transitioning": 0,
+        "drawnInstances": 1840
+      },
+      "memory": {
+        "attributes": 4780,
+        "attributesSize": 17938584,
+        "geometries": 489,
+        "indexAttributes": 81,
+        "indexAttributesSize": 3487068,
+        "indirectStorageAttributes": 0,
+        "indirectStorageAttributesSize": 0,
+        "programs": 60,
+        "programsSize": 1272746,
+        "readbackBuffers": 0,
+        "readbackBuffersSize": 0,
+        "renderTargets": 13,
+        "storageAttributes": 0,
+        "storageAttributesSize": 0,
+        "textures": 191,
+        "texturesSize": 1088051297,
+        "uniformBuffers": 1011,
+        "uniformBuffersSize": 485424,
+        "total": 1111235119
+      }
+    },
+    {
+      "round": "reverse",
+      "variant": "balanced",
+      "view": "canopy",
+      "frames": 299,
+      "wallMs": 10004.200000023848,
+      "fps": 29.80313979566409,
+      "frameMs": {
+        "samples": 298,
+        "p50": 33.30000000001746,
+        "p95": 33.40000000002328,
+        "p99": 50,
+        "max": 50
+      },
+      "cpuMs": {
+        "samples": 299,
+        "p50": 13.900000035762787,
+        "p95": 17.30000001192093,
+        "p99": 18.5,
+        "max": 18.900000035762787
+      },
+      "gpuRenderMs": {
+        "samples": 299,
+        "p50": 9.191648,
+        "p95": 9.695519999999998,
+        "p99": 13.400288,
+        "max": 25.620928
+      },
+      "ocean": {
+        "simulations": 1,
+        "bufferBytes": 7864688
+      },
+      "foliage": {
+        "instances": 3424,
+        "culled": 3899,
+        "batches": 416,
+        "triangles": 3984394,
+        "levels": [290, 1803, 1331, 0],
+        "transitioning": 0,
+        "drawnInstances": 3424
+      },
+      "memory": {
+        "attributes": 4780,
+        "attributesSize": 17938584,
+        "geometries": 489,
+        "indexAttributes": 81,
+        "indexAttributesSize": 3487068,
+        "indirectStorageAttributes": 0,
+        "indirectStorageAttributesSize": 0,
+        "programs": 60,
+        "programsSize": 1272746,
+        "readbackBuffers": 0,
+        "readbackBuffersSize": 0,
+        "renderTargets": 13,
+        "storageAttributes": 0,
+        "storageAttributesSize": 0,
+        "textures": 191,
+        "texturesSize": 1088051297,
+        "uniformBuffers": 1011,
+        "uniformBuffersSize": 485424,
+        "total": 1111235119
+      }
+    },
+    {
+      "round": "reverse",
+      "variant": "standard",
+      "view": "coast",
+      "frames": 261,
+      "wallMs": 10035.100000000006,
+      "fps": 25.903393245329706,
+      "frameMs": {
+        "samples": 260,
+        "p50": 33.39999999999418,
+        "p95": 50.10000000000582,
+        "p99": 50.20000000001164,
+        "max": 50.20000000001164
+      },
+      "cpuMs": {
+        "samples": 261,
+        "p50": 13.300000011920929,
+        "p95": 20.600000023841858,
+        "p99": 22.69999998807907,
+        "max": 27
+      },
+      "gpuRenderMs": {
+        "samples": 261,
+        "p50": 10.404479999999998,
+        "p95": 12.868447999999999,
+        "p99": 17.023712,
+        "max": 19.044960000000003
+      },
+      "ocean": {
+        "simulations": 0,
+        "bufferBytes": 0
+      },
+      "foliage": {
+        "instances": 1840,
+        "culled": 5483,
+        "batches": 321,
+        "triangles": 1873531,
+        "levels": [5, 740, 1095, 0],
+        "transitioning": 0,
+        "drawnInstances": 1840
+      },
+      "memory": {
+        "attributes": 4779,
+        "attributesSize": 16224400,
+        "geometries": 489,
+        "indexAttributes": 81,
+        "indexAttributesSize": 2307420,
+        "indirectStorageAttributes": 0,
+        "indirectStorageAttributesSize": 0,
+        "programs": 60,
+        "programsSize": 1269396,
+        "readbackBuffers": 0,
+        "readbackBuffersSize": 0,
+        "renderTargets": 13,
+        "storageAttributes": 0,
+        "storageAttributesSize": 0,
+        "textures": 186,
+        "texturesSize": 1082110851,
+        "uniformBuffers": 1015,
+        "uniformBuffersSize": 487024,
+        "total": 1102399091
+      }
+    },
+    {
+      "round": "reverse",
+      "variant": "standard",
+      "view": "canopy",
+      "frames": 212,
+      "wallMs": 10016.000000035769,
+      "fps": 21.05116824043971,
+      "frameMs": {
+        "samples": 211,
+        "p50": 50,
+        "p95": 50.19999999998254,
+        "p99": 55,
+        "max": 66.79999999998836
+      },
+      "cpuMs": {
+        "samples": 212,
+        "p50": 20.80000001192093,
+        "p95": 26.69999998807907,
+        "p99": 37.5,
+        "max": 41.80000001192093
+      },
+      "gpuRenderMs": {
+        "samples": 212,
+        "p50": 10.182495999999999,
+        "p95": 13.810048,
+        "p99": 15.319392,
+        "max": 16.761087999999997
+      },
+      "ocean": {
+        "simulations": 0,
+        "bufferBytes": 0
+      },
+      "foliage": {
+        "instances": 3424,
+        "culled": 3899,
+        "batches": 416,
+        "triangles": 3984394,
+        "levels": [290, 1803, 1331, 0],
+        "transitioning": 0,
+        "drawnInstances": 3424
+      },
+      "memory": {
+        "attributes": 4779,
+        "attributesSize": 16224400,
+        "geometries": 489,
+        "indexAttributes": 81,
+        "indexAttributesSize": 2307420,
+        "indirectStorageAttributes": 0,
+        "indirectStorageAttributesSize": 0,
+        "programs": 60,
+        "programsSize": 1269396,
+        "readbackBuffers": 0,
+        "readbackBuffersSize": 0,
+        "renderTargets": 13,
+        "storageAttributes": 0,
+        "storageAttributesSize": 0,
+        "textures": 186,
+        "texturesSize": 1082110851,
+        "uniformBuffers": 1015,
+        "uniformBuffersSize": 487024,
+        "total": 1102399091
+      }
+    }
+  ],
+  "canopyBakeMs": 1819.699999988079,
+  "canopyBytes": 38016,
+  "canopyFrames": [
+    {
+      "enabled": false,
+      "fps": 21.025488445899036,
+      "frameMs": {
+        "samples": 211,
+        "p50": 50,
+        "p95": 50.10000000000582,
+        "p99": 50.29999999998836,
+        "max": 50.30000000001746
+      },
+      "cpuMs": {
+        "samples": 212,
+        "p50": 20.399999976158142,
+        "p95": 24.19999998807907,
+        "p99": 25.30000001192093,
+        "max": 28
+      },
+      "gpuRenderMs": {
+        "samples": 212,
+        "p50": 11.03536,
+        "p95": 13.18704,
+        "p99": 14.677280000000001,
+        "max": 17.844096
+      }
+    },
+    {
+      "enabled": true,
+      "fps": 27.764785494674037,
+      "frameMs": {
+        "samples": 278,
+        "p50": 33.39999999999418,
+        "p95": 50.09999999997672,
+        "p99": 50.10000000000582,
+        "max": 50.30000000001746
+      },
+      "cpuMs": {
+        "samples": 279,
+        "p50": 15.300000011920929,
+        "p95": 20,
+        "p99": 22.30000001192093,
+        "max": 25.69999998807907
+      },
+      "gpuRenderMs": {
+        "samples": 279,
+        "p50": 9.831391999999997,
+        "p95": 11.787744,
+        "p99": 18.59232,
+        "max": 28.981568
+      }
+    }
+  ],
+  "beforeDispose": {
+    "simulations": 0,
+    "bufferBytes": 0
+  },
+  "cleanup": {
+    "ocean": {
+      "simulations": 0,
+      "bufferBytes": 0
+    },
+    "memory": 0
+  },
+  "validation": [],
+  "errors": [],
+  "evidenceNote": "Clean game-closed dedicated-GPU run, one unfinished frame. Order/clock variability prevents mode ranking or canopy-cost inference; 30 FPS frame-time target is not met."
+}

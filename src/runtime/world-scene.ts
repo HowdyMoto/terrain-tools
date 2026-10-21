@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { timePreparation } from './preparation-timing';
+import type { PreparationTiming } from './preparation-timing';
 import type { TerrainProject } from '../core/types';
 import { heightAt as projectHeight } from '../core/terrain';
 import { WorldStreamer } from '../core/world-streamer';
@@ -12,7 +14,11 @@ import { WorldAssets } from './world-assets';
 import { modelMemory } from './asset-memory';
 import { checkSignal } from '../render/resources';
 import { webOceanGPUBytes } from './web-ocean/simulation';
-import { foliageMotionReservation } from '../render/native-foliage';
+import {
+  foliageMotionReservation,
+  foliagePendingInstanceBytes,
+} from '../render/native-foliage';
+import { TerrainPreparer, yieldPreparation } from './terrain-preparer';
 
 export interface WorldColliders {
   /** Prepared colliders remain disabled until their rendered tile is admitted. */
@@ -30,6 +36,18 @@ export interface WorldSceneOptions extends WorldStreamingOptions {
   lod?: TerrainLodOptions | false;
   /** For hosts preparing geometry without browser texture decoding. */
   materials?: boolean;
+  /** Browser workers prepare immutable grid/normals/LOD data; main-thread fallback remains available. */
+  terrainPreparation?: 'worker' | 'main';
+  /** Allocate source level draw arrays only when first selected. Default: true. */
+  foliageLazyInstances?: boolean;
+  foliageImpostors?: ReadonlyMap<
+    string,
+    import('./foliage-impostor').FoliageImpostor
+  >;
+  foliageClusters?:
+    boolean | import('./foliage-clusters').FoliageClusterOptions;
+  /** Optional staged shader/upload warmup. Resolves before residency/collision activation. */
+  prepareGPU?: (terrain: TerrainScene, signal: AbortSignal) => Promise<void>;
 }
 interface TileView {
   descriptor: WorldTile;
@@ -47,34 +65,93 @@ export class TerrainWorldScene extends THREE.Group {
   readonly assets: WorldAssets;
   readonly streaming: WorldStreamer<TileView>;
   private readonly ownAssets: boolean;
+  private readonly impostorBytes: number;
   private active = new Map<string, TileView>();
   private viewPosition = new THREE.Vector3();
   private elapsed = 0;
   private closed = false;
   private seamsDirty = false;
+  private preparer?: TerrainPreparer;
   /** Last 256 preparation durations; includes payload, texture/model decode and terrain work. */
   readonly loadMilliseconds: number[] = [];
+  /** Bounded stage telemetry, timestamps use the browser performance clock. */
+  readonly preparationTimings: (PreparationTiming & { tile: string })[] = [];
   constructor(
     world: TerrainWorld,
     readonly options: WorldSceneOptions,
   ) {
     super();
+    // Later edits to a host-owned registry must not alter admitted resources
+    // without their matching atlas reservation. Bakes themselves stay borrowed.
+    this.options = options = {
+      ...options,
+      foliageImpostors: options.foliageImpostors
+        ? new Map(options.foliageImpostors)
+        : undefined,
+    };
     this.world = validateTerrainWorld(world);
+    this.impostorBytes = [
+      ...new Set(options.foliageImpostors?.values() ?? []),
+    ].reduce((sum, bake) => sum + bake.memoryBytes, 0);
+    const streamingOptions = {
+      ...options,
+      cpuByteLimit:
+        (options.cpuByteLimit ?? 256 * 1024 ** 2) - this.impostorBytes,
+      gpuByteLimit:
+        (options.gpuByteLimit ?? 512 * 1024 ** 2) - this.impostorBytes,
+    };
+    if (
+      !Number.isSafeInteger(this.impostorBytes) ||
+      this.impostorBytes < 0 ||
+      streamingOptions.cpuByteLimit < 0 ||
+      streamingOptions.gpuByteLimit < 0
+    )
+      throw new Error('Impostor atlases exceed world residency limits.');
     this.assets = options.assets ?? new WorldAssets();
     this.ownAssets = !options.assets;
+    if (options.terrainPreparation !== 'main' && typeof Worker !== 'undefined')
+      this.preparer = new TerrainPreparer(
+        Math.min(8, options.maxConcurrentLoads ?? 2),
+      );
     this.streaming = new WorldStreamer(
       this.world,
       {
         load: async (descriptor, signal) => {
           const started = performance.now();
-          const p = await options.load(descriptor, signal);
+          const report = (timing: PreparationTiming) => {
+            this.preparationTimings.push({
+              ...timing,
+              tile: worldTileKey(descriptor.x, descriptor.z),
+            });
+            if (this.preparationTimings.length > 2048)
+              this.preparationTimings.shift();
+          };
+          const p = await timePreparation(
+            'payload',
+            () => options.load(descriptor, signal),
+            report,
+          );
           checkSignal(signal);
           if (
             p.size !== this.world.tileSize ||
             p.heights.length !== (p.resolution + 1) ** 2
           )
             throw new Error('World tile dimensions do not match the manifest.');
-          const terrain = new TerrainScene(p, { assets: this.assets });
+          const data = await timePreparation(
+            'worker',
+            () => this.preparer?.prepare(p, signal, options.lod !== false),
+            report,
+          );
+          checkSignal(signal);
+          const terrain = new TerrainScene(p, {
+            assets: this.assets,
+            preparedTerrain: data,
+            onPreparationTiming: report,
+            yieldPreparation: this.preparer ? yieldPreparation : undefined,
+            foliageClusters: options.foliageClusters,
+            foliageImpostors: options.foliageImpostors,
+            foliageLazyInstances: options.foliageLazyInstances !== false,
+          });
           let lod: TerrainLod | undefined,
             collision: WorldColliders | undefined;
           const dispose = () => {
@@ -104,8 +181,19 @@ export class TerrainWorldScene extends THREE.Group {
               lod = new TerrainLod(terrain, options.lod);
               terrain.add(lod);
             }
+            if (options.prepareGPU)
+              await timePreparation(
+                'gpu',
+                () => options.prepareGPU!(terrain, signal),
+                report,
+              );
+            checkSignal(signal);
             if (options.collision)
-              collision = await options.collision.prepare(terrain, signal);
+              collision = await timePreparation(
+                'collision',
+                () => options.collision!.prepare(terrain, signal),
+                report,
+              );
             checkSignal(signal);
             const parts: Parameters<typeof modelMemory>[0] = [];
             terrain.traverse((object) => {
@@ -117,6 +205,7 @@ export class TerrainWorldScene extends THREE.Group {
                 });
             });
             const measured = modelMemory(parts);
+            const canopyBytes = terrain.canopyLighting.field?.memoryBytes ?? 0;
             let instanceBytes = 0,
               motionCPUBytes = 0,
               motionGPUBytes = 0;
@@ -124,6 +213,7 @@ export class TerrainWorldScene extends THREE.Group {
               if (object instanceof THREE.InstancedMesh) {
                 instanceBytes +=
                   object.instanceMatrix.array.byteLength +
+                  foliagePendingInstanceBytes(object) +
                   (object.instanceColor?.array.byteLength ?? 0);
                 const motion = foliageMotionReservation(object);
                 motionCPUBytes += motion.cpuBytes;
@@ -143,6 +233,7 @@ export class TerrainWorldScene extends THREE.Group {
               value: { descriptor, terrain, lod, collision },
               cpuBytes:
                 measured.cpuBytes +
+                canopyBytes +
                 motionCPUBytes +
                 instanceBytes +
                 (lod?.memoryBytes.cpuBytes ?? 0) +
@@ -153,6 +244,7 @@ export class TerrainWorldScene extends THREE.Group {
                 (collision?.cpuBytes ?? 0),
               gpuBytes:
                 measured.gpuBytes +
+                canopyBytes +
                 motionGPUBytes +
                 instanceBytes +
                 (lod?.memoryBytes.gpuBytes ?? 0) +
@@ -171,7 +263,7 @@ export class TerrainWorldScene extends THREE.Group {
           }
         },
       },
-      options,
+      streamingOptions,
     );
   }
   /** Load/unload around the camera, admit completed cells, then update foliage and terrain detail. */
@@ -300,9 +392,26 @@ export class TerrainWorldScene extends THREE.Group {
     return [...this.active.values()].map((tile) => tile.terrain);
   }
   get stats() {
+    const streaming = this.streaming.stats;
     return {
-      ...this.streaming.stats,
+      ...streaming,
+      cpuBytes: streaming.cpuBytes + (this.closed ? 0 : this.impostorBytes),
+      gpuBytes: streaming.gpuBytes + (this.closed ? 0 : this.impostorBytes),
+      impostorBytes: this.closed ? 0 : this.impostorBytes,
       assets: this.assets.stats,
+      /** Allocated authored draw arrays, including combined clusters; excludes native motion streams. */
+      foliageDrawArrayBytes: [...this.active.values()].reduce((sum, tile) => {
+        tile.terrain.foliage.traverse((object) => {
+          if (object instanceof THREE.InstancedMesh)
+            sum +=
+              object.instanceMatrix.array.byteLength +
+              (object.geometry.getAttribute('terrainContact')?.array
+                .byteLength ?? 0) +
+              (object.geometry.getAttribute('terrainFade')?.array.byteLength ??
+                0);
+        });
+        return sum;
+      }, 0),
       selectedTerrainTriangles: [...this.active.values()].reduce(
         (sum, tile) =>
           sum +
@@ -329,6 +438,7 @@ export class TerrainWorldScene extends THREE.Group {
     if (this.closed) return;
     this.closed = true;
     this.streaming.dispose();
+    this.preparer?.dispose();
     this.active.clear();
     this.clear();
     if (this.ownAssets) this.assets.dispose();

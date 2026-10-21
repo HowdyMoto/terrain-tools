@@ -57,6 +57,7 @@ import { readTextureDataUrl } from './editor/orm-client';
 import { textureAccept } from './editor/texture-formats';
 import { showFoliageImport } from './editor/foliage-import-panel';
 import { foliageImportDraft } from './editor/foliage-import';
+import { FolderProjects } from './editor/folder-projects';
 import {
   serializeMaterialPreset,
   parseMaterialPreset,
@@ -385,7 +386,7 @@ const tools: { id: SculptTool; name: string; icon: string; hint: string }[] = [
   },
 ];
 $('#app').innerHTML =
-  `<header class="topbar"><a class="brand" href="#" aria-label="Terrain Studio">${icon('mountain')}<span>TERRAIN<span class="brand-light">STUDIO</span></span><span class="preview-badge">DEV</span></a><div class="project-title"><span class="project-dot"></span><input maxlength="120" id="project-name" value="Alpine study" aria-label="Project name"/><span id="save-state">Local project</span></div><div class="top-actions"><button class="icon-button" id="undo" title="Undo · Ctrl Z" aria-label="Undo">${icon('undo-2')}</button><button class="icon-button" id="redo" title="Redo · Ctrl Shift Z" aria-label="Redo">${icon('redo-2')}</button><span class="divider"></span><button id="open">${icon('folder-open')}Open</button><button id="save">${icon('save')}Save project</button><select id="export-mode" aria-label="GLB surface export" title="PBR mode bakes one terrain atlas; higher resolutions retain more surface detail."><option value="colors">Fast colors</option><option value="pbr-1024">PBR · 1024²</option><option value="pbr-2048">PBR · 2048²</option><option value="pbr-4096">PBR · 4096²</option></select><button id="export" class="primary">${icon('download')}Export scene</button></div></header>
+  `<header class="topbar"><a class="brand" href="#" aria-label="Terrain Studio">${icon('mountain')}<span>TERRAIN<span class="brand-light">STUDIO</span></span><span class="preview-badge">DEV</span></a><div class="project-title"><span class="project-dot"></span><input maxlength="120" id="project-name" value="Alpine study" aria-label="Project name"/><span id="save-state">Local project</span></div><div class="top-actions"><button class="icon-button" id="undo" title="Undo · Ctrl Z" aria-label="Undo">${icon('undo-2')}</button><button class="icon-button" id="redo" title="Redo · Ctrl Shift Z" aria-label="Redo">${icon('redo-2')}</button><span class="divider"></span><button id="open" title="Open a portable terrain project, legacy JSON, or exported terrain GLB">${icon('folder-open')}Open</button><button id="save">${icon('save')}Save project</button><select id="export-mode" aria-label="GLB surface export" title="PBR mode bakes one terrain atlas; higher resolutions retain more surface detail."><option value="colors">Fast colors</option><option value="pbr-1024">PBR · 1024²</option><option value="pbr-2048">PBR · 2048²</option><option value="pbr-4096">PBR · 4096²</option></select><button id="export" class="primary">${icon('download')}Export scene</button></div></header>
 <div class="workspace"><nav class="rail" aria-label="Editor tools">${[
     ['sculpt', 'mountain', 'Sculpt'],
     ['materials', 'layers', 'Surfaces'],
@@ -406,7 +407,7 @@ $('#app').innerHTML =
 <aside class="inspector"><div id="inspector-content"></div><div class="inspector-footer"><span class="live-dot"></span>All dimensions in metres</div></aside>
 <main class="stage"><div id="viewport"></div><div class="viewport-top"><div class="viewport-label"><span class="live-dot"></span><span id="view-mode">Perspective</span> <span class="muted">/</span> Lit</div><div class="viewport-actions"><button id="walk" title="Choose where to walk · V" aria-label="Walk in first person" aria-keyshortcuts="V" aria-pressed="false">${icon('footprints')}</button><button id="fullscreen" title="Fullscreen 3D view · Shift+F" aria-label="Fullscreen 3D view" aria-keyshortcuts="Shift+F" aria-pressed="false">${icon('expand')}</button><button id="frame" title="Frame terrain · F" aria-label="Frame terrain">${icon('maximize')}</button><button id="wire" title="Toggle wireframe" aria-label="Toggle wireframe">${icon('grid-2x2')}</button><button id="screenshot" title="Save viewport image" aria-label="Save viewport image">${icon('image-plus')}</button></div></div><div id="walk-placement-label" aria-hidden="true" hidden></div><div id="walk-reticle" aria-hidden="true"></div><div class="viewport-bottom"><div id="walk-hint" class="tool-pill" role="status" hidden></div><div class="tool-pill" id="active-tool">${icon('brush')}<span>Raise terrain</span><kbd>LMB</kbd></div><div class="axis-widget"><span class="axis-y">Y</span><span class="axis-z">Z</span><span class="axis-x">X</span></div></div><div id="toast" role="status" aria-live="polite"></div></main>
 <aside class="scene-panel"><div class="panel-heading"><h2>Scene</h2><span class="count" id="scene-count">01</span></div><div class="scene-root">${icon('chevron-down')}${icon('layers')}<span>Landscape</span></div><button class="scene-item selected" id="terrain-select">${icon('mountain')}<span>Terrain surface</span><span class="tag">MESH</span></button><div class="scene-item">${icon('trees')}<span>Foliage instances</span><span id="foliage-count" class="count">0</span></div><div class="scene-item">${icon('waves')}<span>Ocean</span><button id="water-toggle" class="text-button" aria-label="Toggle ocean visibility" title="Show or hide the ocean. Set its height in Water.">On</button></div><div id="prop-list"></div><div class="scene-section"><h3>Surface layers <span>4</span></h3><div id="layer-list"></div></div><div class="scene-section terrain-info"><h3>Terrain information</h3><dl><dt>Grid / size</dt><dd><span id="resolution-label"></span> cells<small id="size-label"></small></dd><dt>Cell spacing</dt><dd id="spacing-label"></dd><dt>Shading</dt><dd id="shading-label">Smooth</dd></dl></div><div class="scene-section physics-card"><div class="physics-heading">${icon('circle')}<h3>Physics preview</h3><span class="tag">RAPIER</span></div><p>Drop a body to test the surface, cutouts, and foliage recovery.</p><button id="physics" class="full-button">${icon('play')}Enable physics</button><button id="clear-balls" class="text-button full-button">Clear test bodies</button></div><div class="scene-bottom"><span class="live-dot"></span><span id="physics-state">Collision preview off</span></div></aside></div>
-<footer class="statusbar"><div><span class="status-key">LMB</span> sculpt <span class="status-key">RMB</span> orbit <span class="status-key">MMB</span> pan <span class="status-key">Scroll</span> zoom</div><div id="coordinates">X 0.0 &nbsp; Y 0.0 &nbsp; Z 0.0</div><div><span id="triangle-count">— triangles</span><span class="status-separator">|</span><span id="fps">— FPS</span><span class="gpu-dot"></span>WebGPU</div></footer><div id="prop-transform-tools" hidden><div class="button-row"><button data-prop-transform="translate" aria-pressed="true">Move</button><button data-prop-transform="rotate" aria-pressed="false">Rotate</button><button data-prop-transform="scale" aria-pressed="false">Scale</button></div><label title="Move: 0.5 m · Rotate: 15° · Uniform scale: 0.1"><input id="prop-snap" type="checkbox"/> Snap</label><span id="prop-transform-hint">Drag a handle · Esc cancels</span></div><div id="preparation-status" hidden role="status"><span></span><button id="cancel-preparation">Cancel</button></div><input id="file-open" type="file" accept=".json,.terrain,.glb" hidden/><input id="heightmap-open" type="file" accept=".png,.r16,.raw" hidden/><input id="alpha-open" type="file" accept="image/png" hidden/><input id="sculpt-preset-open" type="file" accept=".json" hidden/><input id="surface-preset-open" type="file" accept=".json" hidden/><input id="brush-open" type="file" accept=".json" hidden/><input id="asset-open" type="file" accept=".glb" hidden/><input id="environment-open" type="file" accept=".hdr,.exr" hidden/><input id="texture-open" type="file" accept="${textureAccept}" hidden/><dialog id="guide"><button id="close-guide" class="icon-button dialog-close" aria-label="Close guide">${icon('x')}</button><span class="eyebrow">FIELD NOTES / 01</span><h1>Shape a world.</h1><p>Sculpt the landscape, define its surfaces, then bring it to life.</p><div class="guide-grid"><div><h3>Navigate</h3><p>Right drag to orbit. Middle drag to pan. Scroll to zoom. Press F to frame the terrain. Shift+F toggles fullscreen for the 3D view.</p><h3>Walk the terrain</h3><p>Press V or the footprints button, then point anywhere on the terrain. The marker shows your standing height and facing direction. Click (or press Enter) to start there, including on steep slopes. Right drag while choosing a spot to change your facing direction. V or Esc cancels placement. Move with WASD, look with the mouse, and hold Shift to run. V or Esc restores your editor view. Set eye height (default 1.8 m) and terrain dimensions in the Project tab. Walking follows terrain and stops at edges and holes; it has no continuous prop or foliage collision.</p><h3>Sculpt</h3><p>Left drag applies the selected brush. [ and ] resize it. Flatten uses the target elevation; terrace uses the step height. Cut hole removes entire terrain cells and their collision. Press Esc during a stroke to cancel it.</p></div><div><h3>Build an ecosystem</h3><p>Surfaces blend by altitude and slope. Foliage brushes restrict placement to allowed surface types. Populate uses a reproducible seed.</p><h3>Keep your work</h3><p>Changes autosave in this browser. Save project downloads a compact .terrain package with embedded assets. Existing JSON projects remain readable. Export scene creates a GLB with terrain, instanced foliage, props, and embedded authoring data. Open the GLB here or in the terrain runtime to restore layered PBR, wind, and interaction. Other GLB viewers show a static scene. Choose PBR beside Export scene to include baked terrain textures, or Fast colors for a smaller vertex-color presentation.</p></div></div><p class="guide-note">This development build supports a single heightfield up to 512 × 512 cells, four material layers, static GLB assets, and 50,000 foliage instances. Large-world streaming and production asset/export workflows are still in development.</p></dialog>`;
+<footer class="statusbar"><div><span class="status-key">LMB</span> sculpt <span class="status-key">RMB</span> orbit <span class="status-key">MMB</span> pan <span class="status-key">Scroll</span> zoom</div><div id="coordinates">X 0.0 &nbsp; Y 0.0 &nbsp; Z 0.0</div><div><span id="triangle-count">— triangles</span><span class="status-separator">|</span><span id="fps">— FPS</span><span class="gpu-dot"></span>WebGPU</div></footer><div id="prop-transform-tools" hidden><div class="button-row"><button data-prop-transform="translate" aria-pressed="true">Move</button><button data-prop-transform="rotate" aria-pressed="false">Rotate</button><button data-prop-transform="scale" aria-pressed="false">Scale</button></div><label title="Move: 0.5 m · Rotate: 15° · Uniform scale: 0.1"><input id="prop-snap" type="checkbox"/> Snap</label><span id="prop-transform-hint">Drag a handle · Esc cancels</span></div><div id="preparation-status" hidden role="status"><span></span><button id="cancel-preparation">Cancel</button></div><input id="file-open" type="file" accept=".json,.terrain,.glb" hidden/><input id="heightmap-open" type="file" accept=".png,.r16,.raw" hidden/><input id="alpha-open" type="file" accept="image/png" hidden/><input id="sculpt-preset-open" type="file" accept=".json" hidden/><input id="surface-preset-open" type="file" accept=".json" hidden/><input id="brush-open" type="file" accept=".json" hidden/><input id="asset-open" type="file" accept=".glb" hidden/><input id="environment-open" type="file" accept=".hdr,.exr" hidden/><input id="texture-open" type="file" accept="${textureAccept}" hidden/><dialog id="guide"><button id="close-guide" class="icon-button dialog-close" aria-label="Close guide">${icon('x')}</button><span class="eyebrow">FIELD NOTES / 01</span><h1>Shape a world.</h1><p>Sculpt the landscape, define its surfaces, then bring it to life.</p><div class="guide-grid"><div><h3>Navigate</h3><p>Right drag to orbit. Middle drag to pan. Scroll to zoom. Press F to frame the terrain. Shift+F toggles fullscreen for the 3D view.</p><h3>Walk the terrain</h3><p>Press V or the footprints button, then point anywhere on the terrain. The marker shows your standing height and facing direction. Click (or press Enter) to start there, including on steep slopes. Right drag while choosing a spot to change your facing direction. V or Esc cancels placement. Move with WASD, look with the mouse, and hold Shift to run. V or Esc restores your editor view. Set eye height (default 1.8 m) and terrain dimensions in the Project tab. Walking follows terrain and stops at edges and holes; it has no continuous prop or foliage collision.</p><h3>Sculpt</h3><p>Left drag applies the selected brush. [ and ] resize it. Flatten uses the target elevation; terrace uses the step height. Cut hole removes entire terrain cells and their collision. Press Esc during a stroke to cancel it.</p></div><div><h3>Build an ecosystem</h3><p>Surfaces blend by altitude and slope. Foliage brushes restrict placement to allowed surface types. Populate uses a reproducible seed.</p><h3>Keep your work</h3><p>Changes autosave a complete recovery copy in this browser. Open folder connects editable GLBs and makes Save project update the root .terrain file. Export over a linked GLB to refresh its plants and props automatically. Download portable project embeds current art for sharing. After a restart, Reconnect recovered project folder preserves unsaved recovered edits. Keep alternate scenes in scenes/ and delivery files in exports/. Existing JSON projects remain readable. Export scene creates a GLB with terrain, instanced foliage, props, and embedded authoring data. Open the GLB here or in the terrain runtime to restore layered PBR, wind, and interaction. Other GLB viewers show a static scene. Choose PBR beside Export scene to include baked terrain textures, or Fast colors for a smaller vertex-color presentation.</p></div></div><p class="guide-note">This development build supports a single heightfield up to 512 × 512 cells, four material layers, static GLB assets, and 50,000 foliage instances. Large-world streaming and production asset/export workflows are still in development.</p></dialog>`;
 // Native device initialization is asynchronous. Keep controls inert until their
 // handlers and the restored project are ready.
 $('#app').inert = true;
@@ -483,6 +484,87 @@ $('#viewport').addEventListener('terrain-renderer-lost', () => {
   panel.append(message, save, reload);
   document.body.append(panel);
 });
+const folderProjects = new FolderProjects({
+  project: () => project,
+  revision: () => documentRevision,
+  ready: () =>
+    !$('#app').inert &&
+    !activePreparation &&
+    !activeStroke &&
+    !viewport.propTools.dragging &&
+    !document.querySelector('dialog[open]') &&
+    !(
+      document.activeElement instanceof HTMLElement &&
+      document.activeElement.matches(
+        'input:not([type=checkbox]):not([type=range]),textarea,[contenteditable]',
+      )
+    ),
+  apply: async (candidate, label, verify) =>
+    prepareAction(
+      label,
+      async (signal) => {
+        const next =
+          typeof candidate === 'function' ? await candidate(signal) : candidate;
+        const prepared = await viewport.prepareLoad(next, true, signal);
+        try {
+          await verify?.();
+          checkSignal(signal);
+          return prepared;
+        } catch (error) {
+          prepared.dispose();
+          throw error;
+        }
+      },
+      (prepared) => {
+        viewport.assertPrepared(prepared);
+        const brushId = project.brushes[brushIndex]?.id;
+        const modelId = project.brushes[brushIndex]
+          ? foliageModels(project.brushes[brushIndex])[foliageModelIndex]?.id
+          : undefined;
+        checkpoint();
+        viewport.applyPrepared(prepared);
+        project = viewport.project;
+        if (!project.props.some((prop) => prop.id === selectedProp))
+          selectedProp = null;
+        brushIndex = Math.max(
+          0,
+          project.brushes.findIndex((brush) => brush.id === brushId),
+        );
+        foliageModelIndex = Math.max(
+          0,
+          foliageModels(project.brushes[brushIndex]).findIndex(
+            (model) => model.id === modelId,
+          ),
+        );
+        refreshed();
+      },
+    ),
+  encode: projectDownload,
+  portable: async () => {
+    viewport.finishStroke();
+    viewport.propTools.cancel();
+    const name = project.name.replace(/[^a-z0-9-_]/gi, '-') + '.terrain';
+    download(await projectDownload(project), name);
+    notify('Portable project downloaded with embedded assets.');
+  },
+  refresh: () => renderInspector(),
+  notify,
+});
+window.addEventListener('pagehide', (event) => {
+  if (!event.persisted) folderProjects.dispose();
+});
+const openFolderButton = document.createElement('button');
+openFolderButton.id = 'open-folder';
+openFolderButton.textContent = 'Open folder';
+openFolderButton.title = 'Open a project folder with live GLB sources';
+openFolderButton.disabled = !('showDirectoryPicker' in window);
+openFolderButton.onclick = () => {
+  void folderProjects.open().catch((error) => {
+    if (!(error instanceof DOMException && error.name === 'AbortError'))
+      notify('Could not open project folder: ' + String(error), true);
+  });
+};
+$('#open').after(openFolderButton);
 bindViewportNavigation(viewport, {
   unavailable: () =>
     $('#app').inert ||
@@ -613,6 +695,15 @@ function updateHistory() {
   redo.title = 'Redo · Ctrl+Shift+Z\n' + detail;
 }
 let autosaveRevision = 0;
+let savedFolderRevision: { id: string; revision: number } | undefined;
+function savedProjectLabel() {
+  return project.folderId
+    ? savedFolderRevision?.id === project.folderId &&
+      savedFolderRevision.revision === autosaveRevision
+      ? 'Saved to folder'
+      : 'Recovery saved'
+    : 'Saved locally';
+}
 function persist() {
   const revision = ++autosaveRevision;
   dirty = true;
@@ -622,7 +713,9 @@ function persist() {
     void saveLocal(activeStroke?.original ?? project)
       .then(() => {
         if (revision !== autosaveRevision) return;
-        $('#save-state').textContent = 'Saved locally';
+        $('#save-state').textContent = savedProjectLabel();
+        $('#save-state').title =
+          'Browser recovery is separate from saving the project file. Save project writes a connected folder; without a folder it downloads a portable copy.';
         dirty = false;
       })
       .catch(() => {
@@ -1158,6 +1251,7 @@ function openFoliageImport() {
         );
       return applied;
     },
+    folderProjects.folder,
   );
 }
 function openOrm() {
@@ -2003,7 +2097,8 @@ function renderInspector() {
     );
   if (tab === 'project')
     html =
-      '<div class="inspector-heading"><span class="eyebrow">PROJECT SETTINGS</span><h1>Project</h1><p>Set the scale of your world. One unit is one metre.</p></div>' +
+      '<div class="inspector-heading"><span class="eyebrow">PROJECT SETTINGS</span><h1>Project</h1><p>Manage linked art, project files and world scale.</p></div>' +
+      section('Project files', folderProjects.controls(project)) +
       section(
         'First person',
         '<label class="field"><span>Eye height (m)</span><input id="eye-height" type="number" min="0.1" max="100" step="0.05" value="' +
@@ -2929,6 +3024,7 @@ function bindInspector() {
     );
   }
   if (tab === 'project') {
+    folderProjects.bind();
     $('#eye-height').onchange = () => {
       const value = $<HTMLInputElement>('#eye-height').valueAsNumber;
       if (value === parseEyeHeight(project.view.eyeHeight)) return;
@@ -3330,6 +3426,7 @@ for (const direction of ['undo', 'redo'] as const)
   };
 $('#cancel-preparation').onclick = () => {
   cancelPreparation();
+  if (tab === 'light') renderInspector();
   notify('Preparation cancelled.');
 };
 $('#project-name').onchange = () => {
@@ -3365,16 +3462,31 @@ $('#save').onclick = async () => {
   const name = project.name.replace(/[^a-z0-9-_]/gi, '-') + '.terrain';
   button.disabled = true;
   button.textContent = 'Preparing file…';
+  const folderSaveId = project.folderId,
+    folderSaveRevision = autosaveRevision;
   try {
-    const data = await projectDownload(project);
-    download(data, name);
+    if (folderProjects.folder) {
+      await folderProjects.save();
+      if (folderSaveId)
+        savedFolderRevision = {
+          id: folderSaveId,
+          revision: folderSaveRevision,
+        };
+      $('#save-state').textContent = savedProjectLabel();
+    } else {
+      const data = await projectDownload(project);
+      download(data, name);
+    }
     void saveLocal(project).catch((error) =>
       notify(
         'File downloaded, but local autosave failed: ' + String(error),
         true,
       ),
     );
-    notify('Editable terrain project downloaded.');
+    if (!folderProjects.folder)
+      notify(
+        'Portable project downloaded. Use Save as folder project for linked art.',
+      );
   } catch (error) {
     notify('Could not save project: ' + String(error), true);
   } finally {
@@ -3387,25 +3499,47 @@ async function changeEnvironment(value: EnvironmentSettings) {
   assertProjectCapacity({ ...project, environment: settings });
   await prepareAction(
     'Preparing lighting…',
-    async () => {
+    async (signal) => {
       const prepared = viewport.lighting.matchesSource(settings)
         ? undefined
         : await viewport.lighting.prepare(settings);
+      let canopy:
+        | Awaited<ReturnType<typeof viewport.content.canopyLighting.prepare>>
+        | undefined;
       let applied = false;
-      return {
-        apply() {
-          history.checkpoint(project);
-          if (prepared) viewport.lighting.apply(prepared, project);
-          else viewport.lighting.set(settings, project);
-          applied = true;
-          project.environment = settings;
-          persist();
-          renderInspector();
-        },
-        dispose() {
-          if (!applied) prepared?.dispose();
-        },
-      };
+      try {
+        canopy = await viewport.content.canopyLighting.prepare(
+          project,
+          settings,
+          undefined,
+          signal,
+        );
+        await viewport.content.canopyLighting.prepareGPU(
+          canopy,
+          viewport.renderer,
+        );
+        return {
+          apply() {
+            canopy!.assert(viewport.content.canopyLighting);
+            history.checkpoint(project);
+            if (prepared) viewport.lighting.apply(prepared, project);
+            else viewport.lighting.set(settings, project);
+            applied = true;
+            project.environment = settings;
+            viewport.content.canopyLighting.apply(canopy!);
+            persist();
+            renderInspector();
+          },
+          dispose() {
+            if (!applied) prepared?.dispose();
+            canopy?.dispose();
+          },
+        };
+      } catch (error) {
+        prepared?.dispose();
+        canopy?.dispose();
+        throw error;
+      }
     },
     (prepared) => prepared.apply(),
   );
@@ -3464,6 +3598,7 @@ async function openDocument(
       checkpoint();
       viewport.applyPrepared(prepared);
       project = viewport.project;
+      folderProjects.disconnect();
       selectedProp = null;
       brushIndex = 0;
       foliageModelIndex = 0;

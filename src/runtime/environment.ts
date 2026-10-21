@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { setCanopySun } from '../render/canopy-nodes';
 import { installTerrainLighting } from '../render/node-lighting';
 import { isWebGPU, validateGPU } from '../render/renderer';
 import type { TerrainRenderer } from '../render/renderer';
@@ -622,6 +623,14 @@ export class TerrainEnvironment {
       this.prepared!.daylight!.set(s, this.hour);
       this.applyDaylight(s);
     }
+    if (!s.timeOfDay?.enabled)
+      setCanopySun(
+        this.scene,
+        s,
+        this.sun.color,
+        this.sun.intensity,
+        Math.sin(THREE.MathUtils.degToRad(s.sunElevation)),
+      );
   }
   /** Advance by elapsed seconds. Static or paused lighting does no animation work. */
   tick(deltaSeconds: number) {
@@ -701,6 +710,18 @@ export class TerrainEnvironment {
     if (!renderer) return;
     this.waterPass ??= new WaterPass(renderer);
     this.waterPass.prepare();
+  }
+  /** Stage streamed water shader/pipeline preparation before visual/collision admission.
+   * Render the host environment once first; no-op on explicit WebGL hosts. */
+  stageWater(
+    water: import('./water').TerrainWater,
+    camera: THREE.Camera,
+    signal: AbortSignal,
+  ) {
+    return (
+      this.gpuPipeline?.prepareWater(this.scene, camera, water, signal) ??
+      Promise.resolve()
+    );
   }
   invalidateHistory() {
     this.prepared?.temporal?.reset();
@@ -810,6 +831,13 @@ export class TerrainEnvironment {
         .lerp(dayFog, state.day);
     }
     this.group.updateMatrixWorld(true);
+    setCanopySun(
+      this.scene,
+      settings,
+      this.sun.color,
+      this.sun.intensity,
+      state.y,
+    );
   }
   /** Refresh after height edits; coverage includes the terrain and authored height padding. */
   fitShadow(

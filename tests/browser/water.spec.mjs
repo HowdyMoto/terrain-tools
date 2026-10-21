@@ -146,6 +146,10 @@ test('ocean optics, multiple bodies, native round trip and undo', async ({
     .getByRole('spinbutton', { name: 'Water height (m)', exact: true })
     .fill('10');
   await page.locator('#water-elevation').press('Tab');
+  // Height changes prepare bathymetry asynchronously and replace inspector nodes.
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
   await (await inspectorControl(page, '#water-preset')).selectOption('pond');
   await page.locator('#water-body').selectOption('ocean');
   await expect(page.locator('#water-sea-level')).toHaveValue('1');

@@ -5,6 +5,7 @@ import type {
   PackageResponse,
 } from './package-transfer';
 import type { TerrainProject } from './types';
+import type { ProjectPackageMode } from './project-package';
 
 type PackageWorker = Pick<
   Worker,
@@ -29,6 +30,7 @@ export interface BackgroundPackageStats {
 }
 type Waiter = { resolve: (blob: Blob) => void; reject: (error: Error) => void };
 interface Job {
+  mode: ProjectPackageMode;
   id: number;
   latest: boolean;
   capture?: PackageCapture;
@@ -85,12 +87,15 @@ export class BackgroundProjectWriter {
     };
   }
   /** Resolves with the exact state captured synchronously at this call. Live arrays stay attached. */
-  encode(project: TerrainProject): Promise<Blob> {
-    return this.enqueue(project, false);
+  encode(
+    project: TerrainProject,
+    mode: ProjectPackageMode = 'portable',
+  ): Promise<Blob> {
+    return this.enqueue(project, false, mode);
   }
   /** Pending autosaves collapse to the newest snapshot; replaced callers receive that newer Blob. */
   encodeLatest(project: TerrainProject): Promise<Blob> {
-    return this.enqueue(project, true);
+    return this.enqueue(project, true, 'recovery');
   }
   dispose() {
     if (this.disposed) return;
@@ -103,7 +108,11 @@ export class BackgroundProjectWriter {
     for (const job of jobs)
       for (const waiter of job.waiters) waiter.reject(error);
   }
-  private enqueue(project: TerrainProject, latest: boolean): Promise<Blob> {
+  private enqueue(
+    project: TerrainProject,
+    latest: boolean,
+    mode: ProjectPackageMode,
+  ): Promise<Blob> {
     return new Promise((resolve, reject) => {
       if (this.disposed) throw new Error('Background package writer disposed.');
       const replaced = latest
@@ -119,7 +128,7 @@ export class BackgroundProjectWriter {
       const waiters =
         replaced < 0 ? [] : this.pending.splice(replaced, 1)[0].waiters;
       waiters.push({ resolve, reject });
-      this.pending.push({ id: ++this.nextJob, latest, capture, waiters });
+      this.pending.push({ id: ++this.nextJob, latest, mode, capture, waiters });
       this.start();
     });
   }
@@ -180,6 +189,7 @@ export class BackgroundProjectWriter {
         return id;
       });
       const message: PackageRequest = {
+        mode: job.mode,
         id: job.id,
         project: capture.project,
         foliage: capture.foliage,

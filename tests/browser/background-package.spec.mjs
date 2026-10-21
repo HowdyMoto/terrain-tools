@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { runtimePackagePage } from './runtime-package-page.mjs';
 import { decodeDocument } from './fixtures.mjs';
+import { seedEditorProject } from './seed-editor-project.mjs';
 
 test('built public background writer preserves exact snapshots and recovers after validation failure', async ({
   page,
@@ -117,8 +118,9 @@ test('editor stays editable while a save is held, coalesces autosaves, and downl
       }
     };
   });
+  await seedEditorProject(page);
   await page.goto('/');
-  await expect(page.locator('#foliage-count')).not.toHaveText('0', {
+  await expect(page.locator('#app')).toHaveJSProperty('inert', false, {
     timeout: 30000,
   });
   // Ensure a baseline autosave exists, then hold the next worker submission.
@@ -167,6 +169,9 @@ test('editor stays editable while a save is held, coalesces autosaves, and downl
     'Newest edited document',
   ]);
   await page.reload();
+  await expect(page.locator('#app')).toHaveJSProperty('inert', false, {
+    timeout: 30000,
+  });
   await expect(page.locator('#project-name')).toHaveValue(
     'Newest edited document',
     { timeout: 30000 },
@@ -202,6 +207,9 @@ test('editor stays editable while a save is held, coalesces autosaves, and downl
   await rename('Recovered after worker crash');
   await expect(page.locator('#save-state')).toHaveText('Saved locally');
   await page.reload();
+  await expect(page.locator('#app')).toHaveJSProperty('inert', false, {
+    timeout: 30000,
+  });
   await expect(page.locator('#project-name')).toHaveValue(
     'Recovered after worker crash',
     { timeout: 30000 },

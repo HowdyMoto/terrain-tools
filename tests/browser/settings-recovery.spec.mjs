@@ -107,6 +107,7 @@ async function setup(page, info, tab = 'light') {
           if (name === 'Uint8Array' && args.length === 3 && args[2] === 16900)
             probe('history');
           if (name === 'Uint16Array' && n === 512 * 256 * 4) probe('sky');
+          if (name === 'Uint16Array' && n === 24 * 8 * 24 * 4) probe('canopy');
           if (name === 'Float32Array' && n === 3267)
             probe(
               new Error().stack.includes('/assets/rapier-')
@@ -129,6 +130,27 @@ async function setup(page, info, tab = 'light') {
       // allocation fault proxy transparent to that lookup.
       Original.prototype.constructor = window[name];
     }
+    const postWorker = Worker.prototype.postMessage;
+    Worker.prototype.postMessage = function (message, ...transfer) {
+      if (window.pauseCanopy && message?.kind === 'canopy') {
+        window.pausedCanopy = true;
+        return;
+      }
+      return postWorker.call(this, message, ...transfer);
+    };
+    const createTexture = GPUDevice.prototype.createTexture;
+    GPUDevice.prototype.createTexture = function (descriptor) {
+      if (
+        window.settingsFault === 'canopy-gpu' &&
+        descriptor.label === 'Terrain canopy light field'
+      ) {
+        window.settingsFaults.push('canopy-gpu');
+        createTexture
+          .call(this, { size: [1, 1], format: 'rgba8unorm', usage: 0 })
+          .destroy();
+      }
+      return createTexture.call(this, descriptor);
+    };
     const push = Array.prototype.push;
     Array.prototype.push = function (...items) {
       for (const item of items) {
@@ -203,7 +225,9 @@ async function fails(page, info, state, stage, id, value, message) {
 }
 async function restore(page, direction) {
   await (await inspectorControl(page, '#' + direction)).click();
-  await expect(page.locator('#preparation-status')).toBeHidden();
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
 }
 const worldEdits = [
   ['wind-strength', 2.4],
@@ -406,5 +430,64 @@ test('lighting controls restore their displayed values after sky or history fail
   await restore(page, 'redo');
   expect(await save(page, info, 'redone')).toEqual(changed);
   await expect.poll(() => autosave(page)).toEqual(changed);
+  expect(state.errors).toEqual([]);
+});
+
+test('canopy lighting failure and cancellation preserve the document, controls, pixels, autosave and redo before retry and reload', async ({
+  page,
+}, info) => {
+  test.setTimeout(180000);
+  const state = await setup(page, info);
+  await fails(
+    page,
+    info,
+    state,
+    'canopy',
+    'click:env-canopy-enabled',
+    true,
+    'Could not update lighting',
+  );
+  await expect(page.locator('#env-canopy-enabled')).not.toBeChecked();
+  await fails(
+    page,
+    info,
+    state,
+    'canopy-gpu',
+    'click:env-canopy-enabled',
+    true,
+    'Could not update lighting',
+  );
+  await expect(page.locator('#env-canopy-enabled')).not.toBeChecked();
+  await page.evaluate(() => {
+    window.pauseCanopy = true;
+    window.pausedCanopy = false;
+  });
+  await (await inspectorControl(page, '#env-canopy-enabled')).check();
+  await page.waitForFunction(() => window.pausedCanopy);
+  await page.locator('#cancel-preparation').click();
+  await expect(page.locator('#env-canopy-enabled')).not.toBeChecked();
+  expect(await capture(page)).toBe(state.pixels);
+  expect(await autosave(page)).toEqual(state.baseline);
+  expect(await page.locator('#redo').getAttribute('title')).toBe(state.redo);
+  expect(await save(page, info, 'canopy-cancel')).toEqual(state.baseline);
+  await page.evaluate(() => {
+    window.pauseCanopy = false;
+  });
+  await (await inspectorControl(page, '#env-canopy-enabled')).check();
+  await expect(page.locator('#preparation-status')).toBeHidden({
+    timeout: 60000,
+  });
+  const changed = await save(page, info, 'canopy-retry');
+  expect(changed.environment.canopyLighting.enabled).toBe(true);
+  await restore(page, 'undo');
+  expect(await save(page, info, 'canopy-undo')).toEqual(state.baseline);
+  await restore(page, 'redo');
+  expect(await save(page, info, 'canopy-redo')).toEqual(changed);
+  await expect.poll(() => autosave(page)).toEqual(changed);
+  await page.reload();
+  await expect(page.locator('#app')).not.toHaveAttribute('inert', {
+    timeout: 60000,
+  });
+  expect(await save(page, info, 'canopy-reload')).toEqual(changed);
   expect(state.errors).toEqual([]);
 });
